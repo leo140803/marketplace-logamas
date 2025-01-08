@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:firebase_core/firebase_core.dart';
 import 'package:marketplace_logamas/api/firebase_api.dart';
 import 'package:marketplace_logamas/screen/PaymentSuccessScreen.dart';
@@ -18,8 +20,14 @@ import 'package:marketplace_logamas/screen/RegisterScreen.dart';
 final navigatorKey = GlobalKey<NavigatorState>();
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp();
-  await FirebaseApi().initNotifications();
+
+  // Cek apakah platform adalah Android
+  if (Platform.isAndroid) {
+    print('android');
+    await Firebase.initializeApp();
+    await FirebaseApi().initNotifications();
+  }
+
   runApp(MaterialApp.router(routerConfig: router));
 }
 
