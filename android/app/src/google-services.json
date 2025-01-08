@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "179271395334",
+    "project_id": "notifications-15a13",
+    "storage_bucket": "notifications-15a13.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:179271395334:android:cf3cd1cf00cba28daa3b87",
+        "android_client_info": {
+          "package_name": "com.example.marketplace_logamas"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDIluiv5mf6ZKaGp-KOWg-eX1lS2nqm3Dk"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
