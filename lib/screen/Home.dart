@@ -40,6 +40,8 @@ class _HomePageWidgetState extends State<HomePageWidget> {
   bool isWhiteGoldSelected = false;
   bool isRoseGoldSelected = false;
 
+  late Future<List<Map<String, dynamic>>> followedStores;
+
   //variable to save banner
   late Future<List<String>> banners;
 
@@ -57,11 +59,11 @@ class _HomePageWidgetState extends State<HomePageWidget> {
     _getUserName();
     banners = fetchBannerImages();
     goldPrices = fetchGoldPrices();
+    followedStores = fetchFollowedStores();
   }
 
   Future<Map<String, String>> fetchGoldPrices() async {
-    final response =
-        await http.get(Uri.parse('$apiBaseUrl/goldprice/now'));
+    final response = await http.get(Uri.parse('$apiBaseUrl/goldprice/now'));
 
     if (response.statusCode == 200) {
       final data = json.decode(response.body);
@@ -76,8 +78,7 @@ class _HomePageWidgetState extends State<HomePageWidget> {
 
   Future<List<Map<String, dynamic>>> fetchCategories() async {
     try {
-      final response =
-          await http.get(Uri.parse('http://127.0.0.1:3000/api/categories'));
+      final response = await http.get(Uri.parse('$apiBaseUrl/categories'));
       if (response.statusCode == 200) {
         final data = json.decode(response.body)['data'] as List;
         return data
@@ -94,13 +95,13 @@ class _HomePageWidgetState extends State<HomePageWidget> {
 
   Future<List<String>> fetchBannerImages() async {
     final response =
-        await http.get(Uri.parse('http://127.0.0.1:3001/api/banner/active'));
+        await http.get(Uri.parse('$apiBaseUrlPlatform/api/banner/active'));
     print(response.statusCode);
     if (response.statusCode == 200) {
       final data = json.decode(response.body);
       final List banners = data['data'];
       return banners.map<String>((banner) {
-        return 'http://127.0.0.1:3000${banner['image_url']}';
+        return '$apiBaseUrlPlatform${banner['image_url']}';
       }).toList();
     } else if (response.statusCode == 404) {
       return [];
@@ -110,26 +111,60 @@ class _HomePageWidgetState extends State<HomePageWidget> {
     }
   }
 
-  String _getCategoryEmoji(String categoryName) {
-  switch (categoryName) {
-    case 'Cincin':
-      return '💍';
-    case 'Kalung':
-      return '📿';
-    case 'Anting':
-      return '💎';
-    case 'Gelang':
-      return '🪄';
-    default:
-      return '❓';
-  }
-}
+  Future<List<Map<String, dynamic>>> fetchFollowedStores() async {
+    try {
+      // Dapatkan token dari getAccessToken()
+      final token = await getAccessToken();
 
+      // Kirim permintaan HTTP dengan Authorization Bearer Token
+      final response = await http.get(
+        Uri.parse('$apiBaseUrl/follow'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+      );
+      print(json.decode(response.body));
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body)['data'] as List;
+        return data.map((store) => store as Map<String, dynamic>).toList();
+      } else {
+        throw Exception('Failed to fetch followed stores');
+      }
+    } catch (e) {
+      print('Error fetching followed stores: $e');
+      return [];
+    }
+  }
+
+  String _getCategoryEmoji(String categoryName) {
+    switch (categoryName) {
+      case 'Cincin':
+        return '💍';
+      case 'Kalung':
+        return '📿';
+      case 'Anting':
+        return '💎';
+      case 'Gelang':
+        return '🪄';
+      default:
+        return '❓';
+    }
+  }
 
   Future<void> _getUserName() async {
     String? name = await getUsername();
     setState(() {
       _userName = (name ?? 'Guest').split(" ")[0];
+    });
+  }
+
+  Future<void> _refreshHomePage() async {
+    setState(() {
+      // Re-fetch data to reload the page
+      banners = fetchBannerImages();
+      goldPrices = fetchGoldPrices();
+      followedStores = fetchFollowedStores();
     });
   }
 
@@ -155,92 +190,57 @@ class _HomePageWidgetState extends State<HomePageWidget> {
         onWillPop: () async => false,
         child: Scaffold(
           backgroundColor: Colors.grey[100],
-          body: NestedScrollView(
-            floatHeaderSlivers: true,
-            headerSliverBuilder: (context, _) => [
-              SliverAppBar(
-                pinned: true,
-                floating: true,
-                backgroundColor: Color(0xFF31394E),
-                automaticallyImplyLeading: false,
-                toolbarHeight: 80,
-                title: Padding(
-                  padding: const EdgeInsets.only(bottom: 10.0),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: TextFormField(
-                          controller: _textController,
-                          focusNode: _textFieldFocusNode,
-                          decoration: InputDecoration(
-                            isDense: true,
-                            hintText: 'Cari...',
-                            hintStyle: TextStyle(
-                              fontSize: 14,
-                              color: Color(0xFFC58189),
-                            ),
-                            enabledBorder: OutlineInputBorder(
-                              borderSide: BorderSide(color: Colors.transparent),
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            focusedBorder: OutlineInputBorder(
-                              borderSide: BorderSide(color: Colors.transparent),
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            filled: true,
-                            fillColor: Colors.white,
-                            prefixIcon: Icon(
-                              Icons.search,
-                              color: Color(0xFFC58189),
-                            ),
-                            suffixIcon: IconButton(
-                              icon: Icon(Icons.filter_alt),
-                              color: Color(0xFFC58189),
-                              onPressed: () {
-                                _showFilterDrawer(context);
-                              },
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                actions: [
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(0, 0, 10, 10),
-                    child: Stack(
-                      clipBehavior: Clip.none,
+          body: RefreshIndicator(
+            color: Color(0xFFC58189),
+            backgroundColor: Color(0xFF31394E),
+            strokeWidth: 2,
+            onRefresh: _refreshHomePage,
+            child: CustomScrollView(
+              physics: AlwaysScrollableScrollPhysics(),
+              slivers: [
+                SliverAppBar(
+                  pinned: true,
+                  floating: true,
+                  backgroundColor: Color(0xFF31394E),
+                  automaticallyImplyLeading: false,
+                  toolbarHeight: 80,
+                  title: Padding(
+                    padding: const EdgeInsets.fromLTRB(10, 0, 10, 10),
+                    child: Row(
                       children: [
-                        IconButton(
-                          icon: Icon(
-                            Icons.shopping_cart_outlined,
-                            color: Colors.white,
-                          ),
-                          onPressed: () {
-                            getAccessToken();
-                            context.go('/cart');
-                            // Navigator.pushReplacementNamed(context, '/cart');
-                          },
-                        ),
-                        Positioned(
-                          right: 0,
-                          top: 0,
-                          child: Container(
-                            width: 18,
-                            height: 18,
-                            decoration: BoxDecoration(
-                              color: Color(0xFFC58189),
-                              shape: BoxShape.circle,
-                            ),
-                            child: Center(
-                              child: Text(
-                                '3',
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.bold,
-                                ),
+                        Expanded(
+                          child: TextFormField(
+                            controller: _textController,
+                            focusNode: _textFieldFocusNode,
+                            decoration: InputDecoration(
+                              isDense: true,
+                              hintText: 'Cari...',
+                              hintStyle: TextStyle(
+                                fontSize: 14,
+                                color: Color(0xFFC58189),
+                              ),
+                              enabledBorder: OutlineInputBorder(
+                                borderSide:
+                                    BorderSide(color: Colors.transparent),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              focusedBorder: OutlineInputBorder(
+                                borderSide:
+                                    BorderSide(color: Colors.transparent),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              filled: true,
+                              fillColor: Colors.white,
+                              prefixIcon: Icon(
+                                Icons.search,
+                                color: Color(0xFFC58189),
+                              ),
+                              suffixIcon: IconButton(
+                                icon: Icon(Icons.filter_alt),
+                                color: Color(0xFFC58189),
+                                onPressed: () {
+                                  _showFilterDrawer(context);
+                                },
                               ),
                             ),
                           ),
@@ -248,50 +248,86 @@ class _HomePageWidgetState extends State<HomePageWidget> {
                       ],
                     ),
                   ),
-                ],
-                centerTitle: false,
-                elevation: 0,
-              ),
-            ],
-            body: Padding(
-              padding: const EdgeInsets.all(20),
-              child: CustomScrollView(
-                slivers: [
-                  SliverToBoxAdapter(
-                    child: Padding(
-                      padding: const EdgeInsets.fromLTRB(8, 8, 0, 0),
-                      child: Text(
-                        'Hello, $_userName👋',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.black,
-                        ),
+                  actions: [
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(0, 0, 10, 10),
+                      child: Stack(
+                        clipBehavior: Clip.none,
+                        children: [
+                          IconButton(
+                            icon: Icon(
+                              Icons.shopping_cart_outlined,
+                              color: Colors.white,
+                            ),
+                            onPressed: () {
+                              getAccessToken();
+                              context.go('/cart');
+                            },
+                          ),
+                          Positioned(
+                            right: 0,
+                            top: 0,
+                            child: Container(
+                              width: 18,
+                              height: 18,
+                              decoration: BoxDecoration(
+                                color: Color(0xFFC58189),
+                                shape: BoxShape.circle,
+                              ),
+                              child: Center(
+                                child: Text(
+                                  '3',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                  centerTitle: false,
+                  elevation: 0,
+                ),
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 20, 20, 16),
+                    child: Text(
+                      'Hello, $_userName👋',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black,
                       ),
                     ),
                   ),
-                  SliverToBoxAdapter(
-                    child: SizedBox(height: 7),
-                  ),
-                  SliverToBoxAdapter(
-                    child: FutureBuilder<List<String>>(
-                      future: banners,
-                      builder: (context, snapshot) {
-                        if (snapshot.connectionState ==
-                            ConnectionState.waiting) {
-                          return SizedBox(
+                ),
+                SliverToBoxAdapter(
+                  child: SizedBox(height: 8),
+                ),
+                SliverToBoxAdapter(
+                  child: FutureBuilder<List<String>>(
+                    future: banners,
+                    builder: (context, snapshot) {
+                      if (snapshot.connectionState == ConnectionState.waiting) {
+                        return SizedBox(
+                          height: 200,
+                          child: Center(child: CircularProgressIndicator()),
+                        );
+                      } else if (snapshot.hasError ||
+                          !snapshot.hasData ||
+                          snapshot.data!.isEmpty) {
+                        return SizedBox.shrink();
+                      } else {
+                        final bannerImages = snapshot.data!;
+                        return Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 20.0),
+                          child: SizedBox(
                             height: 200,
-                            child: Center(child: CircularProgressIndicator()),
-                          );
-                        } else if (snapshot.hasError ||
-                            !snapshot.hasData ||
-                            snapshot.data!.isEmpty) {
-                          // Jangan tampilkan apa pun jika data kosong atau error
-                          return SizedBox.shrink();
-                        } else {
-                          final bannerImages = snapshot.data!;
-                          return SizedBox(
-                            height: 200, // Hanya muncul jika ada data
                             child: ListView.builder(
                               scrollDirection: Axis.horizontal,
                               itemCount: bannerImages.length,
@@ -310,111 +346,169 @@ class _HomePageWidgetState extends State<HomePageWidget> {
                                 );
                               },
                             ),
+                          ),
+                        );
+                      }
+                    },
+                  ),
+                ),
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 20, 20, 16),
+                    child: Text(
+                      'Followed Stores',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black,
+                      ),
+                    ),
+                  ),
+                ),
+                SliverToBoxAdapter(
+                  child: SizedBox(height: 8),
+                ),
+                SliverToBoxAdapter(
+                  child: SizedBox(
+                    height: 150,
+                    child: FutureBuilder<List<Map<String, dynamic>>>(
+                      future: followedStores,
+                      builder: (context, snapshot) {
+                        if (snapshot.connectionState ==
+                            ConnectionState.waiting) {
+                          return SizedBox(
+                            height: 150,
+                            child: Center(child: CircularProgressIndicator()),
+                          );
+                        } else if (snapshot.hasError ||
+                            !snapshot.hasData ||
+                            snapshot.data!.isEmpty) {
+                          return Center(
+                              child: Text('No followed stores found'));
+                        } else {
+                          final stores = snapshot.data!;
+                          return Padding(
+                            padding:
+                                const EdgeInsets.symmetric(horizontal: 20.0),
+                            child: ListView.builder(
+                              scrollDirection: Axis.horizontal,
+                              itemCount: stores.length,
+                              itemBuilder: (context, index) {
+                                final store = stores[index];
+                                return GestureDetector(
+                                  onTap: () {
+                                    context.go(
+                                      '/store',
+                                      extra: {
+                                        'storeId': store['store']['store_id']
+                                      },
+                                    );
+                                  },
+                                  child: Container(
+                                    width:
+                                        MediaQuery.of(context).size.width * 0.7,
+                                    margin: EdgeInsets.only(right: 8),
+                                    decoration: BoxDecoration(
+                                      image: DecorationImage(
+                                        image: NetworkImage(
+                                          "$apiBaseUrlImage${store['store']['image_url']}",
+                                        ),
+                                        fit: BoxFit.cover,
+                                      ),
+                                      borderRadius: BorderRadius.circular(10),
+                                    ),
+                                    child: Stack(
+                                      children: [
+                                        Positioned(
+                                          bottom: 0,
+                                          left: 0,
+                                          right: 0,
+                                          child: Container(
+                                            padding: EdgeInsets.all(10),
+                                            decoration: BoxDecoration(
+                                              color: Colors.black
+                                                  .withOpacity(0.35),
+                                              borderRadius:
+                                                  BorderRadius.vertical(
+                                                bottom: Radius.circular(10),
+                                              ),
+                                            ),
+                                            child: Text(
+                                              store['store']['store_name'],
+                                              style: TextStyle(
+                                                color: Colors.white,
+                                                fontWeight: FontWeight.bold,
+                                                fontSize: 16,
+                                              ),
+                                              textAlign: TextAlign.center,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
                           );
                         }
                       },
                     ),
                   ),
-                  SliverToBoxAdapter(
-                    child: Padding(
-                      padding: const EdgeInsets.fromLTRB(8, 8, 0, 8),
-                      child: Text(
-                        'Gold Price',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.black,
-                        ),
+                ),
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 20, 20, 8),
+                    child: Text(
+                      'Gold Price',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black,
                       ),
                     ),
                   ),
-                  SliverToBoxAdapter(
-                    child: SizedBox(
-                      height: 100,
-                      child: FutureBuilder<Map<String, String>>(
-                        future: goldPrices,
-                        builder: (context, snapshot) {
-                          if (snapshot.connectionState ==
-                              ConnectionState.waiting) {
-                            // Tampilan Loading (Siluet Box)
-                            return Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                shimmerBox(),
-                                shimmerBox(),
-                              ],
-                            );
-                          } else if (snapshot.hasError || !snapshot.hasData) {
-                            return Center(child: Text('Failed to load prices'));
-                          } else {
-                            final hargaBeli =
-                                snapshot.data!['hargaBeli'] ?? '-';
-                            final hargaJual =
-                                snapshot.data!['hargaJual'] ?? '-';
-
-                            return Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                priceBox(
-                                    'Harga Jual', hargaJual, Color(0xFFC58189)),
-                                priceBox(
-                                    'Harga Beli', hargaBeli, Color(0xFFC58189)),
-                              ],
-                            );
-                          }
-                        },
-                      ),
-                    ),
-                  ),
-                  SliverToBoxAdapter(
-                    child: Padding(
-                      padding: const EdgeInsets.fromLTRB(8, 8, 0, 0),
-                      child: Text(
-                        'Categories',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.black,
-                        ),
-                      ),
-                    ),
-                  ),
-                  SliverToBoxAdapter(
-                    child: SizedBox(
-                      height: 100,
-                      child: ListView(
-                        scrollDirection: Axis.horizontal,
-                        children: [
-                          CategoryCard(
-                            '📿',
-                            'Kalung',
+                ),
+                SliverToBoxAdapter(
+                  child: SizedBox(height: 8),
+                ),
+                SliverToBoxAdapter(
+                  child: FutureBuilder<Map<String, String>>(
+                    future: goldPrices,
+                    builder: (context, snapshot) {
+                      if (snapshot.connectionState == ConnectionState.waiting) {
+                        return Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 12.0),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              shimmerBox(),
+                              shimmerBox(),
+                            ],
                           ),
-                          CategoryCard('🪄', 'Gelang'),
-                          CategoryCard('💍', 'Cincin'),
-                          CategoryCard('💎', 'Anting'),
-                        ],
-                      ),
-                    ),
+                        );
+                      } else if (snapshot.hasError || !snapshot.hasData) {
+                        return Center(child: Text('Failed to load prices'));
+                      } else {
+                        final hargaBeli = snapshot.data!['hargaBeli'] ?? '-';
+                        final hargaJual = snapshot.data!['hargaJual'] ?? '-';
+                        return Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 12.0),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              priceBox(
+                                  'Harga Jual', hargaJual, Color(0xFFC58189)),
+                              priceBox(
+                                  'Harga Beli', hargaBeli, Color(0xFFC58189)),
+                            ],
+                          ),
+                        );
+                      }
+                    },
                   ),
-                  SliverToBoxAdapter(
-                    child: SizedBox(height: 20),
-                  ),
-                  // SliverGrid(
-                  //   gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                  //     crossAxisCount: 2,
-                  //     crossAxisSpacing: 10,
-                  //     mainAxisSpacing: 10,
-                  //     childAspectRatio: 0.65,
-                  //   ),
-                  //   delegate: SliverChildBuilderDelegate(
-                  //     (context, index) {
-                  //       return ProductCard(index);
-                  //     },
-                  //     childCount: 10,
-                  //   ),
-                  // ),
-                ],
-              ),
+                ),
+              ],
             ),
           ),
           bottomNavigationBar: BottomNavBar(

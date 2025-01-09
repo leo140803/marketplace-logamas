@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:marketplace_logamas/function/Utils.dart';
@@ -22,8 +23,7 @@ class _LoginPageState extends State<LoginPage> {
     String password = passwordController.text;
     showDialog(
       context: context,
-      barrierDismissible:
-          false,
+      barrierDismissible: false,
       builder: (ctx) => AlertDialog(
         title: Text('Please wait...'),
         content: Row(
@@ -54,15 +54,18 @@ class _LoginPageState extends State<LoginPage> {
         print('Response: ${response.body}');
         final data = jsonDecode(response.body);
         final String accessToken = data['access_token'];
-        final String name= data['name'];
-        final String userId= data['user_id'];
+        print(accessToken);
+        final String name = data['name'];
+        final String userId = data['user_id'];
         SharedPreferences prefs = await SharedPreferences.getInstance();
         prefs.setString('access_token', accessToken);
         prefs.setString('name', name);
         prefs.setString('user_id', userId);
+        if (Platform.isAndroid) {
+          await addDeviceToken(accessToken, context);
+        }
         print(prefs.get('name'));
         context.go('/home');
-
       } else {
         final responseBody = jsonDecode(response.body);
         final errorMessage =
@@ -73,6 +76,41 @@ class _LoginPageState extends State<LoginPage> {
       Navigator.of(context, rootNavigator: true).pop();
 
       print('Error: $error');
+    }
+  }
+
+  Future<String> getDeviceToken() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    return prefs.get('fcm_token').toString();
+  }
+
+  Future<void> addDeviceToken(String accessToken, BuildContext context) async {
+    const String addDeviceTokenApiUrl = '$apiBaseUrl/user/device-token';
+
+    try {
+      final String deviceToken = await getDeviceToken();
+
+      if (deviceToken.isNotEmpty) {
+        final response = await http.post(
+          Uri.parse(addDeviceTokenApiUrl),
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer $accessToken',
+          },
+          body: jsonEncode({'deviceToken': deviceToken}),
+        );
+
+        if (response.statusCode == 201) {
+          print('Device token added successfully');
+        } else {
+          final responseBody = jsonDecode(response.body);
+          final errorMessage =
+              responseBody['message'] ?? 'Failed to add device token';
+          dialog(context, 'Error', errorMessage);
+        }
+      }
+    } catch (error) {
+      print('Error adding device token: $error');
     }
   }
 
@@ -104,7 +142,6 @@ class _LoginPageState extends State<LoginPage> {
                   logo: Icons.email_rounded,
                 ),
                 SizedBox(height: 20),
-
                 Field(
                   con: passwordController,
                   isPassword: true,
@@ -112,7 +149,6 @@ class _LoginPageState extends State<LoginPage> {
                   logo: Icons.lock,
                 ),
                 SizedBox(height: 30),
-
                 GestureDetector(
                   onTap: () {
                     _login();

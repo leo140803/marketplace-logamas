@@ -1,6 +1,7 @@
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:go_router/go_router.dart';
 import 'package:marketplace_logamas/main.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 Future<void> handleBackgroundMessage(RemoteMessage message) async {
   print('Title: ${message.notification?.title}');
@@ -49,6 +50,15 @@ class FirebaseApi {
     await _firebaseMessaging.requestPermission();
     final fCMToken = await _firebaseMessaging.getToken();
     print('FCM Token: $fCMToken');
+    if (fCMToken != null) {
+      await saveFCMToken(fCMToken);
+    }
     initPushNotification();
+  }
+
+  Future<void> saveFCMToken(String token) async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    await prefs.setString('fcm_token', token);
+    print('FCM Token saved to SharedPreferences: $token');
   }
 }

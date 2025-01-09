@@ -206,8 +206,7 @@ class _StorePageState extends State<StorePage> {
     try {
       String token = await getAccessToken();
       final response = await http.get(
-        Uri.parse(
-            "$apiBaseUrl/follow/is-following?store_id=${widget.storeId}"),
+        Uri.parse("$apiBaseUrl/follow/is-following?store_id=${widget.storeId}"),
         headers: {
           'Authorization': 'Bearer $token',
         },
@@ -346,8 +345,7 @@ class _StorePageState extends State<StorePage> {
       String token = await getAccessToken();
       print(token);
       final response = await http.get(
-        Uri.parse(
-            "$apiBaseUrl/vouchers/active-not-purchased?storeId=$storeId"),
+        Uri.parse("$apiBaseUrl/vouchers/active-not-purchased?storeId=$storeId"),
         headers: {
           'Authorization': 'Bearer $token',
         },
@@ -357,8 +355,7 @@ class _StorePageState extends State<StorePage> {
       if (response.statusCode == 200) {
         final responseData = json.decode(response.body);
         return responseData['data'];
-      }
-      else {
+      } else {
         throw Exception('Failed to load vouchers');
       }
     } catch (e) {
@@ -371,8 +368,7 @@ class _StorePageState extends State<StorePage> {
     try {
       String token = await getAccessToken();
       final response = await http.get(
-        Uri.parse(
-            "$apiBaseUrl/vouchers/purchased-not-used?storeId=$storeId"),
+        Uri.parse("$apiBaseUrl/vouchers/purchased-not-used?storeId=$storeId"),
         headers: {
           'Authorization': 'Bearer $token',
         },
@@ -394,8 +390,7 @@ class _StorePageState extends State<StorePage> {
 
   Future<void> buyVoucher(BuildContext context, String accessToken,
       String voucherId, String storeId) async {
-    final url = Uri.parse(
-        '$apiBaseUrl/voucher-purchase/$voucherId/purchase');
+    final url = Uri.parse('$apiBaseUrl/voucher-purchase/$voucherId/purchase');
 
     final headers = {
       'Authorization': 'Bearer $accessToken',
@@ -741,6 +736,13 @@ class _StorePageState extends State<StorePage> {
     super.dispose();
   }
 
+  Future<void> _refreshPage() async {
+    // Perbarui data halaman
+    await fetchStoreData();
+    await checkFollowStatus();
+    setState(() {});
+  }
+
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
@@ -749,104 +751,69 @@ class _StorePageState extends State<StorePage> {
         backgroundColor: Colors.grey[100],
         body: storeData == null
             ? Center(child: CircularProgressIndicator()) // Loading indicator
-            : NestedScrollView(
-                floatHeaderSlivers: true,
-                headerSliverBuilder: (context, _) => [
-                  SliverAppBar(
-                    pinned: true,
-                    floating: true,
-                    backgroundColor: Color(0xFF31394E),
-                    automaticallyImplyLeading: false,
-                    toolbarHeight: 80,
-                    leading: Padding(
-                      padding: const EdgeInsets.only(bottom: 10.0),
-                      child: Icon(
-                        Icons.arrow_back,
-                        color: Colors.white,
-                      ),
-                    ),
-                    title: Padding(
-                      padding: const EdgeInsets.only(bottom: 10.0),
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: TextFormField(
-                              controller: _textController,
-                              focusNode: _textFieldFocusNode,
-                              decoration: InputDecoration(
-                                isDense: true,
-                                hintText: 'Cari...',
-                                hintStyle: TextStyle(
-                                  fontSize: 14,
-                                  color: Color(0xFFC58189),
-                                ),
-                                enabledBorder: OutlineInputBorder(
-                                  borderSide:
-                                      BorderSide(color: Colors.transparent),
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                focusedBorder: OutlineInputBorder(
-                                  borderSide:
-                                      BorderSide(color: Colors.transparent),
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                filled: true,
-                                fillColor: Colors.white,
-                                prefixIcon: Icon(
-                                  Icons.search,
-                                  color: Color(0xFFC58189),
-                                ),
-                                suffixIcon: IconButton(
-                                  icon: Icon(isFilterApplied
-                                      ? Icons.filter_alt
-                                      : Icons.filter_alt_outlined),
-                                  color: Color(0xFFC58189),
-                                  onPressed: () {
-                                    _showFilterDrawer(context);
-                                  },
-                                ),
-                              ),
-                            ),
+            : RefreshIndicator(
+                color: Color(0xFFC58189),
+                backgroundColor: Color(0xFF31394E),
+                strokeWidth: 2,
+                onRefresh: _refreshPage,
+                child: CustomScrollView(
+                  physics: AlwaysScrollableScrollPhysics(),
+                  slivers: [
+                    SliverAppBar(
+                      pinned: true,
+                      floating: true,
+                      backgroundColor: Color(0xFF31394E),
+                      automaticallyImplyLeading: false,
+                      toolbarHeight: 80,
+                      leading: GestureDetector(
+                        onTap: () => context.pop(),
+                        child: Padding(
+                          padding: const EdgeInsets.only(bottom: 10.0),
+                          child: Icon(
+                            Icons.arrow_back,
+                            color: Colors.white,
                           ),
-                        ],
+                        ),
                       ),
-                    ),
-                    actions: [
-                      Padding(
-                        padding: const EdgeInsets.fromLTRB(0, 0, 10, 10),
-                        child: Stack(
-                          clipBehavior: Clip.none,
+                      title: Padding(
+                        padding: const EdgeInsets.only(bottom: 10.0),
+                        child: Row(
                           children: [
-                            IconButton(
-                              icon: Icon(
-                                Icons.shopping_cart_outlined,
-                                color: Colors.white,
-                              ),
-                              onPressed: () {
-                                getAccessToken();
-                                context.go('/cart');
-                                // Navigator.pushReplacementNamed(
-                                //     context, '/cart');
-                              },
-                            ),
-                            Positioned(
-                              right: 0,
-                              top: 0,
-                              child: Container(
-                                width: 18,
-                                height: 18,
-                                decoration: BoxDecoration(
-                                  color: Color(0xFFC58189),
-                                  shape: BoxShape.circle,
-                                ),
-                                child: Center(
-                                  child: Text(
-                                    '3',
-                                    style: TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 10,
-                                      fontWeight: FontWeight.bold,
-                                    ),
+                            Expanded(
+                              child: TextFormField(
+                                controller: _textController,
+                                focusNode: _textFieldFocusNode,
+                                decoration: InputDecoration(
+                                  isDense: true,
+                                  hintText: 'Cari...',
+                                  hintStyle: TextStyle(
+                                    fontSize: 14,
+                                    color: Color(0xFFC58189),
+                                  ),
+                                  enabledBorder: OutlineInputBorder(
+                                    borderSide:
+                                        BorderSide(color: Colors.transparent),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  focusedBorder: OutlineInputBorder(
+                                    borderSide:
+                                        BorderSide(color: Colors.transparent),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  filled: true,
+                                  fillColor: Colors.white,
+                                  prefixIcon: Icon(
+                                    Icons.search,
+                                    color: Color(0xFFC58189),
+                                  ),
+                                  suffixIcon: IconButton(
+                                    icon: Icon(isFilterApplied
+                                        ? Icons.filter_alt
+                                        : Icons.filter_alt_outlined),
+                                    color: Color(0xFFC58189),
+                                    onPressed: () {
+                                      _showFilterDrawer(context);
+                                    },
                                   ),
                                 ),
                               ),
@@ -854,233 +821,292 @@ class _StorePageState extends State<StorePage> {
                           ],
                         ),
                       ),
-                    ],
-                    centerTitle: false,
-                    elevation: 0,
-                  ),
-                ],
-                body: Padding(
-                  padding: const EdgeInsets.all(20),
-                  child: CustomScrollView(
-                    slivers: [
-                      SliverToBoxAdapter(
-                        child: Container(
-                          margin: const EdgeInsets.only(bottom: 20),
-                          padding: const EdgeInsets.all(15),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: Column(
+                      actions: [
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(0, 0, 10, 10),
+                          child: Stack(
+                            clipBehavior: Clip.none,
                             children: [
-                              Row(
-                                children: [
-                                  CircleAvatar(
-                                    radius: 30,
-                                    backgroundImage: NetworkImage(
-                                      '$apiBaseUrlImage${storeData!["image_url"]}',
-                                    ),
-                                    backgroundColor: Colors.white,
-                                  ),
-                                  const SizedBox(width: 15),
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          storeData!["store_name"],
-                                          style: TextStyle(
-                                            fontSize: 16,
-                                            fontWeight: FontWeight.bold,
-                                          ),
-                                        ),
-                                        SizedBox(height: 5),
-                                        Row(
-                                          children: [
-                                            Icon(
-                                              Icons.star,
-                                              color: Colors.amber,
-                                              size: 16,
-                                            ),
-                                            SizedBox(width: 5),
-                                            Text(
-                                              '4.5',
-                                              style: TextStyle(
-                                                fontSize: 14,
-                                                color: Colors.grey[700],
-                                              ),
-                                            ),
-                                            SizedBox(width: 10),
-                                            Text(
-                                              '1.2K transaksi',
-                                              style: TextStyle(
-                                                fontSize: 14,
-                                                color: Colors.grey[700],
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                        SizedBox(
-                                            height: 10), // Jarak antar elemen
-                                        Row(
-                                          children: [
-                                            Expanded(
-                                              child: ElevatedButton.icon(
-                                                onPressed: () {
-                                                  _showPoinHistoryDrawer(
-                                                      context, widget.storeId);
-                                                },
-                                                style: ElevatedButton.styleFrom(
-                                                  elevation: 0,
-                                                  backgroundColor:
-                                                      Color(0xFFFBE9E7),
-                                                  shape: RoundedRectangleBorder(
-                                                    borderRadius:
-                                                        BorderRadius.circular(
-                                                            8),
-                                                  ),
-                                                  padding: EdgeInsets.symmetric(
-                                                      vertical: 8),
-                                                ),
-                                                icon: Icon(
-                                                  Icons.card_giftcard,
-                                                  color: Color(0xFFC58189),
-                                                  size: 18,
-                                                ),
-                                                label: Text(
-                                                  '${points} Poin',
-                                                  style: TextStyle(
-                                                    color: Color(0xFFC58189),
-                                                    fontWeight: FontWeight.bold,
-                                                    fontSize: 12,
-                                                  ),
-                                                ),
-                                              ),
-                                            ),
-
-                                            SizedBox(
-                                                width:
-                                                    8), // Jarak antara tombol
-                                            Expanded(
-                                              child: ElevatedButton(
-                                                onPressed: () =>
-                                                    _showVoucherDrawer(context,
-                                                        widget.storeId),
-                                                style: ElevatedButton.styleFrom(
-                                                  backgroundColor:
-                                                      Color(0xFFC58189),
-                                                  shape: RoundedRectangleBorder(
-                                                    borderRadius:
-                                                        BorderRadius.circular(
-                                                            10),
-                                                  ),
-                                                ),
-                                                child: Text(
-                                                  'Buy Voucher',
-                                                  style: TextStyle(
-                                                      color: Colors.white,
-                                                      fontWeight:
-                                                          FontWeight.bold),
-                                                ),
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ],
+                              IconButton(
+                                icon: Icon(
+                                  Icons.shopping_cart_outlined,
+                                  color: Colors.white,
+                                ),
+                                onPressed: () {
+                                  getAccessToken();
+                                  context.go('/cart');
+                                  // Navigator.pushReplacementNamed(
+                                  //     context, '/cart');
+                                },
                               ),
-                              const SizedBox(height: 15),
-                              Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceBetween,
-                                children: [
-                                  GestureDetector(
-                                    onTap: _openWhatsApp,
-                                    child: Container(
-                                      width: MediaQuery.of(context).size.width *
-                                          0.4,
-                                      decoration: BoxDecoration(
+                              Positioned(
+                                right: 0,
+                                top: 0,
+                                child: Container(
+                                  width: 18,
+                                  height: 18,
+                                  decoration: BoxDecoration(
+                                    color: Color(0xFFC58189),
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: Center(
+                                    child: Text(
+                                      '3',
+                                      style: TextStyle(
                                         color: Colors.white,
-                                        border: Border.all(
-                                          width: 2,
-                                          color: const Color(0xFFC58189),
-                                        ),
-                                        borderRadius: BorderRadius.circular(8),
-                                      ),
-                                      padding: const EdgeInsets.symmetric(
-                                          vertical: 8),
-                                      alignment: Alignment.center,
-                                      child: const Text(
-                                        'Chat',
-                                        style: TextStyle(
-                                          color: Color(0xFFC58189),
-                                          fontSize: 14,
-                                          fontWeight: FontWeight.bold,
-                                        ),
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.bold,
                                       ),
                                     ),
                                   ),
-                                  GestureDetector(
-                                    onTap: () async {
-                                      if (isFollow) {
-                                        await unfollowStore();
-                                      } else {
-                                        await followStore();
-                                      }
-                                    },
-                                    child: Container(
-                                      width: MediaQuery.of(context).size.width *
-                                          0.4,
-                                      decoration: BoxDecoration(
-                                        color: isFollow
-                                            ? Colors.white
-                                            : null, // Use Colors.white when isFollow is true
-                                        border: Border.all(
-                                          width: 2,
-                                          color: isFollow
-                                              ? const Color(0xFFC58189)
-                                              : Colors.transparent,
-                                        ),
-                                        gradient: isFollow
-                                            ? null
-                                            : const LinearGradient(
-                                                colors: [
-                                                  Color(0xFFE8C4BD),
-                                                  Color(0xFFC58189),
-                                                ],
-                                                begin: Alignment.topCenter,
-                                                end: Alignment.bottomCenter,
-                                              ),
-                                        borderRadius: BorderRadius.circular(8),
-                                      ),
-                                      padding: const EdgeInsets.symmetric(
-                                          vertical: 8),
-                                      alignment: Alignment.center,
-                                      child: Text(
-                                        isFollow ? 'Unfollow' : 'Follow',
-                                        style: TextStyle(
-                                          color: isFollow
-                                              ? const Color(0xFFC58189)
-                                              : Colors.white,
-                                          fontSize: 14,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                ],
+                                ),
                               ),
                             ],
                           ),
                         ),
+                      ],
+                      centerTitle: false,
+                      elevation: 0,
+                    ),
+                    SliverToBoxAdapter(
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(20, 8, 20, 12),
+                        child: Container(
+                          margin: const EdgeInsets.only(bottom: 7),
+                          padding: const EdgeInsets.only(bottom: 20),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Padding(
+                            padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
+                            child: Column(
+                              children: [
+                                Row(
+                                  children: [
+                                    CircleAvatar(
+                                      radius: 30,
+                                      backgroundImage: NetworkImage(
+                                        '$apiBaseUrlImage${storeData!["image_url"]}',
+                                      ),
+                                      backgroundColor: Colors.white,
+                                    ),
+                                    const SizedBox(width: 15),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            storeData!["store_name"],
+                                            style: TextStyle(
+                                              fontSize: 16,
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                          ),
+                                          SizedBox(height: 5),
+                                          Row(
+                                            children: [
+                                              Icon(
+                                                Icons.star,
+                                                color: Colors.amber,
+                                                size: 16,
+                                              ),
+                                              SizedBox(width: 5),
+                                              Text(
+                                                '4.5',
+                                                style: TextStyle(
+                                                  fontSize: 14,
+                                                  color: Colors.grey[700],
+                                                ),
+                                              ),
+                                              SizedBox(width: 10),
+                                              Text(
+                                                '1.2K transaksi',
+                                                style: TextStyle(
+                                                  fontSize: 14,
+                                                  color: Colors.grey[700],
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                          SizedBox(
+                                              height: 10), // Jarak antar elemen
+                                          Row(
+                                            children: [
+                                              Expanded(
+                                                child: ElevatedButton.icon(
+                                                  onPressed: () {
+                                                    _showPoinHistoryDrawer(
+                                                        context,
+                                                        widget.storeId);
+                                                  },
+                                                  style:
+                                                      ElevatedButton.styleFrom(
+                                                    elevation: 0,
+                                                    backgroundColor:
+                                                        Color(0xFFFBE9E7),
+                                                    shape:
+                                                        RoundedRectangleBorder(
+                                                      borderRadius:
+                                                          BorderRadius.circular(
+                                                              8),
+                                                    ),
+                                                    padding:
+                                                        EdgeInsets.symmetric(
+                                                            vertical: 8),
+                                                  ),
+                                                  icon: Icon(
+                                                    Icons.card_giftcard,
+                                                    color: Color(0xFFC58189),
+                                                    size: 18,
+                                                  ),
+                                                  label: Text(
+                                                    '${points} Poin',
+                                                    style: TextStyle(
+                                                      color: Color(0xFFC58189),
+                                                      fontWeight:
+                                                          FontWeight.bold,
+                                                      fontSize: 12,
+                                                    ),
+                                                  ),
+                                                ),
+                                              ),
+                                              SizedBox(
+                                                  width:
+                                                      8), // Jarak antara tombol
+                                              Expanded(
+                                                child: ElevatedButton(
+                                                  onPressed: () =>
+                                                      _showVoucherDrawer(
+                                                          context,
+                                                          widget.storeId),
+                                                  style:
+                                                      ElevatedButton.styleFrom(
+                                                    backgroundColor:
+                                                        Color(0xFFC58189),
+                                                    shape:
+                                                        RoundedRectangleBorder(
+                                                      borderRadius:
+                                                          BorderRadius.circular(
+                                                              10),
+                                                    ),
+                                                  ),
+                                                  child: Text(
+                                                    'Buy Voucher',
+                                                    style: TextStyle(
+                                                        color: Colors.white,
+                                                        fontWeight:
+                                                            FontWeight.bold,
+                                                        fontSize: 12),
+                                                  ),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 15),
+                                Row(
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    GestureDetector(
+                                      onTap: _openWhatsApp,
+                                      child: Container(
+                                        width:
+                                            MediaQuery.of(context).size.width *
+                                                0.4,
+                                        decoration: BoxDecoration(
+                                          color: Colors.white,
+                                          border: Border.all(
+                                            width: 2,
+                                            color: const Color(0xFFC58189),
+                                          ),
+                                          borderRadius:
+                                              BorderRadius.circular(8),
+                                        ),
+                                        padding: const EdgeInsets.symmetric(
+                                            vertical: 8),
+                                        alignment: Alignment.center,
+                                        child: const Text(
+                                          'Chat',
+                                          style: TextStyle(
+                                            color: Color(0xFFC58189),
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                    GestureDetector(
+                                      onTap: () async {
+                                        if (isFollow) {
+                                          await unfollowStore();
+                                        } else {
+                                          await followStore();
+                                        }
+                                      },
+                                      child: Container(
+                                        width:
+                                            MediaQuery.of(context).size.width *
+                                                0.4,
+                                        decoration: BoxDecoration(
+                                          color: isFollow
+                                              ? Colors.white
+                                              : null, // Use Colors.white when isFollow is true
+                                          border: Border.all(
+                                            width: 2,
+                                            color: isFollow
+                                                ? const Color(0xFFC58189)
+                                                : Colors.transparent,
+                                          ),
+                                          gradient: isFollow
+                                              ? null
+                                              : const LinearGradient(
+                                                  colors: [
+                                                    Color(0xFFE8C4BD),
+                                                    Color(0xFFC58189),
+                                                  ],
+                                                  begin: Alignment.topCenter,
+                                                  end: Alignment.bottomCenter,
+                                                ),
+                                          borderRadius:
+                                              BorderRadius.circular(8),
+                                        ),
+                                        padding: const EdgeInsets.symmetric(
+                                            vertical: 8),
+                                        alignment: Alignment.center,
+                                        child: Text(
+                                          isFollow ? 'Unfollow' : 'Follow',
+                                          style: TextStyle(
+                                            color: isFollow
+                                                ? const Color(0xFFC58189)
+                                                : Colors.white,
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
                       ),
-                      SliverToBoxAdapter(
-                        child: SizedBox(height: 7),
-                      ),
-                      SliverGrid(
+                    ),
+                    SliverToBoxAdapter(
+                      child: SizedBox(height: 2),
+                    ),
+                    SliverPadding(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 16.0), // Tambahkan padding horizontal
+                      sliver: SliverGrid(
                         gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                           crossAxisCount: 2,
                           crossAxisSpacing: 10,
@@ -1101,8 +1127,8 @@ class _StorePageState extends State<StorePage> {
                               : dummyProducts.length,
                         ),
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
               ),
       ),
