@@ -49,14 +49,13 @@ class _LoginPageState extends State<LoginPage> {
           'password': password,
         }),
       );
-      Navigator.of(context, rootNavigator: true).pop();
       if (response.statusCode == 201) {
-        print('Response: ${response.body}');
         final data = jsonDecode(response.body);
-        final String accessToken = data['access_token'];
+        print(data['data']);
+        final String accessToken = data['data']['access_token'];
         print(accessToken);
-        final String name = data['name'];
-        final String userId = data['user_id'];
+        final String name = data['data']['name'];
+        final String userId = data['data']['user_id'];
         SharedPreferences prefs = await SharedPreferences.getInstance();
         prefs.setString('access_token', accessToken);
         prefs.setString('name', name);
@@ -64,8 +63,10 @@ class _LoginPageState extends State<LoginPage> {
         if (Platform.isAndroid) {
           await addDeviceToken(accessToken, context);
         }
-        print(prefs.get('name'));
-        context.go('/home');
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          context
+              .go('/home'); // Pindah ke halaman setelah frame saat ini selesai
+        });
       } else {
         final responseBody = jsonDecode(response.body);
         final errorMessage =

@@ -26,19 +26,9 @@ class _HomePageWidgetState extends State<HomePageWidget> {
   final TextEditingController _textController = TextEditingController();
   final FocusNode _textFieldFocusNode = FocusNode();
   final PageController _pageController = PageController();
+  List<dynamic> products = [];
   int _selectedIndex = 0;
   String _userName = '';
-  bool isRingSelected = false;
-  bool isNecklaceSelected = false;
-  bool isEarringSelected = false;
-  bool isBraceletSelected = false;
-  bool is24KSelected = false;
-  bool is22KSelected = false;
-  bool is18KSelected = false;
-  bool is14KSelected = false;
-  bool isYellowGoldSelected = false;
-  bool isWhiteGoldSelected = false;
-  bool isRoseGoldSelected = false;
 
   late Future<List<Map<String, dynamic>>> followedStores;
 
@@ -60,6 +50,24 @@ class _HomePageWidgetState extends State<HomePageWidget> {
     banners = fetchBannerImages();
     goldPrices = fetchGoldPrices();
     followedStores = fetchFollowedStores();
+    fetchProducts();
+  }
+
+  Future<void> fetchProducts() async {
+    try {
+      final response = await http.get(Uri.parse('$apiBaseUrl/products'));
+      print(jsonDecode(response.body));
+      if (response.statusCode == 200) {
+        final List<dynamic> data = json.decode(response.body)['data'];
+        setState(() {
+          products = data;
+        });
+      } else {
+        throw Exception('Failed to load products');
+      }
+    } catch (e) {
+      throw Exception('Failed to fetch Product Data');
+    }
   }
 
   Future<Map<String, String>> fetchGoldPrices() async {
@@ -67,9 +75,10 @@ class _HomePageWidgetState extends State<HomePageWidget> {
 
     if (response.statusCode == 200) {
       final data = json.decode(response.body);
+      print(data);
       return {
-        'hargaBeli': data['hargaBeli'],
-        'hargaJual': data['hargaJual'],
+        'hargaBeli': data['data']['hargaBeli'],
+        'hargaJual': data['data']['hargaJual'],
       };
     } else {
       throw Exception('Failed to fetch gold prices');
@@ -94,9 +103,10 @@ class _HomePageWidgetState extends State<HomePageWidget> {
   }
 
   Future<List<String>> fetchBannerImages() async {
+    print('masuk sini lah');
     final response =
         await http.get(Uri.parse('$apiBaseUrlPlatform/api/banner/active'));
-    print(response.statusCode);
+    print(jsonDecode(response.body));
     if (response.statusCode == 200) {
       final data = json.decode(response.body);
       final List banners = data['data'];
@@ -134,21 +144,6 @@ class _HomePageWidgetState extends State<HomePageWidget> {
     } catch (e) {
       print('Error fetching followed stores: $e');
       return [];
-    }
-  }
-
-  String _getCategoryEmoji(String categoryName) {
-    switch (categoryName) {
-      case 'Cincin':
-        return '💍';
-      case 'Kalung':
-        return '📿';
-      case 'Anting':
-        return '💎';
-      case 'Gelang':
-        return '🪄';
-      default:
-        return '❓';
     }
   }
 
@@ -212,6 +207,13 @@ class _HomePageWidgetState extends State<HomePageWidget> {
                           child: TextFormField(
                             controller: _textController,
                             focusNode: _textFieldFocusNode,
+                            readOnly:
+                                true, // Membuat field hanya dapat diklik, tidak bisa diketik
+                            onTap: () {
+                              // Navigasi ke halaman pencarian
+                              context.push(
+                                  '/search'); // Ganti dengan path halaman pencarian Anda
+                            },
                             decoration: InputDecoration(
                               isDense: true,
                               hintText: 'Cari...',
@@ -234,13 +236,6 @@ class _HomePageWidgetState extends State<HomePageWidget> {
                               prefixIcon: Icon(
                                 Icons.search,
                                 color: Color(0xFFC58189),
-                              ),
-                              suffixIcon: IconButton(
-                                icon: Icon(Icons.filter_alt),
-                                color: Color(0xFFC58189),
-                                onPressed: () {
-                                  _showFilterDrawer(context);
-                                },
                               ),
                             ),
                           ),
@@ -397,11 +392,10 @@ class _HomePageWidgetState extends State<HomePageWidget> {
                                 final store = stores[index];
                                 return GestureDetector(
                                   onTap: () {
-                                    context.go(
-                                      '/store',
-                                      extra: {
-                                        'storeId': store['store']['store_id']
-                                      },
+                                    final storeId = store['store'][
+                                        'store_id']; // Ambil store_id dari store
+                                    context.push(
+                                      '/store/$storeId', // Gunakan storeId sebagai bagian dari path
                                     );
                                   },
                                   child: Container(
@@ -508,6 +502,55 @@ class _HomePageWidgetState extends State<HomePageWidget> {
                     },
                   ),
                 ),
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 20, 20, 4),
+                    child: Text(
+                      'For $_userName🫶',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black,
+                      ),
+                    ),
+                  ),
+                ),
+                SliverToBoxAdapter(
+                  child: SizedBox(height: 2),
+                ),
+                SliverPadding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                  sliver: SliverGrid(
+                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: 2,
+                      crossAxisSpacing: 10,
+                      mainAxisSpacing: 10,
+                      childAspectRatio: 0.65,
+                    ),
+                    delegate: SliverChildBuilderDelegate(
+                      (context, index) {
+                        final product = products[index];
+                        return GestureDetector(
+                          onTap: () {
+                            final productId = product['product_id'];
+                            if (productId != null) {
+                              context.push('/product-detail/$productId');
+                            } else {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text('Product ID is missing'),
+                                  backgroundColor: Colors.red,
+                                ),
+                              );
+                            }
+                          },
+                          child: ProductCard(product),
+                        );
+                      },
+                      childCount: products.length,
+                    ),
+                  ),
+                ),
               ],
             ),
           ),
@@ -517,375 +560,6 @@ class _HomePageWidgetState extends State<HomePageWidget> {
           ),
         ),
       ),
-    );
-  }
-
-  void _showFilterDrawer(BuildContext context) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.white,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (context) {
-        return StatefulBuilder(
-          builder: (BuildContext context, StateSetter setState) {
-            return FractionallySizedBox(
-              heightFactor: 0.65, // Adjust height for the new content
-              child: Padding(
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 16.0, vertical: 16.0),
-                child: SingleChildScrollView(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Drag handle
-                      Center(
-                        child: Container(
-                          width: 50,
-                          height: 6,
-                          margin: EdgeInsets.only(bottom: 20),
-                          decoration: BoxDecoration(
-                            color: Colors.grey[300],
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                        ),
-                      ),
-                      // Title
-                      Text(
-                        'Set Price Range',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.black,
-                        ),
-                      ),
-                      SizedBox(height: 20),
-                      // Price range inputs
-                      Row(
-                        children: [
-                          Expanded(
-                            child: TextField(
-                              controller: lowPriceController,
-                              keyboardType: TextInputType.number,
-                              decoration: InputDecoration(
-                                labelText: 'Low Price',
-                                border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(10),
-                                ),
-                                enabledBorder: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(10),
-                                  borderSide: BorderSide(
-                                    color: Colors.grey,
-                                    width: 1.5,
-                                  ),
-                                ),
-                                focusedBorder: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(10),
-                                  borderSide: BorderSide(
-                                    color: Color(0xFFC58189),
-                                    width: 2.0,
-                                  ),
-                                ),
-                                prefixIcon: Icon(Icons.arrow_drop_down),
-                              ),
-                            ),
-                          ),
-                          SizedBox(width: 16),
-                          Expanded(
-                            child: TextField(
-                              controller: highPriceController,
-                              keyboardType: TextInputType.number,
-                              decoration: InputDecoration(
-                                labelText: 'High Price',
-                                border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(10),
-                                ),
-                                enabledBorder: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(10),
-                                  borderSide: BorderSide(
-                                    color: Colors.grey,
-                                    width: 1.5,
-                                  ),
-                                ),
-                                focusedBorder: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(10),
-                                  borderSide: BorderSide(
-                                    color: Color(0xFFC58189),
-                                    width: 2.0,
-                                  ),
-                                ),
-                                prefixIcon: Icon(Icons.arrow_drop_up_outlined),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                      SizedBox(height: 20),
-                      // Category selection
-                      Text(
-                        'Select Categories',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.black,
-                        ),
-                      ),
-                      SizedBox(height: 10),
-                      Wrap(
-                        spacing: 12.0,
-                        runSpacing: 12.0,
-                        children: [
-                          _buildCategoryBox(
-                            label: 'Cincin',
-                            isSelected: isRingSelected,
-                            onTap: () {
-                              setState(() {
-                                isRingSelected = !isRingSelected;
-                              });
-                            },
-                          ),
-                          _buildCategoryBox(
-                            label: 'Kalung',
-                            isSelected: isNecklaceSelected,
-                            onTap: () {
-                              setState(() {
-                                isNecklaceSelected = !isNecklaceSelected;
-                              });
-                            },
-                          ),
-                          _buildCategoryBox(
-                            label: 'Anting',
-                            isSelected: isEarringSelected,
-                            onTap: () {
-                              setState(() {
-                                isEarringSelected = !isEarringSelected;
-                              });
-                            },
-                          ),
-                          _buildCategoryBox(
-                            label: 'Gelang',
-                            isSelected: isBraceletSelected,
-                            onTap: () {
-                              setState(() {
-                                isBraceletSelected = !isBraceletSelected;
-                              });
-                            },
-                          ),
-                        ],
-                      ),
-                      SizedBox(height: 20),
-                      // Purity selection
-                      Text(
-                        'Select Purity',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.black,
-                        ),
-                      ),
-                      SizedBox(height: 10),
-                      Wrap(
-                        spacing: 12.0,
-                        runSpacing: 12.0,
-                        children: [
-                          _buildCategoryBox(
-                            label: '24K',
-                            isSelected: is24KSelected,
-                            onTap: () {
-                              setState(() {
-                                is24KSelected = !is24KSelected;
-                              });
-                            },
-                          ),
-                          _buildCategoryBox(
-                            label: '22K',
-                            isSelected: is22KSelected,
-                            onTap: () {
-                              setState(() {
-                                is22KSelected = !is22KSelected;
-                              });
-                            },
-                          ),
-                          _buildCategoryBox(
-                            label: '18K',
-                            isSelected: is18KSelected,
-                            onTap: () {
-                              setState(() {
-                                is18KSelected = !is18KSelected;
-                              });
-                            },
-                          ),
-                          _buildCategoryBox(
-                            label: '14K',
-                            isSelected: is14KSelected,
-                            onTap: () {
-                              setState(() {
-                                is14KSelected = !is14KSelected;
-                              });
-                            },
-                          ),
-                        ],
-                      ),
-                      SizedBox(height: 20),
-                      // Gold type selection
-                      Text(
-                        'Select Gold Type',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.black,
-                        ),
-                      ),
-                      SizedBox(height: 10),
-                      Wrap(
-                        spacing: 12.0,
-                        runSpacing: 12.0,
-                        children: [
-                          _buildCategoryBox(
-                            label: 'Emas Kuning',
-                            isSelected: isYellowGoldSelected,
-                            onTap: () {
-                              setState(() {
-                                isYellowGoldSelected = !isYellowGoldSelected;
-                              });
-                            },
-                          ),
-                          _buildCategoryBox(
-                            label: 'Emas Putih',
-                            isSelected: isWhiteGoldSelected,
-                            onTap: () {
-                              setState(() {
-                                isWhiteGoldSelected = !isWhiteGoldSelected;
-                              });
-                            },
-                          ),
-                          _buildCategoryBox(
-                            label: 'Rose Gold',
-                            isSelected: isRoseGoldSelected,
-                            onTap: () {
-                              setState(() {
-                                isRoseGoldSelected = !isRoseGoldSelected;
-                              });
-                            },
-                          ),
-                        ],
-                      ),
-                      SizedBox(height: 24),
-                      // Apply button
-                      ElevatedButton(
-                        onPressed: () {
-                          final lowPrice =
-                              double.tryParse(lowPriceController.text);
-                          final highPrice =
-                              double.tryParse(highPriceController.text);
-
-                          // Jika lowPrice atau highPrice null, anggap tidak ada filter harga
-                          final priceFilter =
-                              (lowPrice != null || highPrice != null)
-                                  ? {
-                                      'lowPrice': lowPrice ?? 0,
-                                      'highPrice': highPrice ?? double.infinity
-                                    }
-                                  : null;
-
-                          // Kumpulkan kategori yang terpilih
-                          final selectedCategories = [];
-                          if (isRingSelected) selectedCategories.add('Cincin');
-                          if (isNecklaceSelected)
-                            selectedCategories.add('Kalung');
-                          if (isEarringSelected)
-                            selectedCategories.add('Anting');
-                          if (isBraceletSelected)
-                            selectedCategories.add('Gelang');
-
-                          // Jika tidak ada kategori yang dipilih, anggap tidak ada filter kategori
-                          final categoryFilter = selectedCategories.isNotEmpty
-                              ? selectedCategories
-                              : null;
-
-                          // Kumpulkan purity yang terpilih
-                          final selectedPurities = [];
-                          if (is24KSelected) selectedPurities.add('24K');
-                          if (is22KSelected) selectedPurities.add('22K');
-                          if (is18KSelected) selectedPurities.add('18K');
-                          if (is14KSelected) selectedPurities.add('14K');
-
-                          // Jika tidak ada purity yang dipilih, anggap tidak ada filter purity
-                          final purityFilter = selectedPurities.isNotEmpty
-                              ? selectedPurities
-                              : null;
-
-                          // Kumpulkan jenis emas yang terpilih
-                          final selectedGoldTypes = [];
-                          if (isYellowGoldSelected)
-                            selectedGoldTypes.add('Emas Kuning');
-                          if (isWhiteGoldSelected)
-                            selectedGoldTypes.add('Emas Putih');
-                          if (isRoseGoldSelected)
-                            selectedGoldTypes.add('Rose Gold');
-
-                          // Jika tidak ada jenis emas yang dipilih, anggap tidak ada filter jenis emas
-                          final goldTypeFilter = selectedGoldTypes.isNotEmpty
-                              ? selectedGoldTypes
-                              : null;
-
-                          // Validasi tambahan: Jika lowPrice lebih besar dari highPrice, beri peringatan
-                          if (lowPrice != null &&
-                              highPrice != null &&
-                              lowPrice > highPrice) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text(
-                                    'Low Price cannot be higher than High Price!'),
-                              ),
-                            );
-                            return;
-                          }
-
-                          // Kembalikan hasil filter melalui Navigator
-                          Navigator.pop(context, {
-                            'priceFilter':
-                                priceFilter, // null jika tidak ada filter harga
-                            'categories':
-                                categoryFilter, // null jika tidak ada filter kategori
-                            'purities':
-                                purityFilter, // null jika tidak ada filter purity
-                            'goldTypes':
-                                goldTypeFilter, // null jika tidak ada filter jenis emas
-                          });
-                          print({
-                            'priceFilter': priceFilter,
-                            'categories': categoryFilter,
-                            'purities': purityFilter,
-                            'goldTypes': goldTypeFilter,
-                          });
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Color(0xFF31394E),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          minimumSize: Size(double.infinity, 50),
-                        ),
-                        child: Text(
-                          'Apply',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            );
-          },
-        );
-      },
     );
   }
 

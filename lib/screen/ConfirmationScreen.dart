@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 // import 'package:register/screen/LoginPage.dart';
 
 class ConfirmationScreen extends StatefulWidget {
@@ -89,7 +90,7 @@ class EmailVerifiedPage extends StatelessWidget {
             ),
             GestureDetector(
               onTap: () {
-                Navigator.pushReplacementNamed(context, '/login');
+                context.go('/login');
               },
               child: Container(
                 width: 250,

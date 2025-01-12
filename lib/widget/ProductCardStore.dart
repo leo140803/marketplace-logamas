@@ -2,7 +2,7 @@ import 'dart:math';
 import 'package:marketplace_logamas/function/Utils.dart';
 import 'package:flutter/material.dart';
 
-Card ProductCard(Map<String, dynamic> product) {
+Card ProductCardStore(Map<String, dynamic> product) {
   return Card(
     color: Colors.white,
     clipBehavior: Clip.antiAlias,
@@ -66,19 +66,6 @@ Card ProductCard(Map<String, dynamic> product) {
                   Text(
                     '${product['rating']?.toStringAsFixed(1) ?? 'No Rate'} | ${product['totalSold'] ?? 0} Terjual',
                     style: TextStyle(fontSize: 12),
-                  ),
-                ],
-              ),
-              SizedBox(height: 4),
-
-              // Location Info
-              Row(
-                children: [
-                  Icon(Icons.store_sharp, size: 14, color: Colors.grey),
-                  SizedBox(width: 4),
-                  Text(
-                    product['store']['store_name'] ?? 'Unknown Store',
-                    style: TextStyle(fontSize: 12, color: Colors.grey[700]),
                   ),
                 ],
               ),

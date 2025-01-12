@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 
@@ -27,7 +28,20 @@ class _BarcodePageState extends State<BarcodePage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('User ID Barcode'),
+        title: Text(
+          'User ID Barcode',
+          style: TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        leading: IconButton(
+            onPressed: () => {context.go('/information')},
+            icon: Icon(
+              Icons.arrow_back,
+              color: Colors.white,
+              weight: 2,
+            )),
         backgroundColor: Color(0xFF31394E),
       ),
       body: Center(

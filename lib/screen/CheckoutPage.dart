@@ -10,6 +10,7 @@ import 'package:http/http.dart' as http;
 import 'package:marketplace_logamas/screen/PaymentPage.dart';
 import 'package:marketplace_logamas/screen/WaitingForPayment.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:uuid/uuid.dart';
 
 class CheckoutPage extends StatefulWidget {
   final Map<String, dynamic> cartData;
@@ -25,11 +26,14 @@ class _CheckoutPageState extends State<CheckoutPage> {
   double totalPrice = 0; // Total harga setelah diskon
   double discount = 0; // Nilai diskon yang diterapkan
   String? selectedVoucher; // Nama voucher yang diterapkan
+  String? selectedVoucherOwnedId; // ID voucher yang dimiliki
+  String? selectedVoucherId; // ID voucher
 
   @override
   void initState() {
     super.initState();
     storeProducts = widget.cartData;
+    print(widget.cartData);
     initialTotalPrice = _calculateTotalPrice();
     totalPrice = initialTotalPrice; // Awalnya sama dengan total harga awal
     _fetchVoucherData();
@@ -50,6 +54,8 @@ class _CheckoutPageState extends State<CheckoutPage> {
         discount = 0;
         totalPrice = initialTotalPrice;
         selectedVoucher = null;
+        selectedVoucherOwnedId = null;
+        selectedVoucherId = null;
       } else {
         // Hitung diskon berdasarkan persentase
         double calculatedDiscount =
@@ -63,8 +69,10 @@ class _CheckoutPageState extends State<CheckoutPage> {
         // Perbarui total harga setelah diskon
         totalPrice = initialTotalPrice - discount;
 
-        // Simpan nama voucher yang diterapkan
+        // Simpan informasi voucher yang diterapkan
         selectedVoucher = voucher['voucher_name'];
+        selectedVoucherOwnedId = voucher['voucher_owned_id'];
+        selectedVoucherId = voucher['voucher_id'];
       }
     });
   }
@@ -89,10 +97,11 @@ class _CheckoutPageState extends State<CheckoutPage> {
 
   void _checkout() async {
     try {
-      final orderId = "ORDER-${DateTime.now().millisecondsSinceEpoch}";
+      final uuid = Uuid();
+      final orderId = uuid.v4();
       final List<Map<String, dynamic>> items = storeProducts['selectedProducts']
           .map<Map<String, dynamic>>((product) => {
-                "id": product['productName'].replaceAll(' ', '_'),
+                "id": product['productPictureURL']['product_id'],
                 "price": product['productPrice'].toInt(),
                 "quantity": product['quantity'],
                 "name": product['productName'],
@@ -103,7 +112,6 @@ class _CheckoutPageState extends State<CheckoutPage> {
                     "http://toko/${storeProducts['store']['store_id']}?item=${product['productName']}"
               })
           .toList();
-
       // Tambahkan diskon sebagai item terpisah
       if (discount > 0) {
         items.add({
@@ -156,26 +164,63 @@ class _CheckoutPageState extends State<CheckoutPage> {
         }
       };
 
-      // Log informasi transaksi untuk debugging
-      print("Order ID: $orderId");
-      print("Items: ${jsonEncode(items)}");
-      print("Gross Amount: ${totalPrice - discount}");
-      print("Customer Details: ${jsonEncode(customerDetails)}");
-
-      final response = await createMidtransTransaction(
+      // Panggil Midtrans untuk mendapatkan payment_link
+      final midtransResponse = await createMidtransTransaction(
         orderId: orderId,
         grossAmount: calculatedGrossAmount.toDouble(),
         items: items,
         customerDetails: customerDetails,
       );
 
-      final redirectUrl = response['redirect_url'];
+      final redirectUrl = midtransResponse['redirect_url'];
       if (redirectUrl == null || redirectUrl.isEmpty) {
-        throw Exception("Redirect URL is missing in the response");
+        throw Exception("Payment link is missing in the response");
       }
 
-      // Navigasi ke WaitingForPaymentPage
-      // context.go(location)
+      // Ambil customer_id
+      final customerId = await getUserId();
+
+      // Tambahkan expired_time (1 jam dari sekarang)
+      final expiredTime =
+          DateTime.now().add(const Duration(hours: 1)).toIso8601String();
+
+      // Kirim transaksi ke backend
+      final transactionPayload = {
+        "transaction_id": orderId,
+        "sub_total_price": initialTotalPrice.toDouble(),
+        "total_price": (initialTotalPrice - discount).toDouble(),
+        "payment_status": 0,
+        "payment_link": redirectUrl,
+        "voucher_own_id": selectedVoucherOwnedId,
+        "poin_earned": 100,
+        "customer_id": customerId,
+        "store_id": storeProducts['store']['store_id'],
+        "expired_time": expiredTime,
+        "items": items.map((item) {
+          return {
+            "product_id": item['id'], // Gunakan ID produk dari backend
+            "quantity": item['quantity'],
+            "sub_total": item['price'] * item['quantity'],
+          };
+        }).toList(),
+      };
+
+      print(transactionPayload);
+
+      final backendResponse = await http.post(
+        Uri.parse('$apiBaseUrl/transactions'),
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode(transactionPayload),
+      );
+
+      if (backendResponse.statusCode != 201) {
+        throw Exception(
+            "Failed to create transaction: ${backendResponse.body}");
+      }
+
+      // Navigasi ke halaman pembayaran
       Navigator.push(
         context,
         MaterialPageRoute(
@@ -187,7 +232,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
       final uri = Uri.parse(redirectUrl);
       await launchUrl(uri, mode: LaunchMode.externalApplication);
     } catch (e, stackTrace) {
-      // Log kesalahan dan stack trace
+      // Log kesalahan
       print("Checkout Error: $e");
       print("Stack Trace: $stackTrace");
 
@@ -239,7 +284,6 @@ class _CheckoutPageState extends State<CheckoutPage> {
         "page_expiry": {"duration": 3, "unit": "hours"}
       }),
     );
-    print(jsonDecode(response.body));
     if (response.statusCode == 201) {
       return jsonDecode(response.body);
     } else {
@@ -427,6 +471,10 @@ class _CheckoutPageState extends State<CheckoutPage> {
                                 'max_discount': double.parse(
                                     selectedVoucherDetails['max_discount']
                                         .toString()),
+                                'voucher_owned_id': selectedVoucherDetails[
+                                    'voucher_owned_id'], // Simpan voucher_owned_id
+                                'voucher_id': selectedVoucherDetails[
+                                    'voucher_id'], // Simpan voucher_id
                               });
                             }
                           } else {
@@ -557,6 +605,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
           'Authorization': 'Bearer $token',
         },
       );
+      print(jsonDecode(response.body));
       if (response.statusCode == 200) {
         final responseData = json.decode(response.body);
         return responseData['data'];
@@ -572,7 +621,6 @@ class _CheckoutPageState extends State<CheckoutPage> {
   Future<List<dynamic>> fetchApplicableVouchers(
       String storeId, double transactionAmount) async {
     try {
-      print(transactionAmount);
       String token = await getAccessToken();
       final response = await http.get(
         Uri.parse(

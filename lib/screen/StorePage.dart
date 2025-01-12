@@ -6,6 +6,7 @@ import 'package:marketplace_logamas/widget/CategoryCard.dart';
 import 'package:marketplace_logamas/widget/Dialog.dart';
 import 'package:marketplace_logamas/widget/PriceBox.dart';
 import 'package:marketplace_logamas/widget/ProductCard.dart';
+import 'package:marketplace_logamas/widget/ProductCardStore.dart';
 import 'package:marketplace_logamas/widget/UnauthorizedDialog.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -31,6 +32,7 @@ class _StorePageState extends State<StorePage> {
   TextEditingController highPriceController = TextEditingController();
   final TextEditingController _textController = TextEditingController();
   final FocusNode _textFieldFocusNode = FocusNode();
+  Set<String> selectedTypes = {};
   String _userName = '';
   bool isRingSelected = false;
   bool isNecklaceSelected = false;
@@ -63,102 +65,46 @@ class _StorePageState extends State<StorePage> {
     fetchStoreData();
   }
 
-  final List<Map<String, dynamic>> dummyProducts = [
-    {
-      "productName": "Cincin Emas 24K",
-      "productPictureURL": "https://picsum.photos/200/200?random=1",
-      "productPrice": 5000000,
-      "rating": 4.5,
-      "sold": 15,
-      "location": "Jakarta",
-      "category": "Cincin",
-      "purity": "24K", // Kemurnian emas
-      "goldType": "Emas Kuning", // Jenis emas
-    },
-    {
-      "productName": "Kalung Emas 22K",
-      "productPictureURL": "https://picsum.photos/200/200?random=2",
-      "productPrice": 8000000,
-      "rating": 4.7,
-      "sold": 20,
-      "location": "Surabaya",
-      "category": "Kalung",
-      "purity": "22K",
-      "goldType": "Emas Putih",
-    },
-    {
-      "productName": "Anting Emas 18K",
-      "productPictureURL": "https://picsum.photos/200/200?random=3",
-      "productPrice": 3000000,
-      "rating": 4.3,
-      "sold": 10,
-      "location": "Bandung",
-      "category": "Anting",
-      "purity": "18K",
-      "goldType": "Rose Gold",
-    },
-    {
-      "productName": "Gelang Emas 24K",
-      "productPictureURL": "https://picsum.photos/200/200?random=4",
-      "productPrice": 7000000,
-      "rating": 4.8,
-      "sold": 25,
-      "location": "Medan",
-      "category": "Gelang",
-      "purity": "24K",
-      "goldType": "Emas Putih",
-    },
-  ];
-
   List<Map<String, dynamic>> filteredProducts = [];
 
-  void applyFilter() {
+  List<Map<String, dynamic>> extractFiltersFromStoreData(
+      Map<String, dynamic> storeData) {
+    final products = storeData['products'] as List<dynamic>;
+
+    // Ambil semua type dari produk
+    final types = products
+        .map((product) => product['type'] as Map<String, dynamic>)
+        .toList();
+
+    // Hilangkan duplikasi berdasarkan `type_id`
+    final uniqueTypes =
+        types.fold<Map<String, Map<String, dynamic>>>({}, (acc, type) {
+      acc[type['type_id']] = type;
+      return acc;
+    });
+
+    return uniqueTypes.values.toList();
+  }
+
+  void applyFilter(Set<String> selectedTypeIds,
+      {double? lowPrice, double? highPrice}) {
     setState(() {
-      filteredProducts = dummyProducts.where((product) {
-        // Cek kategori
-        final matchesCategory =
-            (isRingSelected && product['category'] == 'Cincin') ||
-                (isNecklaceSelected && product['category'] == 'Kalung') ||
-                (isEarringSelected && product['category'] == 'Anting') ||
-                (isBraceletSelected && product['category'] == 'Gelang') ||
-                (!isRingSelected &&
-                    !isNecklaceSelected &&
-                    !isEarringSelected &&
-                    !isBraceletSelected);
+      isFilterApplied =
+          selectedTypeIds.isNotEmpty || lowPrice != null || highPrice != null;
 
-        // Cek harga
-        final matchesPrice = product['productPrice'] >=
-                (lowPriceController.text.isEmpty
-                    ? 0
-                    : int.parse(lowPriceController.text)) &&
-            product['productPrice'] <=
-                (highPriceController.text.isEmpty
-                    ? double.infinity
-                    : int.parse(highPriceController.text));
+      // Pastikan `products` memiliki tipe yang benar
+      final products = List<Map<String, dynamic>>.from(storeData!['products']);
 
-        // Cek purity
-        final matchesPurity = (is24KSelected && product['purity'] == '24K') ||
-            (is22KSelected && product['purity'] == '22K') ||
-            (is18KSelected && product['purity'] == '18K') ||
-            (is14KSelected && product['purity'] == '14K') ||
-            (!is24KSelected &&
-                !is22KSelected &&
-                !is18KSelected &&
-                !is14KSelected);
+      filteredProducts = products.where((product) {
+        final type = product['type'] as Map<String, dynamic>;
+        final price = product['price'] as int;
 
-        // Cek gold type
-        final matchesGoldType =
-            (isYellowGoldSelected && product['goldType'] == 'Emas Kuning') ||
-                (isWhiteGoldSelected && product['goldType'] == 'Emas Putih') ||
-                (isRoseGoldSelected && product['goldType'] == 'Rose Gold') ||
-                (!isYellowGoldSelected &&
-                    !isWhiteGoldSelected &&
-                    !isRoseGoldSelected);
+        final typeMatches = selectedTypeIds.isEmpty ||
+            selectedTypeIds.contains(type['type_id']);
+        final priceMatches = (lowPrice == null || price >= lowPrice) &&
+            (highPrice == null || price <= highPrice);
 
-        return matchesCategory &&
-            matchesPrice &&
-            matchesPurity &&
-            matchesGoldType;
+        return typeMatches && priceMatches;
       }).toList();
     });
   }
@@ -169,12 +115,16 @@ class _StorePageState extends State<StorePage> {
         Uri.parse("$apiBaseUrl/store/${widget.storeId}"),
       );
       if (response.statusCode == 200) {
+        final data = json.decode(response.body)['data'];
         setState(() {
-          storeData = json.decode(response.body)['data'];
+          storeData = data;
+          // Inisialisasi filteredProducts dengan semua produk
+          filteredProducts = List<Map<String, dynamic>>.from(data['products']);
         });
       } else {
         throw Exception("Failed to load store data");
       }
+
       String token = await getAccessToken();
       final pointsResponse = await http.get(
         Uri.parse("$apiBaseUrl/user-poin/${widget.storeId}"),
@@ -186,11 +136,8 @@ class _StorePageState extends State<StorePage> {
         setState(() {
           points = json.decode(pointsResponse.body)['data']['points'];
         });
-      } else if (pointsResponse.statusCode == 404) {
-        setState(() {
-          points = 0;
-        });
-      } else if (pointsResponse.statusCode == 401) {
+      } else if (pointsResponse.statusCode == 404 ||
+          pointsResponse.statusCode == 401) {
         setState(() {
           points = 0;
         });
@@ -390,7 +337,7 @@ class _StorePageState extends State<StorePage> {
 
   Future<void> buyVoucher(BuildContext context, String accessToken,
       String voucherId, String storeId) async {
-    final url = Uri.parse('$apiBaseUrl/voucher-purchase/$voucherId/purchase');
+    final url = Uri.parse('$apiBaseUrl/vouchers/$voucherId/purchase');
 
     final headers = {
       'Authorization': 'Bearer $accessToken',
@@ -766,7 +713,7 @@ class _StorePageState extends State<StorePage> {
                       automaticallyImplyLeading: false,
                       toolbarHeight: 80,
                       leading: GestureDetector(
-                        onTap: () => context.pop(),
+                        onTap: () => GoRouter.of(context).pop(),
                         child: Padding(
                           padding: const EdgeInsets.only(bottom: 10.0),
                           child: Icon(
@@ -914,7 +861,12 @@ class _StorePageState extends State<StorePage> {
                                               ),
                                               SizedBox(width: 5),
                                               Text(
-                                                '4.5',
+                                                storeData!['overall_rating'] !=
+                                                        null
+                                                    ? storeData![
+                                                            'overall_rating']
+                                                        .toString()
+                                                    : 'No review',
                                                 style: TextStyle(
                                                   fontSize: 14,
                                                   color: Colors.grey[700],
@@ -922,7 +874,7 @@ class _StorePageState extends State<StorePage> {
                                               ),
                                               SizedBox(width: 10),
                                               Text(
-                                                '1.2K transaksi',
+                                                "${storeData!['transaction_count'] ?? 0} transaksi",
                                                 style: TextStyle(
                                                   fontSize: 14,
                                                   color: Colors.grey[700],
@@ -1104,8 +1056,7 @@ class _StorePageState extends State<StorePage> {
                       child: SizedBox(height: 2),
                     ),
                     SliverPadding(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 16.0), // Tambahkan padding horizontal
+                      padding: const EdgeInsets.symmetric(horizontal: 16.0),
                       sliver: SliverGrid(
                         gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                           crossAxisCount: 2,
@@ -1115,16 +1066,27 @@ class _StorePageState extends State<StorePage> {
                         ),
                         delegate: SliverChildBuilderDelegate(
                           (context, index) {
-                            // Gunakan dummyProducts jika filter belum diterapkan
-                            final products = isFilterApplied
-                                ? filteredProducts
-                                : dummyProducts;
-                            final product = products[index];
-                            return ProductCard(product);
+                            final product = filteredProducts[index];
+                            return GestureDetector(
+                              onTap: () {
+                                final productId =
+                                    product['product_id']; // Ambil ID produk
+                                if (productId != null) {
+                                  context.push(
+                                      '/product-detail/$productId'); // Navigasi ke detail produk
+                                } else {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text('Product ID is missing'),
+                                      backgroundColor: Colors.red,
+                                    ),
+                                  );
+                                }
+                              },
+                              child: ProductCardStore(product),
+                            );
                           },
-                          childCount: isFilterApplied
-                              ? filteredProducts.length
-                              : dummyProducts.length,
+                          childCount: filteredProducts.length,
                         ),
                       ),
                     ),
@@ -1136,6 +1098,8 @@ class _StorePageState extends State<StorePage> {
   }
 
   void _showFilterDrawer(BuildContext context) {
+    final filters = extractFiltersFromStoreData(storeData!);
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -1147,7 +1111,7 @@ class _StorePageState extends State<StorePage> {
         return StatefulBuilder(
           builder: (BuildContext context, StateSetter setState) {
             return FractionallySizedBox(
-              heightFactor: 0.65,
+              heightFactor: 0.8,
               child: Padding(
                 padding: const EdgeInsets.symmetric(
                     horizontal: 16.0, vertical: 16.0),
@@ -1166,345 +1130,154 @@ class _StorePageState extends State<StorePage> {
                           ),
                         ),
                       ),
+                      // Filter by Types
+                      Text(
+                        'Select Types',
+                        style: TextStyle(
+                            fontSize: 18, fontWeight: FontWeight.bold),
+                      ),
+                      SizedBox(height: 10),
+                      Wrap(
+                        spacing: 12.0,
+                        runSpacing: 12.0,
+                        children: filters.map((filter) {
+                          final typeId = filter['type_id'] as String;
+                          final isSelected = selectedTypes.contains(typeId);
+
+                          return GestureDetector(
+                            onTap: () {
+                              setState(() {
+                                if (isSelected) {
+                                  selectedTypes.remove(typeId);
+                                } else {
+                                  selectedTypes.add(typeId);
+                                }
+                              });
+                            },
+                            child: Container(
+                              padding: EdgeInsets.symmetric(
+                                  horizontal: 16.0, vertical: 12.0),
+                              decoration: BoxDecoration(
+                                color: isSelected
+                                    ? Color(0xFFC58189)
+                                    : Colors.grey[200],
+                                borderRadius: BorderRadius.circular(10.0),
+                                border: Border.all(
+                                  color: isSelected
+                                      ? Color(0xFFC58189)
+                                      : Colors.grey.shade300,
+                                  width: 1.5,
+                                ),
+                              ),
+                              child: Text(
+                                "${filter['name']} - ${filter['purity']} - ${filter['metal_type']}",
+                                style: TextStyle(
+                                  color:
+                                      isSelected ? Colors.white : Colors.black,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                            ),
+                          );
+                        }).toList(),
+                      ),
+
+                      SizedBox(height: 20),
+                      // Filter by Price Range
                       Text(
                         'Set Price Range',
                         style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.black,
-                        ),
+                            fontSize: 18, fontWeight: FontWeight.bold),
                       ),
-                      SizedBox(height: 20),
+                      SizedBox(height: 10),
                       Row(
                         children: [
                           Expanded(
                             child: TextField(
                               controller: lowPriceController,
                               keyboardType: TextInputType.number,
-                              cursorColor:
-                                  Color(0xFF31394E), // Warna pointer (kursor)
                               inputFormatters: [
-                                FilteringTextInputFormatter
-                                    .digitsOnly, // Hanya angka yang diperbolehkan
+                                FilteringTextInputFormatter.allow(
+                                    RegExp(r'^[1-9][0-9]*|0$')),
                               ],
                               decoration: InputDecoration(
                                 labelText: 'Low Price',
                                 labelStyle: TextStyle(
-                                    color: Color(0xFF31394E)), // Warna label
-                                hintText: 'Enter low price',
-                                hintStyle: TextStyle(
-                                    color:
-                                        Color(0xFF31394E)), // Warna hint text
-                                border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(10),
-                                ),
+                                    color: Color(0xFF31394E),
+                                    fontWeight: FontWeight.bold),
+                                prefixIcon: Icon(Icons.price_change_outlined,
+                                    color: Color(0xFFC58189)),
+                                filled: true,
+                                fillColor: Colors.grey[100],
                                 enabledBorder: OutlineInputBorder(
                                   borderRadius: BorderRadius.circular(10),
                                   borderSide: BorderSide(
-                                    color: Colors.grey,
-                                    width: 1.5,
-                                  ),
+                                      color: Colors.grey.shade300, width: 1.5),
                                 ),
                                 focusedBorder: OutlineInputBorder(
                                   borderRadius: BorderRadius.circular(10),
                                   borderSide: BorderSide(
-                                    color: Color(0xFFC58189),
-                                    width: 2.0,
-                                  ),
+                                      color: Color(0xFFC58189), width: 2),
                                 ),
-                                prefixIcon: Icon(Icons.arrow_drop_down,
-                                    color: Color(0xFF31394E)),
+                                contentPadding: EdgeInsets.symmetric(
+                                    vertical: 16, horizontal: 16),
                               ),
-                              style: TextStyle(
-                                  color: Color(
-                                      0xFF31394E)), // Warna teks yang diketik
                             ),
                           ),
-                          SizedBox(width: 16),
+                          SizedBox(width: 10),
                           Expanded(
                             child: TextField(
                               controller: highPriceController,
                               keyboardType: TextInputType.number,
-                              cursorColor:
-                                  Color(0xFF31394E), // Warna pointer (kursor)
                               inputFormatters: [
-                                FilteringTextInputFormatter
-                                    .digitsOnly, // Hanya angka yang diperbolehkan
+                                FilteringTextInputFormatter.allow(
+                                    RegExp(r'^[1-9][0-9]*|0$')),
                               ],
                               decoration: InputDecoration(
                                 labelText: 'High Price',
                                 labelStyle: TextStyle(
-                                    color: Color(0xFF31394E)), // Warna label
-                                hintText: 'Enter high price',
-                                hintStyle: TextStyle(
-                                    color:
-                                        Color(0xFF31394E)), // Warna hint text
-                                border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(10),
-                                ),
+                                    color: Color(0xFF31394E),
+                                    fontWeight: FontWeight.bold),
+                                prefixIcon: Icon(Icons.price_check_outlined,
+                                    color: Color(0xFFC58189)),
+                                filled: true,
+                                fillColor: Colors.grey[100],
                                 enabledBorder: OutlineInputBorder(
                                   borderRadius: BorderRadius.circular(10),
                                   borderSide: BorderSide(
-                                    color: Colors.grey,
-                                    width: 1.5,
-                                  ),
+                                      color: Colors.grey.shade300, width: 1.5),
                                 ),
                                 focusedBorder: OutlineInputBorder(
                                   borderRadius: BorderRadius.circular(10),
                                   borderSide: BorderSide(
-                                    color: Color(0xFFC58189),
-                                    width: 2.0,
-                                  ),
+                                      color: Color(0xFFC58189), width: 2),
                                 ),
-                                prefixIcon: Icon(Icons.arrow_drop_up_outlined,
-                                    color: Color(0xFF31394E)),
+                                contentPadding: EdgeInsets.symmetric(
+                                    vertical: 16, horizontal: 16),
                               ),
-                              style: TextStyle(
-                                  color: Color(
-                                      0xFF31394E)), // Warna teks yang diketik
                             ),
                           ),
                         ],
                       ),
-                      SizedBox(height: 20),
-                      Text(
-                        'Select Categories',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.black,
-                        ),
-                      ),
-                      SizedBox(height: 10),
-                      Wrap(
-                        spacing: 12.0,
-                        runSpacing: 12.0,
-                        children: [
-                          _buildCategoryBox(
-                            label: 'Cincin',
-                            isSelected: isRingSelected,
-                            onTap: () {
-                              setState(() {
-                                isRingSelected = !isRingSelected;
-                              });
-                            },
-                          ),
-                          _buildCategoryBox(
-                            label: 'Kalung',
-                            isSelected: isNecklaceSelected,
-                            onTap: () {
-                              setState(() {
-                                isNecklaceSelected = !isNecklaceSelected;
-                              });
-                            },
-                          ),
-                          _buildCategoryBox(
-                            label: 'Anting',
-                            isSelected: isEarringSelected,
-                            onTap: () {
-                              setState(() {
-                                isEarringSelected = !isEarringSelected;
-                              });
-                            },
-                          ),
-                          _buildCategoryBox(
-                            label: 'Gelang',
-                            isSelected: isBraceletSelected,
-                            onTap: () {
-                              setState(() {
-                                isBraceletSelected = !isBraceletSelected;
-                              });
-                            },
-                          ),
-                        ],
-                      ),
-                      SizedBox(height: 20),
-                      Text(
-                        'Select Purity',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.black,
-                        ),
-                      ),
-                      SizedBox(height: 10),
-                      Wrap(
-                        spacing: 12.0,
-                        runSpacing: 12.0,
-                        children: [
-                          _buildCategoryBox(
-                            label: '24K',
-                            isSelected: is24KSelected,
-                            onTap: () {
-                              setState(() {
-                                is24KSelected = !is24KSelected;
-                              });
-                            },
-                          ),
-                          _buildCategoryBox(
-                            label: '22K',
-                            isSelected: is22KSelected,
-                            onTap: () {
-                              setState(() {
-                                is22KSelected = !is22KSelected;
-                              });
-                            },
-                          ),
-                          _buildCategoryBox(
-                            label: '18K',
-                            isSelected: is18KSelected,
-                            onTap: () {
-                              setState(() {
-                                is18KSelected = !is18KSelected;
-                              });
-                            },
-                          ),
-                          _buildCategoryBox(
-                            label: '14K',
-                            isSelected: is14KSelected,
-                            onTap: () {
-                              setState(() {
-                                is14KSelected = !is14KSelected;
-                              });
-                            },
-                          ),
-                        ],
-                      ),
-                      SizedBox(height: 20),
-                      Text(
-                        'Select Gold Type',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.black,
-                        ),
-                      ),
-                      SizedBox(height: 10),
-                      Wrap(
-                        spacing: 12.0,
-                        runSpacing: 12.0,
-                        children: [
-                          _buildCategoryBox(
-                            label: 'Emas Kuning',
-                            isSelected: isYellowGoldSelected,
-                            onTap: () {
-                              setState(() {
-                                isYellowGoldSelected = !isYellowGoldSelected;
-                              });
-                            },
-                          ),
-                          _buildCategoryBox(
-                            label: 'Emas Putih',
-                            isSelected: isWhiteGoldSelected,
-                            onTap: () {
-                              setState(() {
-                                isWhiteGoldSelected = !isWhiteGoldSelected;
-                              });
-                            },
-                          ),
-                          _buildCategoryBox(
-                            label: 'Rose Gold',
-                            isSelected: isRoseGoldSelected,
-                            onTap: () {
-                              setState(() {
-                                isRoseGoldSelected = !isRoseGoldSelected;
-                              });
-                            },
-                          ),
-                        ],
-                      ),
+
                       SizedBox(height: 24),
                       ElevatedButton(
                         onPressed: () {
-                          applyFilter();
-                          final lowPrice =
+                          // Parse price values from the controllers
+                          final double? lowPrice =
                               double.tryParse(lowPriceController.text);
-                          final highPrice =
+                          final double? highPrice =
                               double.tryParse(highPriceController.text);
-                          final priceFilter =
-                              (lowPrice != null || highPrice != null)
-                                  ? {
-                                      'lowPrice': lowPrice ?? 0,
-                                      'highPrice': highPrice ?? double.infinity
-                                    }
-                                  : null;
-                          final selectedCategories = [];
-                          if (isRingSelected) selectedCategories.add('Cincin');
-                          if (isNecklaceSelected)
-                            selectedCategories.add('Kalung');
-                          if (isEarringSelected)
-                            selectedCategories.add('Anting');
-                          if (isBraceletSelected)
-                            selectedCategories.add('Gelang');
 
-                          // Jika tidak ada kategori yang dipilih, anggap tidak ada filter kategori
-                          final categoryFilter = selectedCategories.isNotEmpty
-                              ? selectedCategories
-                              : null;
+                          // Apply the selected types and price range to filter the products
+                          applyFilter(
+                            selectedTypes,
+                            lowPrice: lowPrice,
+                            highPrice: highPrice,
+                          );
 
-                          // Kumpulkan purity yang terpilih
-                          final selectedPurities = [];
-                          if (is24KSelected) selectedPurities.add('24K');
-                          if (is22KSelected) selectedPurities.add('22K');
-                          if (is18KSelected) selectedPurities.add('18K');
-                          if (is14KSelected) selectedPurities.add('14K');
-
-                          // Jika tidak ada purity yang dipilih, anggap tidak ada filter purity
-                          final purityFilter = selectedPurities.isNotEmpty
-                              ? selectedPurities
-                              : null;
-
-                          // Kumpulkan jenis emas yang terpilih
-                          final selectedGoldTypes = [];
-                          if (isYellowGoldSelected)
-                            selectedGoldTypes.add('Emas Kuning');
-                          if (isWhiteGoldSelected)
-                            selectedGoldTypes.add('Emas Putih');
-                          if (isRoseGoldSelected)
-                            selectedGoldTypes.add('Rose Gold');
-
-                          // Jika tidak ada jenis emas yang dipilih, anggap tidak ada filter jenis emas
-                          final goldTypeFilter = selectedGoldTypes.isNotEmpty
-                              ? selectedGoldTypes
-                              : null;
-
-                          // Validasi tambahan: Jika lowPrice lebih besar dari highPrice, beri peringatan
-                          if (lowPrice != null &&
-                              highPrice != null &&
-                              lowPrice > highPrice) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text(
-                                    'Low Price cannot be higher than High Price!'),
-                              ),
-                            );
-                            return;
-                          }
-
-                          setState(() {
-                            isFilterApplied = (priceFilter != null ||
-                                categoryFilter != null ||
-                                purityFilter != null ||
-                                goldTypeFilter != null);
-                          });
-
-                          // Kembalikan hasil filter melalui Navigator
-                          Navigator.pop(context, {
-                            'priceFilter':
-                                priceFilter, // null jika tidak ada filter harga
-                            'categories':
-                                categoryFilter, // null jika tidak ada filter kategori
-                            'purities':
-                                purityFilter, // null jika tidak ada filter purity
-                            'goldTypes':
-                                goldTypeFilter, // null jika tidak ada filter jenis emas
-                          });
-                          print({
-                            'priceFilter': priceFilter,
-                            'categories': categoryFilter,
-                            'purities': purityFilter,
-                            'goldTypes': goldTypeFilter,
-                          });
+                          Navigator.pop(context);
                         },
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Color(0xFF31394E),

@@ -174,7 +174,6 @@ class _CartPageState extends State<CartPage> {
               .add(cartData[storeIndex]["ProductList"][productIndex]);
         }
       }
-
       if (selectedProducts.isNotEmpty) {
         final store = cartData[storeIndex]["store"];
         return {
@@ -339,7 +338,7 @@ class _CartPageState extends State<CartPage> {
                                       ClipRRect(
                                         borderRadius: BorderRadius.circular(10),
                                         child: Image.network(
-                                          "$apiBaseUrlImage/uploads/storeLogo/store-1735984629390-441954104.png",
+                                          "https://picsum.photos/200/200?random=${Random().nextInt(1000)}",
                                           width: 80,
                                           height: 80,
                                           fit: BoxFit.cover,

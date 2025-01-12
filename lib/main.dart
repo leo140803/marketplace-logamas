@@ -1,29 +1,34 @@
 import 'dart:io';
 
 import 'package:firebase_core/firebase_core.dart';
-import 'package:marketplace_logamas/api/firebase_api.dart';
-import 'package:marketplace_logamas/screen/PaymentSuccessScreen.dart';
-import 'package:marketplace_logamas/screen/StorePage.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:marketplace_logamas/api/firebase_api.dart';
+import 'package:marketplace_logamas/screen/Barcode.dart';
 import 'package:marketplace_logamas/screen/Cart.dart';
 import 'package:marketplace_logamas/screen/CheckoutPage.dart';
 import 'package:marketplace_logamas/screen/ConfirmationScreen.dart';
-// import 'package:marketplace_logamas/screen/FAQPage.dart';
+import 'package:marketplace_logamas/screen/EditProfile.dart';
+import 'package:marketplace_logamas/screen/FAQ.dart';
 import 'package:marketplace_logamas/screen/Home.dart';
 import 'package:marketplace_logamas/screen/LocationScreen.dart';
 import 'package:marketplace_logamas/screen/LoginPage.dart';
+import 'package:marketplace_logamas/screen/MenuScreen.dart';
+import 'package:marketplace_logamas/screen/Order.dart';
+import 'package:marketplace_logamas/screen/PaymentSuccessScreen.dart';
+import 'package:marketplace_logamas/screen/ProductDetail.dart';
 import 'package:marketplace_logamas/screen/RegisterScreen.dart';
-// import 'package:deeplink2/screen/WelcomeScreen.dart';
-// import 'package:deeplink2/screen/PaymentSuccessScreen.dart';
+import 'package:marketplace_logamas/screen/Search.dart';
+import 'package:marketplace_logamas/screen/SearchResult.dart';
+import 'package:marketplace_logamas/screen/StorePage.dart';
 
 final navigatorKey = GlobalKey<NavigatorState>();
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Cek apakah platform adalah Android
   if (Platform.isAndroid) {
-    print('android');
+    print('Running on Android');
     await Firebase.initializeApp();
     await FirebaseApi().initNotifications();
   }
@@ -31,52 +36,111 @@ void main() async {
   runApp(MaterialApp.router(routerConfig: router));
 }
 
-/// This handles '/' and '/details'.
 final router = GoRouter(
+  // '/store/72574284-33f6-4ca8-a725-f00df1a62291',
+  initialLocation: '/home',
   navigatorKey: navigatorKey,
   debugLogDiagnostics: true,
   routes: [
     GoRoute(
       path: '/',
-      builder: (context, state) => LoginPage(
-          // storeId: '72574284-33f6-4ca8-a725-f00df1a62291',
-          ),
+      builder: (context, state) => HomePageWidget(),
       routes: [
-        // GoRoute(
-        //   path: 'landing',
-        //   builder: (context, state) => WelcomeScreen(),
-        // ),
         GoRoute(
           path: 'login',
           builder: (context, state) => LoginPage(),
+        ),
+        GoRoute(
+          path: '/search',
+          builder: (context, state) => SearchPage(),
+        ),
+        GoRoute(
+          path: '/search-result',
+          builder: (context, state) {
+            final extra =
+                state.extra as Map<String, dynamic>?;
+            final query =
+                extra?['query'] as String? ?? '';
+            return SearchResultPage(query: query);
+          },
+        ),
+        GoRoute(
+          path: '/product-detail/:productId', // Path dengan parameter productId
+          builder: (context, state) {
+            // Ambil productId dari path parameter
+            final productId = state.pathParameters['productId'];
+            if (productId == null || productId.isEmpty) {
+              return const Scaffold(
+                body: Center(
+                    child: Text(
+                        'Product ID is missing')), // Error handling jika productId tidak ada
+              );
+            }
+            return ProductDetailPage(
+                productId: productId); // Navigasi ke ProductDetailPage
+          },
         ),
         GoRoute(
           path: 'register',
           builder: (context, state) => RegisterScreen(),
         ),
         GoRoute(
-          path: 'home',
-          builder: (context, state) => HomePageWidget(),
+          path: 'information',
+          builder: (context, state) => MenuScreen(),
         ),
         GoRoute(
-          path: 'email_verified',
-          builder: (context, state) => EmailVerifiedPage(),
+          path: 'order',
+          name: 'order',
+          builder: (context, state) => OrdersPage(),
+        ),
+        GoRoute(
+          path: 'myQR',
+          name: 'myQR',
+          builder: (context, state) => BarcodePage(),
+        ),
+        GoRoute(
+          path: 'faq',
+          name: 'faq',
+          builder: (context, state) => FAQPage(),
+        ),
+        GoRoute(
+          path: 'edit-profile',
+          builder: (context, state) => const EditProfileScreen(),
         ),
         GoRoute(
           path: 'cart',
           builder: (context, state) => CartPage(),
         ),
         GoRoute(
+          path: 'home',
+          builder: (context, state) => HomePageWidget(),
+        ),
+        GoRoute(
           path: 'nearby',
           builder: (context, state) => LocationScreen(),
         ),
         GoRoute(
+          path: 'store/:storeId', // Tambahkan parameter :storeId di path
+          builder: (context, state) {
+            final storeId = state
+                .pathParameters['storeId']; // Ambil storeId dari path parameter
+            if (storeId == null || storeId.isEmpty) {
+              return const Scaffold(
+                body: Center(child: Text("Store ID must be provided!")),
+              );
+            }
+            return StorePage(
+                storeId:
+                    storeId); // Navigasi ke StorePage dengan ID yang diambil
+          },
+        ),
+        GoRoute(
           path: '/checkout',
           builder: (context, state) {
-            // Extract checkoutData using `state.extra`
             final checkoutData = state.extra as Map<String, dynamic>?;
             if (checkoutData == null) {
-              return Center(child: Text("Car Data must passing!"));
+              return const Center(
+                  child: Text("Checkout data must be provided!"));
             }
             return CheckoutPage(cartData: checkoutData);
           },
@@ -86,69 +150,41 @@ final router = GoRouter(
           builder: (context, state) {
             final orderId = state.uri.queryParameters['order_id'];
             if (orderId == null || orderId.isEmpty) {
-              return Center(child: Text("Order ID must passing!"));
+              return const Center(child: Text("Order ID must be provided!"));
             }
             return PaymentSuccessScreen(orderId: orderId);
           },
         ),
-
-        // GoRoute(
-        //   path: 'confirmation',
-        //   builder: (context, state) {
-        //     final email = state.queryParameters['email'] ?? 'Unknown';
-        //     return ConfirmationScreen(email: email);
-        //   },
-        // ),
         GoRoute(
-          path: 'store',
+          path: 'confirmation',
           builder: (context, state) {
-            // Extract storeId from state.extra
-            final storeId = (state.extra as Map<String, dynamic>?)?['storeId'];
-            if (storeId == null || storeId.isEmpty) {
-              return Center(
-                child: Text("Store ID must be provided!"),
-              );
-            }
-            return StorePage(storeId: storeId);
+            final email = state.uri.queryParameters['email'] ?? 'Unknown';
+            return ConfirmationScreen(email: email);
           },
         ),
-
-        // GoRoute(
-        //   path: 'payment-success',
-        //   builder: (context, state) {
-        //     final orderId = state.queryParameters['order_id'] ?? 'Unknown';
-        //     return PaymentSuccessScreen(orderId: orderId);
-        //   },
-        // ),
       ],
     ),
   ],
   redirect: (context, state) {
-    // Log URL yang diterima
     print('Incoming URL: ${state.uri}');
 
-    // Periksa jika URL memiliki prefix '/deeplink-website'
     if (state.uri.path.startsWith('/deeplink-website')) {
-      // Buang '/deeplink-website' dari path dan arahkan ulang
       final newPath = state.uri.path.replaceFirst('/deeplink-website', '');
       print('Redirecting to: $newPath');
       return newPath;
     }
 
-    // Periksa skema 'marketplace://'
     final uriString = state.uri.toString();
     if (uriString.startsWith('marketplace-logamas://')) {
-      // Ubah 'marketplace-logamas://' menjadi path yang valid
-      var parse = uriString
+      final parse = uriString
           .replaceFirst('marketplace-logamas://', '')
           .replaceAll("/", "");
       final newUri = Uri.parse(parse);
-      final path = newUri.path; // path seperti 'payment_success'
-      final queryParams = newUri.queryParameters; // Ambil query parameters
+      final path = newUri.path;
+      final queryParams = newUri.queryParameters;
 
-      print('Redirecting to: /$path dengan params: $queryParams');
+      print('Redirecting to: /$path with params: $queryParams');
 
-      // Bangun kembali path dengan parameter query jika ada
       final redirectPath = Uri(
         path: '/$path',
         queryParameters: queryParams.isNotEmpty ? queryParams : null,
@@ -157,7 +193,6 @@ final router = GoRouter(
       return redirectPath;
     }
 
-    // Jika tidak ada perubahan, biarkan navigasi berjalan seperti biasa
     return null;
   },
 );

@@ -5,9 +5,9 @@ import 'package:marketplace_logamas/widget/Dialog.dart';
 import 'package:marketplace_logamas/widget/UnauthorizedDialog.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-const String apiBaseUrl = 'http://10.0.2.2:3000/api';
-const String apiBaseUrlImage = 'http://10.0.2.2:3000';
-const String apiBaseUrlPlatform = 'http://10.0.2.2:3001';
+const String apiBaseUrl = 'http://127.0.0.1:3000/api';
+const String apiBaseUrlImage = 'http://127.0.0.1:3000';
+const String apiBaseUrlPlatform = 'http://127.0.0.1:3005';
 
 void navigate(BuildContext context, int index) {
   if (index == 0) {
@@ -17,7 +17,7 @@ void navigate(BuildContext context, int index) {
     context.go('/nearby');
     // Navigator.pushReplacementNamed(context, '/nearby');
   } else if (index == 2) {
-    context.go('/nearby');
+    context.go('/information');
     // Navigator.pushReplacementNamed(context, '/nearby');
   }
 }
