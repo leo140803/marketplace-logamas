@@ -18,7 +18,7 @@ class _CountdownTimerState extends State<CountdownTimer> {
   @override
   void initState() {
     super.initState();
-    _updateTime();
+    _timeLeft = widget.expirationTime.difference(DateTime.now());
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
       _updateTime();
     });
