@@ -49,7 +49,7 @@ Card ProductCard(Map<String, dynamic> product) {
 
               // Product Price
               Text(
-                'Rp. ${formatCurrency(product['price'].toDouble())}',
+                'Rp. ${formatCurrency(product['low_price'].toDouble())}',
                 style: TextStyle(
                   color: Color(0xFFC58189),
                   fontWeight: FontWeight.bold,

@@ -1,5 +1,4 @@
 import 'dart:convert';
-
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:marketplace_logamas/function/Utils.dart';
@@ -16,7 +15,8 @@ class OrdersPage extends StatefulWidget {
 class _OrdersPageState extends State<OrdersPage>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
-  List<Map<String, dynamic>> orders = [];
+  List<Map<String, dynamic>> pendingOrders = [];
+  List<Map<String, dynamic>> readyToPickupOrders = [];
   bool isLoading = true;
 
   Future<List<Map<String, dynamic>>> fetchTransactionsByStatus(
@@ -42,9 +42,12 @@ class _OrdersPageState extends State<OrdersPage>
     setState(() => isLoading = true);
 
     try {
-      final transactions = await fetchTransactionsByStatus(0); // Status 0
+      // Ambil transaksi dengan status 0 dan 1
+      final pending = await fetchTransactionsByStatus(0); // Status 0
+      final readyToPickup = await fetchTransactionsByStatus(1); // Status 1
       setState(() {
-        orders = transactions;
+        pendingOrders = pending;
+        readyToPickupOrders = readyToPickup;
       });
     } catch (error) {
       print('Error fetching transactions: $error');
@@ -52,39 +55,6 @@ class _OrdersPageState extends State<OrdersPage>
       setState(() => isLoading = false);
     }
   }
-
-  final List<Map<String, dynamic>> orders2 = [
-    {
-      'store_name': 'Toko Emas Indah',
-      'status': 0,
-      'products': [
-        {'name': 'Cincin Emas', 'quantity': 1, 'price': 1500000},
-        {'name': 'Kalung Emas', 'quantity': 2, 'price': 2500000},
-      ],
-      'voucher_discount': 50000,
-      'total_payment': 6450000,
-      'expiration_time':
-          DateTime.now().add(Duration(hours: 1)), // 1 jam dari sekarang
-    },
-    {
-      'store_name': 'Toko Perhiasan Cantik',
-      'status': 1,
-      'products': [
-        {'name': 'Anting Emas', 'quantity': 1, 'price': 750000},
-      ],
-      'voucher_discount': 0,
-      'total_payment': 750000,
-    },
-    {
-      'store_name': 'Toko Berlian Mewah',
-      'status': 2,
-      'products': [
-        {'name': 'Gelang Berlian', 'quantity': 1, 'price': 5000000},
-      ],
-      'voucher_discount': 100000,
-      'total_payment': 4900000,
-    },
-  ];
 
   @override
   void initState() {
@@ -135,27 +105,24 @@ class _OrdersPageState extends State<OrdersPage>
           : TabBarView(
               controller: _tabController,
               children: [
-                _buildOrderList(0),
-                _buildOrderList(1),
-                _buildOrderList(2),
+                _buildOrderList(pendingOrders), // Belum Bayar
+                _buildOrderList(readyToPickupOrders), // Siap Ambil
+                _buildEmptyState(), // Tab Done (Placeholder)
               ],
             ),
     );
   }
 
-  Widget _buildOrderList(int status) {
-    final filteredOrders =
-        orders.where((order) => order['payment_status'] == status).toList();
-
-    if (filteredOrders.isEmpty) {
+  Widget _buildOrderList(List<Map<String, dynamic>> orders) {
+    if (orders.isEmpty) {
       return _buildEmptyState();
     }
 
     return ListView.builder(
       padding: const EdgeInsets.all(16.0),
-      itemCount: filteredOrders.length,
+      itemCount: orders.length,
       itemBuilder: (context, index) {
-        final order = filteredOrders[index];
+        final order = orders[index];
         final products = order['transactionItems'] as List<dynamic>;
         final expirationTime = order['expiration_time'] != null
             ? DateTime.parse(order['expiration_time'])
@@ -172,11 +139,9 @@ class _OrdersPageState extends State<OrdersPage>
               // Header
               Container(
                 decoration: BoxDecoration(
-                  color: status == 0
+                  color: order['payment_status'] == 0
                       ? const Color(0xFFFDE7E9) // Belum Bayar: Merah Muda
-                      : status == 1
-                          ? const Color(0xFFE8F5E9) // Siap Ambil: Hijau Muda
-                          : const Color(0xFFE3F2FD), // Done: Biru Muda
+                      : const Color(0xFFE8F5E9), // Siap Ambil: Hijau Muda
                   borderRadius: const BorderRadius.vertical(
                     top: Radius.circular(10),
                   ),
@@ -192,11 +157,29 @@ class _OrdersPageState extends State<OrdersPage>
                         fontSize: 16,
                       ),
                     ),
-                    if (status == 0 && expirationTime != null)
+                    if (order['payment_status'] == 1)
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF81C784), // Hijau muda
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: const Text(
+                          'Siap Diambil',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    if (order['payment_status'] == 0 && expirationTime != null)
                       CountdownTimer(expirationTime),
                   ],
                 ),
               ),
+
               // Body
               Padding(
                 padding: const EdgeInsets.all(16.0),

@@ -1,6 +1,7 @@
 import 'dart:math';
 
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
@@ -32,7 +33,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
   @override
   void initState() {
     super.initState();
-    storeProducts = widget.cartData;
+    storeProducts = widget.cartData['data'][0];
     print(widget.cartData);
     initialTotalPrice = _calculateTotalPrice();
     totalPrice = initialTotalPrice; // Awalnya sama dengan total harga awal
@@ -41,10 +42,24 @@ class _CheckoutPageState extends State<CheckoutPage> {
 
   double _calculateTotalPrice() {
     double price = 0;
-    for (var product in storeProducts['selectedProducts']) {
+    for (var product in storeProducts['ProductList']) {
       price += product['productPrice'] * product['quantity'];
     }
     return price;
+  }
+
+  int _calculateTotalPoints() {
+    int points = 0;
+    final poinConfig = storeProducts['store']['poin_config'] ??
+        0; // Pastikan poin_config tersedia
+    for (var product in storeProducts['ProductList']) {
+      points +=
+          (((product['productPrice'] as int) * (product['quantity'] as int)) *
+                  (poinConfig as int) /
+                  100)
+              .floor();
+    }
+    return points;
   }
 
   void _applyVoucher(Map<String, dynamic>? voucher) {
@@ -99,20 +114,22 @@ class _CheckoutPageState extends State<CheckoutPage> {
     try {
       final uuid = Uuid();
       final orderId = uuid.v4();
-      final List<Map<String, dynamic>> items = storeProducts['selectedProducts']
+      final List<Map<String, dynamic>> items = storeProducts['ProductList']
           .map<Map<String, dynamic>>((product) => {
-                "id": product['productPictureURL']['product_id'],
+                "id": product['product_code_id'], // Gunakan product_code_id
                 "price": product['productPrice'].toInt(),
                 "quantity": product['quantity'],
                 "name": product['productName'],
                 "brand": "Toko Emas ABC",
                 "category": "Perhiasan",
-                "merchant_name": storeProducts['store']['store_name'],
+                "merchant_name": storeProducts['store']
+                    ['store_name'], // Nama store
                 "url":
                     "http://toko/${storeProducts['store']['store_id']}?item=${product['productName']}"
               })
           .toList();
-      // Tambahkan diskon sebagai item terpisah
+
+// Tambahkan diskon
       if (discount > 0) {
         items.add({
           "id": "DISCOUNT",
@@ -219,7 +236,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
         throw Exception(
             "Failed to create transaction: ${backendResponse.body}");
       }
-
+      print('sampai sini');
       // Navigasi ke halaman pembayaran
       Navigator.push(
         context,
@@ -227,10 +244,15 @@ class _CheckoutPageState extends State<CheckoutPage> {
           builder: (context) => WaitingForPaymentPage(orderId: orderId),
         ),
       );
-
       // Buka URL pembayaran di browser
       final uri = Uri.parse(redirectUrl);
-      await launchUrl(uri, mode: LaunchMode.externalApplication);
+      if (kIsWeb) {
+        // Untuk web, gunakan metode standar untuk membuka di tab baru
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
+      } else {
+        // Untuk platform non-web (Android/iOS), tetap gunakan metode biasa
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
+      }
     } catch (e, stackTrace) {
       // Log kesalahan
       print("Checkout Error: $e");
@@ -689,7 +711,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
                     ),
                     SizedBox(height: 8),
                     Column(
-                      children: storeProducts['selectedProducts']
+                      children: storeProducts['ProductList']
                           .map<Widget>((product) => Padding(
                                 padding:
                                     const EdgeInsets.symmetric(vertical: 8.0),
@@ -723,6 +745,11 @@ class _CheckoutPageState extends State<CheckoutPage> {
                                             style: TextStyle(
                                               color: Colors.grey[600],
                                             ),
+                                          ),
+                                          Text(
+                                            'Weight: ${product['productWeight']} gr', // Berat produk
+                                            style: TextStyle(
+                                                color: Colors.grey[600]),
                                           ),
                                           Text(
                                             'Subtotal: Rp ${formatCurrency((product['quantity'] * product['productPrice']).toDouble())}',
@@ -874,6 +901,22 @@ class _CheckoutPageState extends State<CheckoutPage> {
                           'Rp ${formatCurrency(totalPrice)}',
                           style: TextStyle(
                               fontSize: 16, fontWeight: FontWeight.bold),
+                        ),
+                      ],
+                    ),
+                    Divider(thickness: 1, color: Colors.grey[300]),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          'Total Poin Didapatkan',
+                          style: TextStyle(
+                              fontSize: 14, fontWeight: FontWeight.normal),
+                        ),
+                        Text(
+                          '${_calculateTotalPoints()} Poin',
+                          style: TextStyle(
+                              fontSize: 14, fontWeight: FontWeight.bold),
                         ),
                       ],
                     ),

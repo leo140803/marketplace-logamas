@@ -33,18 +33,9 @@ class _StorePageState extends State<StorePage> {
   final TextEditingController _textController = TextEditingController();
   final FocusNode _textFieldFocusNode = FocusNode();
   Set<String> selectedTypes = {};
+  Set<String> selectedPurities = {};
+  Set<String> selectedMetalTypes = {};
   String _userName = '';
-  bool isRingSelected = false;
-  bool isNecklaceSelected = false;
-  bool isEarringSelected = false;
-  bool isBraceletSelected = false;
-  bool is24KSelected = false;
-  bool is22KSelected = false;
-  bool is18KSelected = false;
-  bool is14KSelected = false;
-  bool isYellowGoldSelected = false;
-  bool isWhiteGoldSelected = false;
-  bool isRoseGoldSelected = false;
   bool isFollow = false;
   bool isFilterApplied = false;
   Map<String, dynamic>? storeData;
@@ -71,40 +62,86 @@ class _StorePageState extends State<StorePage> {
       Map<String, dynamic> storeData) {
     final products = storeData['products'] as List<dynamic>;
 
-    // Ambil semua type dari produk
-    final types = products
-        .map((product) => product['type'] as Map<String, dynamic>)
+    // Ambil semua kategori dari produk
+    final categories = products
+        .map((product) => product['types']['category'] as Map<String, dynamic>)
         .toList();
 
-    // Hilangkan duplikasi berdasarkan `type_id`
-    final uniqueTypes =
-        types.fold<Map<String, Map<String, dynamic>>>({}, (acc, type) {
-      acc[type['type_id']] = type;
-      return acc;
-    });
+    // Hilangkan duplikasi berdasarkan kombinasi `name`, `metal_type`, dan `purity`
+    final uniqueCategories = categories.fold<Map<String, Map<String, dynamic>>>(
+      {},
+      (acc, category) {
+        final metalTypeName = _getMetalTypeName(category['metal_type']);
+        final key =
+            '${category['name']}-${metalTypeName}-${category['purity']}';
+        acc[key] = {
+          ...category,
+          'metal_type_name': metalTypeName, // Tambahkan nama deskriptif
+        };
+        return acc;
+      },
+    );
 
-    return uniqueTypes.values.toList();
+    return uniqueCategories.values.toList();
   }
 
-  void applyFilter(Set<String> selectedTypeIds,
-      {double? lowPrice, double? highPrice}) {
-    setState(() {
-      isFilterApplied =
-          selectedTypeIds.isNotEmpty || lowPrice != null || highPrice != null;
+// Fungsi untuk mengubah metal_type menjadi string deskriptif
+  String _getMetalTypeName(int metalType) {
+    switch (metalType) {
+      case 0:
+        return 'Gold';
+      case 1:
+        return 'Silver';
+      case 2:
+        return 'Red Gold';
+      case 3:
+        return 'White Gold';
+      case 4:
+        return 'Platinum';
+      default:
+        return 'Unknown';
+    }
+  }
 
-      // Pastikan `products` memiliki tipe yang benar
+  void applyFilter(
+    Set<String> selectedCategoryNames,
+    Set<String> selectedPurities,
+    Set<String> selectedMetalTypes, {
+    double? lowPrice,
+    double? highPrice,
+  }) {
+    setState(() {
+      isFilterApplied = selectedCategoryNames.isNotEmpty ||
+          selectedPurities.isNotEmpty ||
+          selectedMetalTypes.isNotEmpty ||
+          lowPrice != null ||
+          highPrice != null;
+
+      // Pastikan `products` memiliki tipe data yang benar
       final products = List<Map<String, dynamic>>.from(storeData!['products']);
 
       filteredProducts = products.where((product) {
-        final type = product['type'] as Map<String, dynamic>;
-        final price = product['price'] as int;
+        final category = product['types']['category'] as Map<String, dynamic>;
+        final price = product['low_price'] as int;
 
-        final typeMatches = selectedTypeIds.isEmpty ||
-            selectedTypeIds.contains(type['type_id']);
+        // Filter berdasarkan kategori (name)
+        final nameMatches = selectedCategoryNames.isEmpty ||
+            selectedCategoryNames.contains(category['name']);
+
+        // Filter berdasarkan purity
+        final purityMatches = selectedPurities.isEmpty ||
+            selectedPurities.contains(category['purity']);
+
+        // Filter berdasarkan metal_type
+        final metalTypeMatches = selectedMetalTypes.isEmpty ||
+            selectedMetalTypes
+                .contains(_getMetalTypeName(category['metal_type'] as int));
+
+        // Filter berdasarkan rentang harga
         final priceMatches = (lowPrice == null || price >= lowPrice) &&
             (highPrice == null || price <= highPrice);
 
-        return typeMatches && priceMatches;
+        return nameMatches && purityMatches && metalTypeMatches && priceMatches;
       }).toList();
     });
   }
@@ -114,17 +151,18 @@ class _StorePageState extends State<StorePage> {
       final response = await http.get(
         Uri.parse("$apiBaseUrl/store/${widget.storeId}"),
       );
+      print("Fetch Store Data --> ${jsonDecode(response.body)}");
       if (response.statusCode == 200) {
-        final data = json.decode(response.body)['data'];
+        final data = json.decode(response.body)['data']; // Ambil data dari root
         setState(() {
-          storeData = data;
-          // Inisialisasi filteredProducts dengan semua produk
+          storeData = data; // Simpan data toko
           filteredProducts = List<Map<String, dynamic>>.from(data['products']);
         });
       } else {
         throw Exception("Failed to load store data");
       }
 
+      // Ambil poin pengguna di toko ini
       String token = await getAccessToken();
       final pointsResponse = await http.get(
         Uri.parse("$apiBaseUrl/user-poin/${widget.storeId}"),
@@ -132,6 +170,7 @@ class _StorePageState extends State<StorePage> {
           'Authorization': 'Bearer $token',
         },
       );
+      print("Point User Response --> ${jsonDecode(pointsResponse.body)}");
       if (pointsResponse.statusCode == 200) {
         setState(() {
           points = json.decode(pointsResponse.body)['data']['points'];
@@ -185,6 +224,8 @@ class _StorePageState extends State<StorePage> {
         },
         body: json.encode({'store_id': widget.storeId}),
       );
+
+      print("Folow Store Response --> ${jsonDecode(response.body)}");
 
       if (response.statusCode == 201) {
         final responseData = json.decode(response.body);
@@ -323,6 +364,7 @@ class _StorePageState extends State<StorePage> {
 
       if (response.statusCode == 200) {
         final responseData = json.decode(response.body);
+        print("Owned Voucher --> ${responseData['data']}");
         return responseData['data'];
       } else if (response.statusCode == 404) {
         return []; // Jika 404, kembalikan daftar kosong
@@ -390,24 +432,46 @@ class _StorePageState extends State<StorePage> {
             }
 
             if (snapshot.hasError || snapshot.data == null) {
-              return Center(
-                child: Text(
-                  'Failed to load poin history',
-                  style: TextStyle(fontSize: 16, color: Colors.grey),
+              return FractionallySizedBox(
+                heightFactor: 0.65,
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Center(
+                        child: Container(
+                          width: 50,
+                          height: 6,
+                          margin: EdgeInsets.only(bottom: 10),
+                          decoration: BoxDecoration(
+                            color: Colors.grey[300],
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                        ),
+                      ),
+                      Text(
+                        'Poin History',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.black,
+                        ),
+                      ),
+                      SizedBox(height: 10),
+                      Center(
+                        child: Text(
+                          'Failed to load poin history',
+                          style: TextStyle(fontSize: 16, color: Colors.grey),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               );
             }
 
-            final poinHistory = snapshot.data!;
-
-            if (poinHistory.isEmpty) {
-              return Center(
-                child: Text(
-                  'No poin history available',
-                  style: TextStyle(fontSize: 16, color: Colors.grey),
-                ),
-              );
-            }
+            final poinHistory = snapshot.data ?? [];
 
             return FractionallySizedBox(
               heightFactor: 0.65,
@@ -437,13 +501,21 @@ class _StorePageState extends State<StorePage> {
                     ),
                     SizedBox(height: 10),
                     Expanded(
-                      child: ListView.builder(
-                        itemCount: poinHistory.length,
-                        itemBuilder: (context, index) {
-                          final history = poinHistory[index];
-                          return _buildPoinHistoryCard(history);
-                        },
-                      ),
+                      child: poinHistory.isEmpty
+                          ? Center(
+                              child: Text(
+                                'No poin history available',
+                                style:
+                                    TextStyle(fontSize: 16, color: Colors.grey),
+                              ),
+                            )
+                          : ListView.builder(
+                              itemCount: poinHistory.length,
+                              itemBuilder: (context, index) {
+                                final history = poinHistory[index];
+                                return _buildPoinHistoryCard(history);
+                              },
+                            ),
                     ),
                   ],
                 ),
@@ -781,32 +853,10 @@ class _StorePageState extends State<StorePage> {
                                 ),
                                 onPressed: () {
                                   getAccessToken();
-                                  context.go('/cart');
+                                  context.push('/cart');
                                   // Navigator.pushReplacementNamed(
                                   //     context, '/cart');
                                 },
-                              ),
-                              Positioned(
-                                right: 0,
-                                top: 0,
-                                child: Container(
-                                  width: 18,
-                                  height: 18,
-                                  decoration: BoxDecoration(
-                                    color: Color(0xFFC58189),
-                                    shape: BoxShape.circle,
-                                  ),
-                                  child: Center(
-                                    child: Text(
-                                      '3',
-                                      style: TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 10,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                  ),
-                                ),
                               ),
                             ],
                           ),
@@ -833,10 +883,36 @@ class _StorePageState extends State<StorePage> {
                                   children: [
                                     CircleAvatar(
                                       radius: 30,
-                                      backgroundImage: NetworkImage(
-                                        '$apiBaseUrlImage${storeData!["image_url"]}',
-                                      ),
                                       backgroundColor: Colors.white,
+                                      child: ClipOval(
+                                        child: Image.network(
+                                          '$apiBaseUrlImage${storeData!["image_url"]}',
+                                          fit: BoxFit.cover,
+                                          width: 60,
+                                          height: 60,
+                                          errorBuilder:
+                                              (context, error, stackTrace) {
+                                            // Fallback ke inisial store_name jika gambar gagal dimuat
+                                            return Container(
+                                              width: 60,
+                                              height: 60,
+                                              alignment: Alignment.center,
+                                              color: Color(
+                                                  0xFF31394E), // Background untuk inisial
+                                              child: Text(
+                                                storeData!["store_name"]
+                                                    .substring(0, 1)
+                                                    .toUpperCase(), // Inisial
+                                                style: const TextStyle(
+                                                  fontSize: 20,
+                                                  fontWeight: FontWeight.bold,
+                                                  color: Colors.white,
+                                                ),
+                                              ),
+                                            );
+                                          },
+                                        ),
+                                      ),
                                     ),
                                     const SizedBox(width: 15),
                                     Expanded(
@@ -844,11 +920,36 @@ class _StorePageState extends State<StorePage> {
                                         crossAxisAlignment:
                                             CrossAxisAlignment.start,
                                         children: [
+                                          Row(
+                                            children: [
+                                              Text(
+                                                storeData!["store_name"],
+                                                style: TextStyle(
+                                                  fontSize: 16,
+                                                  fontWeight: FontWeight.bold,
+                                                ),
+                                              ),
+                                              SizedBox(width: 5),
+                                              Tooltip(
+                                                message: storeData![
+                                                        "information"] ??
+                                                    "No additional information",
+                                                child: Icon(
+                                                  Icons.info_outline,
+                                                  color: Colors.grey,
+                                                  size: 18,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+
+                                          SizedBox(height: 5),
                                           Text(
-                                            storeData!["store_name"],
+                                            storeData!["address"] ??
+                                                "No address available", // Tambahkan alamat
                                             style: TextStyle(
-                                              fontSize: 16,
-                                              fontWeight: FontWeight.bold,
+                                              fontSize: 14,
+                                              color: Colors.grey[600],
                                             ),
                                           ),
                                           SizedBox(height: 5),
@@ -1119,6 +1220,7 @@ class _StorePageState extends State<StorePage> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      // Header Drawer
                       Center(
                         child: Container(
                           width: 50,
@@ -1130,9 +1232,10 @@ class _StorePageState extends State<StorePage> {
                           ),
                         ),
                       ),
-                      // Filter by Types
+
+                      // Filter by Category Name
                       Text(
-                        'Select Types',
+                        'Select Category Name',
                         style: TextStyle(
                             fontSize: 18, fontWeight: FontWeight.bold),
                       ),
@@ -1140,17 +1243,20 @@ class _StorePageState extends State<StorePage> {
                       Wrap(
                         spacing: 12.0,
                         runSpacing: 12.0,
-                        children: filters.map((filter) {
-                          final typeId = filter['type_id'] as String;
-                          final isSelected = selectedTypes.contains(typeId);
+                        children: filters
+                            .map((filter) => filter['name'])
+                            .toSet()
+                            .map((name) {
+                          final isSelected =
+                              selectedTypes.contains(name);
 
                           return GestureDetector(
                             onTap: () {
                               setState(() {
                                 if (isSelected) {
-                                  selectedTypes.remove(typeId);
+                                  selectedTypes.remove(name);
                                 } else {
-                                  selectedTypes.add(typeId);
+                                  selectedTypes.add(name);
                                 }
                               });
                             },
@@ -1170,7 +1276,7 @@ class _StorePageState extends State<StorePage> {
                                 ),
                               ),
                               child: Text(
-                                "${filter['name']} - ${filter['purity']} - ${filter['metal_type']}",
+                                name,
                                 style: TextStyle(
                                   color:
                                       isSelected ? Colors.white : Colors.black,
@@ -1184,6 +1290,123 @@ class _StorePageState extends State<StorePage> {
                       ),
 
                       SizedBox(height: 20),
+
+                      // Filter by Purity
+                      Text(
+                        'Select Purity',
+                        style: TextStyle(
+                            fontSize: 18, fontWeight: FontWeight.bold),
+                      ),
+                      SizedBox(height: 10),
+                      Wrap(
+                        spacing: 12.0,
+                        runSpacing: 12.0,
+                        children: filters
+                            .map((filter) => filter['purity'])
+                            .toSet()
+                            .map((purity) {
+                          final isSelected = selectedPurities.contains(purity);
+
+                          return GestureDetector(
+                            onTap: () {
+                              setState(() {
+                                if (isSelected) {
+                                  selectedPurities.remove(purity);
+                                } else {
+                                  selectedPurities.add(purity);
+                                }
+                              });
+                            },
+                            child: Container(
+                              padding: EdgeInsets.symmetric(
+                                  horizontal: 16.0, vertical: 12.0),
+                              decoration: BoxDecoration(
+                                color: isSelected
+                                    ? Color(0xFFC58189)
+                                    : Colors.grey[200],
+                                borderRadius: BorderRadius.circular(10.0),
+                                border: Border.all(
+                                  color: isSelected
+                                      ? Color(0xFFC58189)
+                                      : Colors.grey.shade300,
+                                  width: 1.5,
+                                ),
+                              ),
+                              child: Text(
+                                purity,
+                                style: TextStyle(
+                                  color:
+                                      isSelected ? Colors.white : Colors.black,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                            ),
+                          );
+                        }).toList(),
+                      ),
+
+                      SizedBox(height: 20),
+
+                      // Filter by Metal Type
+                      Text(
+                        'Select Metal Type',
+                        style: TextStyle(
+                            fontSize: 18, fontWeight: FontWeight.bold),
+                      ),
+                      SizedBox(height: 10),
+                      Wrap(
+                        spacing: 12.0,
+                        runSpacing: 12.0,
+                        children: filters
+                            .map((filter) =>
+                                _getMetalTypeName(filter['metal_type'] as int))
+                            .toSet()
+                            .map((metalType) {
+                          final isSelected =
+                              selectedMetalTypes.contains(metalType);
+
+                          return GestureDetector(
+                            onTap: () {
+                              setState(() {
+                                if (isSelected) {
+                                  selectedMetalTypes.remove(metalType);
+                                } else {
+                                  selectedMetalTypes.add(metalType);
+                                }
+                              });
+                            },
+                            child: Container(
+                              padding: EdgeInsets.symmetric(
+                                  horizontal: 16.0, vertical: 12.0),
+                              decoration: BoxDecoration(
+                                color: isSelected
+                                    ? Color(0xFFC58189)
+                                    : Colors.grey[200],
+                                borderRadius: BorderRadius.circular(10.0),
+                                border: Border.all(
+                                  color: isSelected
+                                      ? Color(0xFFC58189)
+                                      : Colors.grey.shade300,
+                                  width: 1.5,
+                                ),
+                              ),
+                              child: Text(
+                                metalType,
+                                style: TextStyle(
+                                  color:
+                                      isSelected ? Colors.white : Colors.black,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                            ),
+                          );
+                        }).toList(),
+                      ),
+
+                      SizedBox(height: 20),
+
                       // Filter by Price Range
                       Text(
                         'Set Price Range',
@@ -1262,17 +1485,19 @@ class _StorePageState extends State<StorePage> {
                       ),
 
                       SizedBox(height: 24),
+
+                      // Apply Button
                       ElevatedButton(
                         onPressed: () {
-                          // Parse price values from the controllers
                           final double? lowPrice =
                               double.tryParse(lowPriceController.text);
                           final double? highPrice =
                               double.tryParse(highPriceController.text);
 
-                          // Apply the selected types and price range to filter the products
                           applyFilter(
                             selectedTypes,
+                            selectedPurities,
+                            selectedMetalTypes,
                             lowPrice: lowPrice,
                             highPrice: highPrice,
                           );

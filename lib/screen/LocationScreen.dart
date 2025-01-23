@@ -5,6 +5,7 @@ import 'package:latlong2/latlong.dart';
 import 'dart:math' as math;
 import 'package:http/http.dart' as http;
 import 'package:marketplace_logamas/function/Utils.dart';
+import 'package:marketplace_logamas/screen/SearchResultPage.dart';
 import 'package:marketplace_logamas/widget/BottomNavigationBar.dart';
 import 'package:marketplace_logamas/widget/Dialog.dart';
 import 'dart:convert';
@@ -23,6 +24,7 @@ class _LocationScreenState extends State<LocationScreen> {
   int _selectedIndex = 1;
   bool _isLoading = true;
   final MapController _mapController = MapController();
+  TextEditingController _searchController = TextEditingController();
 
   @override
   void initState() {
@@ -41,12 +43,11 @@ class _LocationScreenState extends State<LocationScreen> {
 
   Future<void> _fetchTokoData() async {
     try {
-      final response =
-          await http.get(Uri.parse('$apiBaseUrl/store'));
+      final response = await http.get(Uri.parse('$apiBaseUrl/store'));
       if (response.statusCode == 200) {
         final jsonResponse = json.decode(response.body) as Map<String, dynamic>;
         final data = jsonResponse['data'] as List<dynamic>;
-
+        print(data);
         setState(() {
           _tokoList.clear();
           for (var item in data) {
@@ -64,6 +65,28 @@ class _LocationScreenState extends State<LocationScreen> {
     } catch (e) {
       print(e);
       dialog(context, 'Error', 'An Error Occured');
+    }
+  }
+
+  Future<List<Map<String, dynamic>>> searchStores(String query) async {
+    final url = Uri.parse('$apiBaseUrl/store/search?q=$query');
+    try {
+      final response = await http.get(url);
+
+      if (response.statusCode == 200) {
+        final jsonResponse = json.decode(response.body) as Map<String, dynamic>;
+
+        if (jsonResponse['success'] == true) {
+          return List<Map<String, dynamic>>.from(jsonResponse['data']);
+        } else {
+          throw Exception(jsonResponse['message'] ?? 'Search failed.');
+        }
+      } else {
+        throw Exception('Failed to fetch stores: ${response.statusCode}');
+      }
+    } catch (error) {
+      print('Error fetching search results: $error');
+      throw Exception('Error fetching search results');
     }
   }
 
@@ -99,7 +122,7 @@ class _LocationScreenState extends State<LocationScreen> {
 
     final position = await Geolocator.getCurrentPosition(
         desiredAccuracy: LocationAccuracy.high);
-
+    print(position);
     setState(() {
       _latitude = position.latitude;
       _longitude = position.longitude;
@@ -113,10 +136,13 @@ class _LocationScreenState extends State<LocationScreen> {
     for (var toko in _tokoList) {
       double distance = _haversine(userLat, userLon, toko['lat'], toko['lon']);
       toko['distance'] = distance;
-      if (distance <= radiusKm) {
-        filteredToko.add(toko);
-      }
+      filteredToko.add(toko);
+      // if (distance <= radiusKm) {
+      //   filteredToko.add(toko);
+      // }
     }
+    print("filtered toko!");
+    print(filteredToko);
     setState(() {
       _tokoDalamRadius = filteredToko;
     });
@@ -231,68 +257,143 @@ class _LocationScreenState extends State<LocationScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      // appBar: AppBar(
-      //   title: Text("Nearby Store",
-      //       style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800)),
-      //   backgroundColor: Color(0xFF31394E),
-      // ),
       body: _isLoading
           ? Center(
               child: CircularProgressIndicator(),
             )
-          : Stack(
-              children: [
-                FlutterMap(
-                  mapController: _mapController,
-                  options: MapOptions(
-                    initialCenter: LatLng(_latitude ?? 0.0, _longitude ?? 0.0),
-                    initialZoom: 12,
-                  ),
-                  children: [
-                    openStreetMapLayer,
-                    MarkerLayer(
-                      markers: [
-                        Marker(
-                          point: LatLng(_latitude ?? 0.0, _longitude ?? 0.0),
-                          width: 60,
-                          height: 60,
-                          child: Icon(
-                            Icons.my_location,
-                            color: Color(0xFFC58189),
-                            size: 30,
-                          ),
-                        ),
-                        ..._tokoList.map(
-                          (toko) => Marker(
-                            point: LatLng(toko['lat'], toko['lon']),
-                            width: 50,
-                            height: 50,
-                            child: GestureDetector(
-                              onTap: () {
-                                _showTokoDetails(toko);
-                              },
-                              child: Icon(
-                                Icons.location_on,
-                                color: Color(0xFF31394E),
-                                size: 40,
+          : NestedScrollView(
+              headerSliverBuilder: (context, innerBoxIsScrolled) => [
+                SliverAppBar(
+                  pinned: true,
+                  floating: true,
+                  backgroundColor: Color(0xFF31394E),
+                  automaticallyImplyLeading: false,
+                  toolbarHeight: 80,
+                  title: Padding(
+                    padding: const EdgeInsets.only(bottom: 10.0),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: TextFormField(
+                            autocorrect: false,
+                            controller: _searchController,
+                            onFieldSubmitted: (value) async {
+                              if (value.trim().isEmpty) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                      content: Text(
+                                          'Masukkan kata kunci untuk mencari toko')),
+                                );
+                                return;
+                              }
+
+                              try {
+                                // Panggil API pencarian
+                                List<Map<String, dynamic>> results =
+                                    await searchStores(value);
+
+                                // Navigasikan ke halaman hasil pencarian
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => SearchResultPage(
+                                        searchResults: results),
+                                  ),
+                                );
+                              } catch (error) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                      content: Text(
+                                          'Gagal mencari toko: ${error.toString()}')),
+                                );
+                              }
+                            },
+                            decoration: InputDecoration(
+                              isDense: true,
+                              hintText: 'Search Store...',
+                              hintStyle: TextStyle(
+                                fontSize: 14,
+                                color: Color(0xFFC58189),
+                              ),
+                              enabledBorder: OutlineInputBorder(
+                                borderSide:
+                                    BorderSide(color: Colors.transparent),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              focusedBorder: OutlineInputBorder(
+                                borderSide:
+                                    BorderSide(color: Colors.transparent),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              filled: true,
+                              fillColor: Colors.white,
+                              prefixIcon: Icon(
+                                Icons.search,
+                                color: Color(0xFFC58189),
                               ),
                             ),
                           ),
                         ),
                       ],
                     ),
-                  ],
-                ),
-                Positioned(
-                  bottom: 20,
-                  right: 20,
-                  child: FloatingActionButton(
-                    backgroundColor: Color(0xFF31394E),
-                    onPressed: _goToMyLocation,
-                    child: Icon(Icons.my_location, color: Color(0xFFC58189)),
                   ),
+                  centerTitle: false,
+                  elevation: 0,
                 ),
               ],
+              body: Stack(
+                children: [
+                  FlutterMap(
+                    mapController: _mapController,
+                    options: MapOptions(
+                      initialCenter:
+                          LatLng(_latitude ?? 0.0, _longitude ?? 0.0),
+                      initialZoom: 12,
+                    ),
+                    children: [
+                      openStreetMapLayer,
+                      MarkerLayer(
+                        markers: [
+                          Marker(
+                            point: LatLng(_latitude ?? 0.0, _longitude ?? 0.0),
+                            width: 60,
+                            height: 60,
+                            child: Icon(
+                              Icons.my_location,
+                              color: Color(0xFFC58189),
+                              size: 30,
+                            ),
+                          ),
+                          ..._tokoDalamRadius.map(
+                            (toko) => Marker(
+                              point: LatLng(toko['lat'], toko['lon']),
+                              width: 50,
+                              height: 50,
+                              child: GestureDetector(
+                                onTap: () => _showTokoDetails(toko),
+                                child: Icon(
+                                  Icons.location_on,
+                                  color: Color(0xFF31394E),
+                                  size: 40,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                  Positioned(
+                    bottom: 20,
+                    right: 20,
+                    child: FloatingActionButton(
+                      backgroundColor: Color(0xFF31394E),
+                      onPressed: _goToMyLocation,
+                      child: Icon(Icons.my_location, color: Color(0xFFC58189)),
+                    ),
+                  ),
+                ],
+              ),
             ),
       bottomNavigationBar: BottomNavBar(
         selectedIndex: _selectedIndex,

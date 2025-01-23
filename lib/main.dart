@@ -1,36 +1,47 @@
 import 'dart:io';
 
 import 'package:firebase_core/firebase_core.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:marketplace_logamas/api/firebase_api.dart';
 import 'package:marketplace_logamas/screen/Barcode.dart';
 import 'package:marketplace_logamas/screen/Cart.dart';
+import 'package:marketplace_logamas/screen/ChangePasswordScreen.dart';
 import 'package:marketplace_logamas/screen/CheckoutPage.dart';
 import 'package:marketplace_logamas/screen/ConfirmationScreen.dart';
 import 'package:marketplace_logamas/screen/EditProfile.dart';
 import 'package:marketplace_logamas/screen/FAQ.dart';
+import 'package:marketplace_logamas/screen/ForgotPass.dart';
 import 'package:marketplace_logamas/screen/Home.dart';
 import 'package:marketplace_logamas/screen/LocationScreen.dart';
 import 'package:marketplace_logamas/screen/LoginPage.dart';
 import 'package:marketplace_logamas/screen/MenuScreen.dart';
 import 'package:marketplace_logamas/screen/Order.dart';
+import 'package:marketplace_logamas/screen/OrderDetail.dart';
 import 'package:marketplace_logamas/screen/PaymentSuccessScreen.dart';
 import 'package:marketplace_logamas/screen/ProductDetail.dart';
 import 'package:marketplace_logamas/screen/RegisterScreen.dart';
+import 'package:marketplace_logamas/screen/ResetPassword.dart';
 import 'package:marketplace_logamas/screen/Search.dart';
 import 'package:marketplace_logamas/screen/SearchResult.dart';
 import 'package:marketplace_logamas/screen/StorePage.dart';
+import 'package:marketplace_logamas/screen/Welcome.dart';
 
 final navigatorKey = GlobalKey<NavigatorState>();
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-
-  if (Platform.isAndroid) {
-    print('Running on Android');
-    await Firebase.initializeApp();
-    await FirebaseApi().initNotifications();
+  print(Platform);
+  if (!kIsWeb) {
+    // Hanya berjalan di Android/iOS
+    if (Platform.isAndroid) {
+      print('Running on Android');
+      await Firebase.initializeApp();
+      await FirebaseApi().initNotifications();
+    }
+  } else {
+    print('Running on Web');
   }
 
   runApp(MaterialApp.router(routerConfig: router));
@@ -44,23 +55,33 @@ final router = GoRouter(
   routes: [
     GoRoute(
       path: '/',
-      builder: (context, state) => HomePageWidget(),
+      builder: (context, state) => WelcomeScreen(),
       routes: [
+        GoRoute(
+          path: 'landing',
+          builder: (context, state) => WelcomeScreen(),
+        ),
         GoRoute(
           path: 'login',
           builder: (context, state) => LoginPage(),
+        ),
+        GoRoute(
+          path: 'detail',
+          builder: (context, state) => OrderDetailsPage(),
         ),
         GoRoute(
           path: '/search',
           builder: (context, state) => SearchPage(),
         ),
         GoRoute(
+          path: '/forgot-password',
+          builder: (context, state) => ForgotPasswordPage(),
+        ),
+        GoRoute(
           path: '/search-result',
           builder: (context, state) {
-            final extra =
-                state.extra as Map<String, dynamic>?;
-            final query =
-                extra?['query'] as String? ?? '';
+            final extra = state.extra as Map<String, dynamic>?;
+            final query = extra?['query'] as String? ?? '';
             return SearchResultPage(query: query);
           },
         ),
@@ -120,6 +141,17 @@ final router = GoRouter(
           builder: (context, state) => LocationScreen(),
         ),
         GoRoute(
+          path: '/email_verified',
+          builder: (context, state) => EmailVerifiedPage(),
+        ),
+        // Tambahkan ini ke router Anda
+        GoRoute(
+          path: '/change-password',
+          name: 'changePassword',
+          builder: (context, state) => ChangePasswordScreen(),
+        ),
+
+        GoRoute(
           path: 'store/:storeId', // Tambahkan parameter :storeId di path
           builder: (context, state) {
             final storeId = state
@@ -156,6 +188,25 @@ final router = GoRouter(
           },
         ),
         GoRoute(
+          path: '/reset-password',
+          builder: (context, state) {
+            // Ambil parameter `email` dan `token` dari query parameters
+            final email = state.uri.queryParameters['email'] ?? '';
+            final token = state.uri.queryParameters['token'] ?? '';
+
+            if (email.isEmpty || token.isEmpty) {
+              return const Scaffold(
+                body: Center(child: Text("Invalid reset password link")),
+              );
+            }
+
+            return ResetPasswordPage(
+              email: email,
+              token: token,
+            );
+          },
+        ),
+        GoRoute(
           path: 'confirmation',
           builder: (context, state) {
             final email = state.uri.queryParameters['email'] ?? 'Unknown';
@@ -175,6 +226,21 @@ final router = GoRouter(
     }
 
     final uriString = state.uri.toString();
+    if (state.uri
+        .toString()
+        .startsWith('marketplace-logamas://reset-password')) {
+      // Tangkap path dan query parameters dari deeplink
+
+      final token = state.uri.queryParameters['token'];
+      final email = state.uri.queryParameters['email'];
+      print(state.uri.queryParameters);
+      // Pastikan email dan token tersedia
+      if (email != null && token != null) {
+        return '/reset-password?email=$email&token=$token';
+      }
+
+      return '/reset-password?error=missing_parameters';
+    }
     if (uriString.startsWith('marketplace-logamas://')) {
       final parse = uriString
           .replaceFirst('marketplace-logamas://', '')

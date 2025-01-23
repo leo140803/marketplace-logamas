@@ -1,7 +1,11 @@
+import 'dart:math';
+
+import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:marketplace_logamas/widget/BottomNavigationBar.dart';
 import 'package:marketplace_logamas/widget/CategoryCard.dart';
 import 'package:marketplace_logamas/widget/Dialog.dart';
+import 'package:marketplace_logamas/widget/Legend.dart';
 import 'package:marketplace_logamas/widget/PriceBox.dart';
 import 'package:marketplace_logamas/widget/ProductCard.dart';
 import 'package:go_router/go_router.dart';
@@ -53,6 +57,33 @@ class _HomePageWidgetState extends State<HomePageWidget> {
     fetchProducts();
   }
 
+  String formatYAxisValue(int value) {
+    if (value >= 1000000) {
+      return '${(value / 1000000).toStringAsFixed(1)}M'; // Jutaan
+    } else if (value >= 1000) {
+      return '${(value / 1000).toStringAsFixed(1)}K'; // Ribuan
+    }
+    return value.toString(); // Default
+  }
+
+  Future<List<Map<String, dynamic>>> fetchHistoricalGoldPrices() async {
+    final response =
+        await http.get(Uri.parse('$apiBaseUrl/goldprice/historical'));
+
+    if (response.statusCode == 200) {
+      final data = json.decode(response.body);
+      return (data['data'] as List).map((item) {
+        return {
+          'price': item['price'],
+          'type': item['type'], // 0: Harga Beli, 1: Harga Jual
+          'scraped_at': DateTime.parse(item['scraped_at']),
+        };
+      }).toList();
+    } else {
+      throw Exception('Failed to fetch historical gold prices');
+    }
+  }
+
   Future<void> fetchProducts() async {
     try {
       final response = await http.get(Uri.parse('$apiBaseUrl/products'));
@@ -72,10 +103,10 @@ class _HomePageWidgetState extends State<HomePageWidget> {
 
   Future<Map<String, String>> fetchGoldPrices() async {
     final response = await http.get(Uri.parse('$apiBaseUrl/goldprice/now'));
-
+    print(jsonDecode(response.body));
     if (response.statusCode == 200) {
       final data = json.decode(response.body);
-      print(data);
+      print(data['data']);
       return {
         'hargaBeli': data['data']['hargaBeli'],
         'hargaJual': data['data']['hargaJual'],
@@ -177,6 +208,263 @@ class _HomePageWidgetState extends State<HomePageWidget> {
     navigate(context, index);
   }
 
+  void showGoldPriceChart(BuildContext context) async {
+    try {
+      final historicalData = await fetchHistoricalGoldPrices();
+
+      final hargaBeliData = historicalData
+          .where((item) => item['type'] == 0)
+          .map((item) => {
+                'x': item['scraped_at'].millisecondsSinceEpoch.toDouble(),
+                'y': item['price'].toDouble(),
+                'date': item['scraped_at'], // Simpan tanggal untuk tooltip
+              })
+          .toList();
+
+      final hargaJualData = historicalData
+          .where((item) => item['type'] == 1)
+          .map((item) => {
+                'x': item['scraped_at'].millisecondsSinceEpoch.toDouble(),
+                'y': item['price'].toDouble(),
+                'date': item['scraped_at'], // Simpan tanggal untuk tooltip
+              })
+          .toList();
+
+      // Cari nilai max dan min untuk Y axis
+      final maxY =
+          historicalData.map((e) => e['price']).reduce((a, b) => a > b ? a : b);
+      final minY =
+          historicalData.map((e) => e['price']).reduce((a, b) => a < b ? a : b);
+
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          backgroundColor: const Color(0xFF2E2E48),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          titlePadding: EdgeInsets.zero, // Hilangkan padding default title
+          contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+          insetPadding: EdgeInsets.symmetric(horizontal: 16),
+          title: Stack(
+            children: [
+              Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Text(
+                  'Gold Price Chart',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+              Positioned(
+                top: 12,
+                right: 12,
+                child: GestureDetector(
+                  onTap: () => Navigator.of(context).pop(),
+                  child: Icon(
+                    Icons.close,
+                    color: Colors.white,
+                    size: 24,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          content: Container(
+            height: 450,
+            width: double.maxFinite,
+            child: Column(
+              children: [
+                // Tambahkan legend
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    LegendItem(color: Colors.blue, text: 'Harga Beli'),
+                    SizedBox(width: 16),
+                    LegendItem(color: Colors.red, text: 'Harga Jual'),
+                  ],
+                ),
+                SizedBox(height: 16),
+                Expanded(
+                  child: LineChart(
+                    LineChartData(
+                      backgroundColor: const Color(0xFF2E2E48),
+                      borderData: FlBorderData(
+                        show: true,
+                        border: Border.all(color: Colors.white24),
+                      ),
+                      gridData: FlGridData(show: false), // Hilangkan grid
+                      titlesData: FlTitlesData(
+                        bottomTitles: AxisTitles(
+                          sideTitles: SideTitles(
+                            showTitles: true,
+                            reservedSize: 36, // Ukuran ruang label
+                            getTitlesWidget: (value, meta) {
+                              final date = DateTime.fromMillisecondsSinceEpoch(
+                                  value.toInt());
+                              final formattedDate =
+                                  "${date.day}-${date.month}-${date.year}";
+
+                              if (value == hargaBeliData.first['x']) {
+                                // Label pertama
+                                return Padding(
+                                  padding: EdgeInsets.only(top: 8.0, right: 30),
+                                  child: Text(
+                                    formattedDate,
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                );
+                              } else if (value == hargaBeliData.last['x']) {
+                                // Label terakhir dengan padding kanan
+                                return Padding(
+                                  padding:
+                                      EdgeInsets.only(top: 8.0, right: 16.0),
+                                  child: Text(
+                                    formattedDate,
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                );
+                              }
+                              return Container(); // Kosongkan untuk nilai lain
+                            },
+                          ),
+                        ),
+                        leftTitles: AxisTitles(
+                          sideTitles: SideTitles(
+                            showTitles: true,
+                            reservedSize: 40,
+                            getTitlesWidget: (value, meta) {
+                              if (value == minY || value == maxY) {
+                                return Text(
+                                  formatYAxisValue(
+                                      value.toInt()), // Format Y-axis
+                                  style: TextStyle(
+                                      color: Colors.white, fontSize: 10),
+                                );
+                              }
+                              return Container(); // Kosongkan untuk nilai lain
+                            },
+                          ),
+                        ),
+                        topTitles: AxisTitles(
+                          sideTitles: SideTitles(
+                              showTitles: false), // Hilangkan label atas
+                        ),
+                        rightTitles: AxisTitles(
+                          sideTitles: SideTitles(
+                              showTitles: false), // Hilangkan label kanan
+                        ),
+                      ),
+                      lineBarsData: [
+                        // Harga Beli
+                        LineChartBarData(
+                          spots: hargaBeliData
+                              .map((e) => FlSpot(e['x'], e['y']))
+                              .toList(),
+                          isCurved: true,
+                          barWidth: 4,
+                          color: Colors.blue,
+                          belowBarData: BarAreaData(
+                            show: true,
+                            gradient: LinearGradient(
+                              colors: [
+                                Colors.blue.withOpacity(0.3),
+                                Colors.transparent
+                              ],
+                              begin: Alignment.topCenter,
+                              end: Alignment.bottomCenter,
+                            ),
+                          ),
+                          dotData: FlDotData(show: true),
+                        ),
+                        // Harga Jual
+                        LineChartBarData(
+                          spots: hargaJualData
+                              .map((e) => FlSpot(e['x'], e['y']))
+                              .toList(),
+                          isCurved: true,
+                          barWidth: 4,
+                          color: Colors.red,
+                          belowBarData: BarAreaData(
+                            show: true,
+                            gradient: LinearGradient(
+                              colors: [
+                                Colors.red.withOpacity(0.3),
+                                Colors.transparent
+                              ],
+                              begin: Alignment.topCenter,
+                              end: Alignment.bottomCenter,
+                            ),
+                          ),
+                          dotData: FlDotData(show: true),
+                        ),
+                      ],
+                      lineTouchData: LineTouchData(
+                        touchTooltipData: LineTouchTooltipData(
+                          tooltipRoundedRadius: 10,
+                          tooltipPadding: EdgeInsets.all(8),
+                          getTooltipColor: (touchedSpot) {
+                            return Color(0xFFC58189).withOpacity(0.5);
+                          },
+                          getTooltipItems: (touchedSpots) {
+                            final xValue = touchedSpots.first.x.toInt();
+                            final date =
+                                DateTime.fromMillisecondsSinceEpoch(xValue);
+                            final formattedDate =
+                                "${date.day}-${date.month}-${date.year}";
+
+                            return touchedSpots.map((touchedSpot) {
+                              final yValue = touchedSpot.y.toInt();
+
+                              return LineTooltipItem(
+                                'Date: $formattedDate\nPrice: $yValue',
+                                TextStyle(
+                                  color: Colors.white, // Warna teks tooltip
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              );
+                            }).toList();
+                          },
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    } catch (e) {
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          title: Text('Error'),
+          content: Text('Failed to fetch historical gold prices'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: Text('Close'),
+            ),
+          ],
+        ),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
@@ -204,42 +492,42 @@ class _HomePageWidgetState extends State<HomePageWidget> {
                     child: Row(
                       children: [
                         Expanded(
-                          child: TextFormField(
-                            controller: _textController,
-                            focusNode: _textFieldFocusNode,
-                            readOnly:
-                                true, // Membuat field hanya dapat diklik, tidak bisa diketik
-                            onTap: () {
-                              // Navigasi ke halaman pencarian
-                              context.push(
-                                  '/search'); // Ganti dengan path halaman pencarian Anda
-                            },
-                            decoration: InputDecoration(
-                              isDense: true,
-                              hintText: 'Cari...',
-                              hintStyle: TextStyle(
-                                fontSize: 14,
-                                color: Color(0xFFC58189),
-                              ),
-                              enabledBorder: OutlineInputBorder(
-                                borderSide:
-                                    BorderSide(color: Colors.transparent),
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              focusedBorder: OutlineInputBorder(
-                                borderSide:
-                                    BorderSide(color: Colors.transparent),
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              filled: true,
-                              fillColor: Colors.white,
-                              prefixIcon: Icon(
-                                Icons.search,
-                                color: Color(0xFFC58189),
-                              ),
+                            child: TextFormField(
+                          controller: _textController,
+                          focusNode: _textFieldFocusNode,
+                          autocorrect: false,
+                          readOnly:
+                              false, // Sekarang pengguna dapat mengetik di dalam field
+                          onFieldSubmitted: (value) {
+                            // Ketika pengguna menekan Enter, arahkan ke halaman pencarian
+                            if (value.trim().isNotEmpty) {
+                              context.push('/search-result',
+                                  extra: {'query': value});
+                            }
+                          },
+                          decoration: InputDecoration(
+                            isDense: true,
+                            hintText: 'Search Product...',
+                            hintStyle: TextStyle(
+                              fontSize: 14,
+                              color: Color(0xFFC58189),
+                            ),
+                            enabledBorder: OutlineInputBorder(
+                              borderSide: BorderSide(color: Colors.transparent),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            focusedBorder: OutlineInputBorder(
+                              borderSide: BorderSide(color: Colors.transparent),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            filled: true,
+                            fillColor: Colors.white,
+                            prefixIcon: Icon(
+                              Icons.search,
+                              color: Color(0xFFC58189),
                             ),
                           ),
-                        ),
+                        )),
                       ],
                     ),
                   ),
@@ -256,30 +544,8 @@ class _HomePageWidgetState extends State<HomePageWidget> {
                             ),
                             onPressed: () {
                               getAccessToken();
-                              context.go('/cart');
+                              context.push('/cart');
                             },
-                          ),
-                          Positioned(
-                            right: 0,
-                            top: 0,
-                            child: Container(
-                              width: 18,
-                              height: 18,
-                              decoration: BoxDecoration(
-                                color: Color(0xFFC58189),
-                                shape: BoxShape.circle,
-                              ),
-                              child: Center(
-                                child: Text(
-                                  '3',
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 10,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ),
-                            ),
                           ),
                         ],
                       ),
@@ -405,7 +671,8 @@ class _HomePageWidgetState extends State<HomePageWidget> {
                                     decoration: BoxDecoration(
                                       image: DecorationImage(
                                         image: NetworkImage(
-                                          "$apiBaseUrlImage${store['store']['image_url']}",
+                                          "https://picsum.photos/200/200?random=${Random().nextInt(1000)}",
+                                          // "$apiBaseUrlImage${store['store']['image_url']}",
                                         ),
                                         fit: BoxFit.cover,
                                       ),
@@ -453,13 +720,35 @@ class _HomePageWidgetState extends State<HomePageWidget> {
                 SliverToBoxAdapter(
                   child: Padding(
                     padding: const EdgeInsets.fromLTRB(20, 20, 20, 8),
-                    child: Text(
-                      'Gold Price',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.black,
-                      ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          'Gold Price',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.black,
+                          ),
+                        ),
+                        Container(
+                          width: 40,
+                          height: 40,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color:
+                                Color(0xFF2E2E48), // Warna background lingkaran
+                          ),
+                          child: IconButton(
+                            icon:
+                                Icon(Icons.line_axis, color: Color(0xFFC58189)),
+                            onPressed: () {
+                              // Panggil fungsi untuk menampilkan chart pergerakan harga emas
+                              showGoldPriceChart(context);
+                            },
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ),
@@ -495,6 +784,11 @@ class _HomePageWidgetState extends State<HomePageWidget> {
                                   'Harga Jual', hargaJual, Color(0xFFC58189)),
                               priceBox(
                                   'Harga Beli', hargaBeli, Color(0xFFC58189)),
+                              // IconButton(
+                              //   icon: Icon(Icons.show_chart,
+                              //       color: Color(0xFFC58189)),
+                              //   onPressed: () => showGoldPriceChart(context),
+                              // ),
                             ],
                           ),
                         );

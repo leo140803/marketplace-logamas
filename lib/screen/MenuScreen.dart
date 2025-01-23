@@ -5,6 +5,8 @@ import 'dart:convert';
 import 'package:marketplace_logamas/function/Utils.dart';
 import 'package:marketplace_logamas/widget/BottomNavigationBar.dart';
 
+import 'package:shared_preferences/shared_preferences.dart';
+
 class MenuScreen extends StatefulWidget {
   const MenuScreen({Key? key}) : super(key: key);
 
@@ -25,7 +27,6 @@ class _MenuScreenState extends State<MenuScreen> {
     _loadAccessTokenAndUserData();
   }
 
-  // Load token and fetch user data
   Future<void> _loadAccessTokenAndUserData() async {
     try {
       final token = await getAccessToken();
@@ -44,11 +45,12 @@ class _MenuScreenState extends State<MenuScreen> {
   Future<void> _fetchUserProfile() async {
     try {
       final response = await http.get(
-        Uri.parse('http://127.0.0.1:3000/api/user/profile'),
+        Uri.parse('$apiBaseUrl/user/profile'),
         headers: {
           'Authorization': 'Bearer $_accessToken',
         },
       );
+      print(jsonDecode(response.body));
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
@@ -78,6 +80,15 @@ class _MenuScreenState extends State<MenuScreen> {
       _selectedIndex = index;
     });
     navigate(context, index);
+  }
+
+  Future<void> _logout() async {
+    // Hapus data dari SharedPreferences
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.clear();
+
+    // Arahkan ke halaman landing
+    context.go('/landing');
   }
 
   @override
@@ -166,11 +177,12 @@ class _MenuScreenState extends State<MenuScreen> {
                 children: [
                   ListTile(
                     leading: const Icon(Icons.receipt, color: Colors.grey),
-                    title: const Text('Daftar Transaksi'),
+                    title: const Text('Daftar Pembelian'),
                     trailing:
                         Icon(Icons.chevron_right, color: Colors.grey.shade400),
                     onTap: () => context.goNamed('order'),
                   ),
+                  _buildMenuItem('Daftar Penjualan', Icons.sell_outlined),
                   _buildMenuItem(
                       'Toko yang Di-follow', Icons.storefront_outlined),
                 ],
@@ -200,6 +212,26 @@ class _MenuScreenState extends State<MenuScreen> {
                         Icon(Icons.chevron_right, color: Colors.grey.shade400),
                     onTap: () => context.goNamed('myQR'),
                   ),
+                  ListTile(
+                    leading: const Icon(Icons.lock_outline, color: Colors.grey),
+                    title: const Text('Change Password'),
+                    trailing:
+                        Icon(Icons.chevron_right, color: Colors.grey.shade400),
+                    onTap: () => context.push(
+                        '/change-password'),
+                  ),
+                  const Divider(height: 1),
+                  // Logout Option
+                  ListTile(
+                    leading: const Icon(Icons.logout, color: Colors.red),
+                    title: const Text(
+                      'Logout',
+                      style: TextStyle(color: Colors.red),
+                    ),
+                    onTap: () {
+                      showLogoutDialog(context, _logout);
+                    },
+                  ),
                 ],
               ),
             ),
@@ -218,6 +250,125 @@ class _MenuScreenState extends State<MenuScreen> {
       leading: Icon(icon, color: Colors.grey),
       title: Text(title),
       trailing: Icon(Icons.chevron_right, color: Colors.grey.shade400),
+    );
+  }
+
+  void showLogoutDialog(BuildContext context, VoidCallback onLogout) {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return Dialog(
+          backgroundColor: const Color(0xFF31394E),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16.0),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                // Title
+                Text(
+                  'Logout',
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 10),
+                // Description
+                const Text(
+                  'Apakah Anda yakin ingin keluar?',
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: Colors.white70,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 20),
+                // Buttons
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: [
+                    // Cancel Button
+                    TextButton(
+                      onPressed: () {
+                        Navigator.of(context).pop(); // Tutup dialog
+                      },
+                      style: TextButton.styleFrom(
+                        padding: EdgeInsets.zero,
+                      ),
+                      child: Container(
+                        width: 100,
+                        decoration: BoxDecoration(
+                          gradient: const LinearGradient(
+                            colors: [
+                              Color(0xFFE8C4BD),
+                              Color(0xFFC58189),
+                            ],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
+                          borderRadius: BorderRadius.circular(30),
+                        ),
+                        padding: const EdgeInsets.symmetric(
+                            vertical: 15, horizontal: 20),
+                        alignment: Alignment.center,
+                        child: const Text(
+                          "Batal",
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ),
+                    // Logout Button
+                    TextButton(
+                      onPressed: () {
+                        Navigator.of(context).pop(); // Tutup dialog
+                        onLogout(); // Panggil fungsi logout
+                      },
+                      style: TextButton.styleFrom(
+                        padding: EdgeInsets.zero,
+                      ),
+                      child: Container(
+                        width: 100,
+                        decoration: BoxDecoration(
+                          gradient: const LinearGradient(
+                            colors: [
+                              Color(0xFFC58189),
+                              Color(0xFFE8C4BD),
+                            ],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
+                          borderRadius: BorderRadius.circular(30),
+                        ),
+                        padding: const EdgeInsets.symmetric(
+                            vertical: 15, horizontal: 20),
+                        alignment: Alignment.center,
+                        child: const Text(
+                          "Logout",
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 }

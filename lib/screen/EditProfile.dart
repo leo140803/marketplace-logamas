@@ -18,7 +18,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   String? _accessToken;
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _phoneController = TextEditingController();
-  bool _isLoading = false;
+  bool _isLoading = true;
 
   @override
   void initState() {
@@ -26,16 +26,21 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     _loadAccessTokenAndUserData();
   }
 
-  // Load access token and fetch profile data
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _phoneController.dispose();
+    super.dispose();
+  }
+
   Future<void> _loadAccessTokenAndUserData() async {
-    setState(() {
-      _isLoading = true;
-    });
     try {
       final token = await getAccessToken();
-      setState(() {
-        _accessToken = token;
-      });
+      if (mounted) {
+        setState(() {
+          _accessToken = token;
+        });
+      }
 
       if (_accessToken != null) {
         await _fetchUserProfile();
@@ -43,17 +48,18 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     } catch (e) {
       print('Error loading access token or user data: $e');
     } finally {
-      setState(() {
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
   }
 
-  // Fetch user profile from API
   Future<void> _fetchUserProfile() async {
     try {
       final response = await http.get(
-        Uri.parse('http://127.0.0.1:3000/api/user/profile'),
+        Uri.parse('$apiBaseUrl/user/profile'),
         headers: {
           'Authorization': 'Bearer $_accessToken',
         },
@@ -62,14 +68,17 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
 
-        // Hapus kode negara '62' saat ditampilkan di input field
         String phone = data['data']['phone'];
         if (phone.startsWith('62')) {
           phone = phone.substring(2); // Hilangkan '62' di awal
         }
 
-        _nameController.text = data['data']['name'];
-        _phoneController.text = phone;
+        if (mounted) {
+          setState(() {
+            _nameController.text = data['data']['name'];
+            _phoneController.text = phone;
+          });
+        }
       } else {
         print('Failed to fetch user profile: ${response.statusCode}');
       }
@@ -78,18 +87,16 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     }
   }
 
-  // Update profile using API
   Future<void> _updateProfile() async {
     if (_formKey.currentState!.validate()) {
       setState(() {
         _isLoading = true;
       });
       try {
-        // Tambahkan kembali '62' ke nomor telepon sebelum dikirim ke API
         final phoneWithCountryCode = '62${_phoneController.text.trim()}';
 
         final response = await http.put(
-          Uri.parse('http://127.0.0.1:3000/api/user/update-details'),
+          Uri.parse('$apiBaseUrl/user/update-details'),
           headers: {
             'Authorization': 'Bearer $_accessToken',
             'Content-Type': 'application/json',
@@ -100,56 +107,48 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           }),
         );
 
-        print(jsonDecode(response.body));
-
         if (response.statusCode == 200) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: const Text(
-                'Profile updated successfully',
-                style: TextStyle(
-                  color: Colors.white, // Warna teks
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: const Text('Profile updated successfully'),
+                backgroundColor: const Color(0xFF31394E),
+                behavior: SnackBarBehavior.floating,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10.0),
                 ),
               ),
-              backgroundColor:
-                  const Color(0xFF31394E), // Ganti dengan warna palet Anda
-              behavior: SnackBarBehavior.floating, // Snackbar melayang
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10.0),
-              ),
-            ),
-          );
-          context.go('/information');
+            );
+            context.push('/information');
+          }
         } else {
           final data = jsonDecode(response.body);
-          print('Failed to update profile: ${data['message']}');
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                data['message'] ?? 'Update failed',
-                style: const TextStyle(
-                  color: Colors
-                      .white, // Warna teks agar kontras dengan latar belakang
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(data['message'] ?? 'Update failed'),
+                backgroundColor: const Color(0xFFC58189),
+                behavior: SnackBarBehavior.floating,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10.0),
                 ),
               ),
-              backgroundColor: const Color(
-                  0xFFC58189), // Ganti dengan warna palet error Anda
-              behavior: SnackBarBehavior.floating, // Snackbar melayang
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10.0),
-              ),
-            ),
-          );
+            );
+          }
         }
       } catch (e) {
         print('Error updating profile: $e');
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('An error occurred while updating')),
-        );
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('An error occurred while updating')),
+          );
+        }
       } finally {
-        setState(() {
-          _isLoading = false;
-        });
+        if (mounted) {
+          setState(() {
+            _isLoading = false;
+          });
+        }
       }
     }
   }
@@ -164,11 +163,12 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               fontWeight: FontWeight.bold,
             )),
         leading: IconButton(
-            onPressed: () => context.go('/information'),
-            icon: Icon(
-              Icons.arrow_back,
-              color: Colors.white,
-            )),
+          onPressed: () => context.go('/information'),
+          icon: const Icon(
+            Icons.arrow_back,
+            color: Colors.white,
+          ),
+        ),
         backgroundColor: const Color(0xFF31394E),
       ),
       body: _isLoading
@@ -191,26 +191,20 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                     ),
                     const SizedBox(height: 16),
                     FieldSquareEdit(
-                        controller: _nameController,
-                        isPassword: false,
-                        hintText: 'Name',
-                        prefixIcon: Icons.person),
+                      controller: _nameController,
+                      isPassword: false,
+                      hintText: 'Name',
+                      prefixIcon: Icons.person,
+                    ),
                     const SizedBox(height: 16),
                     PhoneNumberField(controller: _phoneController),
-                    // FieldSquareEdit(
-                    //     controller: _phoneController,
-                    //     isPassword: false,
-                    //     hintText: 'Phone Number',
-                    //     prefixIcon: Icons.phone),
                     const SizedBox(height: 32),
                     GestureDetector(
-                      onTap: () {
-                        _updateProfile();
-                      },
+                      onTap: _updateProfile,
                       child: Container(
                         width: double.infinity,
                         decoration: BoxDecoration(
-                          gradient: LinearGradient(
+                          gradient: const LinearGradient(
                             colors: [
                               Color(0xFFE8C4BD),
                               Color(0xFFC58189),
@@ -221,7 +215,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                           borderRadius: BorderRadius.circular(30),
                         ),
                         padding: const EdgeInsets.symmetric(
-                            vertical: 15, horizontal: 20),
+                          vertical: 15,
+                          horizontal: 20,
+                        ),
                         alignment: Alignment.center,
                         child: const Text(
                           "Save Changes",

@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:marketplace_logamas/function/Utils.dart';
 import 'package:marketplace_logamas/widget/Dialog.dart';
@@ -49,6 +50,7 @@ class _LoginPageState extends State<LoginPage> {
           'password': password,
         }),
       );
+      Navigator.of(context, rootNavigator: true).pop();
       if (response.statusCode == 201) {
         final data = jsonDecode(response.body);
         print(data['data']);
@@ -60,13 +62,15 @@ class _LoginPageState extends State<LoginPage> {
         prefs.setString('access_token', accessToken);
         prefs.setString('name', name);
         prefs.setString('user_id', userId);
-        if (Platform.isAndroid) {
-          await addDeviceToken(accessToken, context);
+        if (!kIsWeb) {
+          // Hanya berjalan di Android/iOS
+          if (Platform.isAndroid) {
+            await addDeviceToken(accessToken, context);
+          }
+        } else {
+          print('Running on Web');
         }
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          context
-              .go('/home'); // Pindah ke halaman setelah frame saat ini selesai
-        });
+        context.push('/home');
       } else {
         final responseBody = jsonDecode(response.body);
         final errorMessage =
@@ -124,9 +128,14 @@ class _LoginPageState extends State<LoginPage> {
             icon: Icon(Icons.arrow_back),
             color: Colors.white,
             onPressed: () {
-              Navigator.pushReplacementNamed(context, '/landing');
+              context.pop();
             }),
         backgroundColor: const Color(0xFF31394E),
+        title: Text("Login",
+            style: TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.bold,
+            )),
       ),
       body: Center(
         child: SingleChildScrollView(
@@ -149,7 +158,34 @@ class _LoginPageState extends State<LoginPage> {
                   text: 'Password',
                   logo: Icons.lock,
                 ),
-                SizedBox(height: 30),
+                SizedBox(height: 10),
+
+                // Tombol Forgot Password
+                Padding(
+                  padding: const EdgeInsets.only(
+                      right: 30.0), // Atur padding dari kanan
+                  child: Align(
+                    alignment: Alignment.centerRight,
+                    child: GestureDetector(
+                      onTap: () {
+                        context.push(
+                            '/forgot-password'); // Navigasi ke halaman forgot password
+                      },
+                      child: Text(
+                        'Forgot Password?',
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Color(0xFFC58189),
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+
+                SizedBox(height: 20),
+
+                // Tombol Login
                 GestureDetector(
                   onTap: () {
                     _login();
@@ -181,9 +217,11 @@ class _LoginPageState extends State<LoginPage> {
                   ),
                 ),
                 SizedBox(height: 20),
+
+                // Tombol Register
                 TextButton(
                   onPressed: () {
-                    Navigator.pushNamed(context, '/register');
+                    context.push('/register');
                   },
                   child: RichText(
                     text: TextSpan(
