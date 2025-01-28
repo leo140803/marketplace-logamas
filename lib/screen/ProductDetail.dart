@@ -605,65 +605,105 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                   // Store Card
                   GestureDetector(
                     onTap: () {
-                      final storeId = product['store']
-                          ['store_id']; // Ambil store_id dari store
-                      context.push(
-                        '/store/$storeId', // Gunakan storeId sebagai bagian dari path
-                      );
+                      final storeId = product['store']['store_id'];
+                      context
+                          .push('/store/$storeId'); // Navigasi ke halaman store
                     },
-                    // onTap: () {
-                    //   context.go('/store',
-                    //       extra: {'storeId': product['store_id']});
-                    // },
                     child: Card(
-                      elevation: 4,
+                      elevation: 6, // Sedikit bayangan untuk tampilan modern
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(16),
                       ),
-                      child: Padding(
-                        padding: const EdgeInsets.all(16.0),
+                      margin: const EdgeInsets.symmetric(
+                          vertical: 8, horizontal: 5),
+                      child: Container(
+                        decoration: BoxDecoration(
+                          gradient: const LinearGradient(
+                            colors: [
+                              Color(0xFFF4F4F4),
+                              Color(0xFFE8E8E8)
+                            ], // Gradasi warna
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        padding: const EdgeInsets.all(16),
                         child: Row(
                           children: [
-                            ClipRRect(
-                              borderRadius: BorderRadius.circular(
-                                  8), // Optional: Rounded corners
-                              child: Image.network(
-                                "$apiBaseUrlImage${product['store']['image_url'] ?? ''}", // Full URL for the image
-                                height: 40,
-                                width: 40,
-                                fit: BoxFit.cover,
-                                errorBuilder: (context, error, stackTrace) {
-                                  return const Icon(
-                                    Icons.store,
-                                    size: 40,
-                                    color: Color(0xFF31394E),
-                                  ); // Fallback icon if image fails to load
-                                },
+                            // Gambar Store
+                            Container(
+                              height: 60,
+                              width: 60,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle, // Gambar menjadi bulat
+                                border: Border.all(
+                                  color: Colors.white,
+                                  width: 2,
+                                ),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withOpacity(0.1),
+                                    blurRadius: 10,
+                                    offset: const Offset(0, 5),
+                                  ),
+                                ],
+                              ),
+                              child: ClipOval(
+                                child: Image.network(
+                                  "$apiBaseUrlImage${product['store']['image_url'] ?? ''}",
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (context, error, stackTrace) {
+                                    return Container(
+                                      color: Colors.grey[300],
+                                      child: const Icon(
+                                        Icons.store,
+                                        size: 30,
+                                        color: Colors.grey,
+                                      ),
+                                    );
+                                  },
+                                ),
                               ),
                             ),
                             const SizedBox(width: 16),
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  product['store']['store_name'] ??
-                                      'Store Name',
-                                  style: const TextStyle(
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.bold,
+                            // Informasi Store
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    product['store']['store_name'] ??
+                                        'Store Name',
+                                    style: const TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.bold,
+                                      color: Color(0xFF31394E),
+                                    ),
                                   ),
-                                ),
-                                const Text(
-                                  'Tap to view store',
-                                  style: TextStyle(color: Colors.grey),
-                                ),
-                              ],
+                                  const SizedBox(height: 4),
+                                  const Text(
+                                    'Tap to view store',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: Colors.grey,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            // Ikon Panah
+                            const Icon(
+                              Icons.arrow_forward_ios,
+                              size: 16,
+                              color: Colors.grey,
                             ),
                           ],
                         ),
                       ),
                     ),
                   ),
+
                   const SizedBox(height: 10),
                   // List of Reviews
                   if (product['TransactionItem'] != null &&

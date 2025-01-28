@@ -261,24 +261,27 @@ class _CartPageState extends State<CartPage> {
                                   padding: const EdgeInsets.only(bottom: 10),
                                   child: Row(
                                     children: [
-                                      Checkbox(
-                                        shape: RoundedRectangleBorder(
-                                          borderRadius:
-                                              BorderRadius.circular(4),
+                                      Padding(
+                                        padding: const EdgeInsets.only(left:15.0),
+                                        child: Checkbox(
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius:
+                                                BorderRadius.circular(4),
+                                          ),
+                                          activeColor: const Color(0xFFC58189),
+                                          value: _selectedProducts[storeIndex]
+                                              [productIndex],
+                                          onChanged: (bool? value) {
+                                            setState(() {
+                                              _selectedProducts[storeIndex]
+                                                  [productIndex] = value ?? false;
+                                              _selectedStores[storeIndex] =
+                                                  _selectedProducts[storeIndex]
+                                                      .every(
+                                                          (selected) => selected);
+                                            });
+                                          },
                                         ),
-                                        activeColor: const Color(0xFFC58189),
-                                        value: _selectedProducts[storeIndex]
-                                            [productIndex],
-                                        onChanged: (bool? value) {
-                                          setState(() {
-                                            _selectedProducts[storeIndex]
-                                                [productIndex] = value ?? false;
-                                            _selectedStores[storeIndex] =
-                                                _selectedProducts[storeIndex]
-                                                    .every(
-                                                        (selected) => selected);
-                                          });
-                                        },
                                       ),
                                       ClipRRect(
                                         borderRadius: BorderRadius.circular(10),

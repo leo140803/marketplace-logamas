@@ -50,6 +50,12 @@ Future<String?> getUsername() async {
   return name;
 }
 
+Future<String?> getEmail() async {
+  SharedPreferences prefs = await SharedPreferences.getInstance();
+  String? email = prefs.getString('email');
+  return email;
+}
+
 String formatCurrency(double amount) {
   final format = NumberFormat("#,##0", "id_ID"); // Menggunakan format Indonesia
   return format.format(amount);

@@ -449,7 +449,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
                             else
                               ListView.builder(
                                 shrinkWrap: true,
-                                physics: NeverScrollableScrollPhysics(),
+                                physics: const NeverScrollableScrollPhysics(),
                                 itemCount: notApplicableVouchers.length,
                                 itemBuilder: (context, index) {
                                   final voucher = notApplicableVouchers[index];
@@ -463,6 +463,8 @@ class _CheckoutPageState extends State<CheckoutPage> {
                                     double.parse(
                                         voucher['max_discount'].toString()),
                                     isNotApplicable: true,
+                                    subTotal:
+                                        totalPrice, // Kirim total harga transaksi ke widget
                                   );
                                 },
                               ),
@@ -543,28 +545,32 @@ class _CheckoutPageState extends State<CheckoutPage> {
     double minimumPurchase,
     double maxDiscount, {
     bool isSelected = false,
-    bool isNotApplicable = false, // Parameter to decide color
+    bool isNotApplicable =
+        false, // Menentukan apakah voucher berlaku atau tidak
     VoidCallback? onTap,
+    double?
+        subTotal, // Tambahkan sub-total transaksi untuk perhitungan kekurangan
   }) {
+    final shortfall = minimumPurchase - (subTotal ?? 0); // Hitung kekurangan
+
     return GestureDetector(
-      onTap: !isNotApplicable
-          ? onTap
-          : null, // Disable tap for not applicable vouchers
+      onTap: !isNotApplicable ? onTap : null,
       child: Card(
         color: isNotApplicable
-            ? Colors.grey[300] // Grey for not applicable vouchers
+            ? Colors.grey[200]
             : isSelected
-                ? Color(0xFFC58189)
-                : Color(0xFF31394E),
-        margin: EdgeInsets.symmetric(vertical: 4),
+                ? const Color(0xFFC58189)
+                : const Color(0xFF31394E),
+        margin: const EdgeInsets.symmetric(vertical: 8),
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(10),
+          borderRadius: BorderRadius.circular(12),
         ),
         child: Padding(
           padding: const EdgeInsets.all(16.0),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // Nama Voucher
               Text(
                 name,
                 style: TextStyle(
@@ -573,7 +579,8 @@ class _CheckoutPageState extends State<CheckoutPage> {
                   color: isNotApplicable ? Colors.grey[700] : Colors.white,
                 ),
               ),
-              SizedBox(height: 5),
+              const SizedBox(height: 5),
+              // Informasi Diskon dan Detail
               Text(
                 discount,
                 style: TextStyle(
@@ -582,7 +589,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
                 ),
               ),
               Text(
-                'Max Discount: Rp ${formatCurrency(maxDiscount)}',
+                'Maks. Diskon: Rp ${formatCurrency(maxDiscount)}',
                 style: TextStyle(
                   fontSize: 14,
                   color: isNotApplicable ? Colors.grey[600] : Colors.white70,
@@ -603,12 +610,33 @@ class _CheckoutPageState extends State<CheckoutPage> {
                 ),
               ),
               Text(
-                'Min. Transaction: ${formatCurrency(minimumPurchase)}',
+                'Min. Transaksi: Rp ${formatCurrency(minimumPurchase)}',
                 style: TextStyle(
                   fontSize: 14,
                   color: isNotApplicable ? Colors.grey[600] : Colors.white70,
                 ),
               ),
+              // Keterangan untuk kekurangan
+              if (isNotApplicable && shortfall > 0)
+                Padding(
+                  padding: const EdgeInsets.only(top: 10.0),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.info_outline, color: Color(0xFFD47F00)),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'Tambah Rp ${formatCurrency(shortfall)} untuk menggunakan voucher ini.',
+                          style: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFFD47F00),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
             ],
           ),
         ),
