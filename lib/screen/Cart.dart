@@ -45,6 +45,7 @@ class _CartPageState extends State<CartPage> {
       final response = await http.get(Uri.parse('$apiBaseUrl/cart/$userId'));
       if (response.statusCode == 200) {
         final responseData = json.decode(response.body);
+        print(responseData);
         setState(() {
           cartData =
               (responseData['data'] as List).cast<Map<String, dynamic>>();
@@ -262,7 +263,8 @@ class _CartPageState extends State<CartPage> {
                                   child: Row(
                                     children: [
                                       Padding(
-                                        padding: const EdgeInsets.only(left:15.0),
+                                        padding:
+                                            const EdgeInsets.only(left: 15.0),
                                         child: Checkbox(
                                           shape: RoundedRectangleBorder(
                                             borderRadius:
@@ -274,11 +276,12 @@ class _CartPageState extends State<CartPage> {
                                           onChanged: (bool? value) {
                                             setState(() {
                                               _selectedProducts[storeIndex]
-                                                  [productIndex] = value ?? false;
+                                                      [productIndex] =
+                                                  value ?? false;
                                               _selectedStores[storeIndex] =
                                                   _selectedProducts[storeIndex]
-                                                      .every(
-                                                          (selected) => selected);
+                                                      .every((selected) =>
+                                                          selected);
                                             });
                                           },
                                         ),
@@ -286,11 +289,22 @@ class _CartPageState extends State<CartPage> {
                                       ClipRRect(
                                         borderRadius: BorderRadius.circular(10),
                                         child: Image.network(
-                                          product["productImage"] ??
-                                              "https://picsum.photos/200/200?random=${Random().nextInt(1000)}",
+                                          "http://127.0.0.1:3000/uploads/${product['productImage']}",
                                           width: 80,
                                           height: 80,
                                           fit: BoxFit.cover,
+                                          errorBuilder:
+                                              (context, error, stackTrace) {
+                                            return Container(
+                                              width: 80,
+                                              height: 80,
+                                              color: Colors.grey[200],
+                                              child: const Icon(
+                                                  Icons.broken_image,
+                                                  size: 50,
+                                                  color: Colors.grey),
+                                            );
+                                          },
                                         ),
                                       ),
                                       const SizedBox(width: 10),

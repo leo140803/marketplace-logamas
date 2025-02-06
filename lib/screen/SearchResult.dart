@@ -136,15 +136,15 @@ class _SearchResultPageState extends State<SearchResultPage> {
 
   String _getMetalTypeName(int metalType) {
     switch (metalType) {
-      case 0:
-        return 'Gold';
       case 1:
-        return 'Silver';
+        return 'Gold';
       case 2:
-        return 'Red Gold';
+        return 'Silver';
       case 3:
-        return 'White Gold';
+        return 'Red Gold';
       case 4:
+        return 'White Gold';
+      case 5:
         return 'Platinum';
       default:
         return 'Unknown';

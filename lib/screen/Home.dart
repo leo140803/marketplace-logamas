@@ -671,7 +671,7 @@ class _HomePageWidgetState extends State<HomePageWidget> {
                                     decoration: BoxDecoration(
                                       image: DecorationImage(
                                         image: NetworkImage(
-                                          "https://picsum.photos/200/200?random=${Random().nextInt(1000)}",
+                                          "$apiBaseUrlImage${store['store']['logo']}",
                                           // "$apiBaseUrlImage${store['store']['image_url']}",
                                         ),
                                         fit: BoxFit.cover,

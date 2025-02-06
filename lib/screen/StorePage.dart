@@ -86,17 +86,18 @@ class _StorePageState extends State<StorePage> {
   }
 
 // Fungsi untuk mengubah metal_type menjadi string deskriptif
+// 1: Gold, 2: Silver, 3: Red Gold, 4: White Gold, 5: Platinum
   String _getMetalTypeName(int metalType) {
     switch (metalType) {
-      case 0:
-        return 'Gold';
       case 1:
-        return 'Silver';
+        return 'Gold';
       case 2:
-        return 'Red Gold';
+        return 'Silver';
       case 3:
-        return 'White Gold';
+        return 'Red Gold';
       case 4:
+        return 'White Gold';
+      case 5:
         return 'Platinum';
       default:
         return 'Unknown';
@@ -886,7 +887,7 @@ class _StorePageState extends State<StorePage> {
                                       backgroundColor: Colors.white,
                                       child: ClipOval(
                                         child: Image.network(
-                                          '$apiBaseUrlImage${storeData!["image_url"]}',
+                                          '$apiBaseUrlImage${storeData!["logo"]}',
                                           fit: BoxFit.cover,
                                           width: 60,
                                           height: 60,

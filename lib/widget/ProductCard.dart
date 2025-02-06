@@ -20,8 +20,9 @@ Card ProductCard(Map<String, dynamic> product) {
               borderRadius: BorderRadius.vertical(top: Radius.circular(8)),
               image: DecorationImage(
                 image: NetworkImage(
-                  product['image_url'] ??
-                      'https://picsum.photos/200/200?random=${Random().nextInt(1000)}',
+                  product['images'] != null
+                      ? 'http://127.0.0.1:3000/uploads/${product['images'][0]}'
+                      : 'https://picsum.photos/200/200?random=${Random().nextInt(1000)}',
                 ),
                 fit: BoxFit.cover,
               ),
@@ -63,14 +64,20 @@ Card ProductCard(Map<String, dynamic> product) {
                 children: [
                   Icon(Icons.star, size: 14, color: Colors.orange),
                   SizedBox(width: 4),
-                  Text(
-                    '${product['rating']?.toStringAsFixed(1) ?? 'No Rate'} | ${product['totalSold'] ?? 0} Terjual',
-                    style: TextStyle(fontSize: 12),
-                  ),
+                  Builder(builder: (context) {
+                    final avgRating = product['average_rating'] ?? 0;
+                    final totalSold = product['totalSold'] ?? 0;
+                    final displayText = (avgRating == 0 && totalSold == 0)
+                        ? 'No Rate | $totalSold Terjual'
+                        : '${avgRating.toStringAsFixed(1)} | $totalSold Terjual';
+                    return Text(
+                      displayText,
+                      style: TextStyle(fontSize: 12),
+                    );
+                  }),
                 ],
               ),
               SizedBox(height: 4),
-
               // Location Info
               Row(
                 children: [

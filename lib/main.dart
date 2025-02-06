@@ -49,7 +49,7 @@ void main() async {
 
 final router = GoRouter(
   // '/store/72574284-33f6-4ca8-a725-f00df1a62291',
-  initialLocation: '/landing',
+  initialLocation: '/order',
   navigatorKey: navigatorKey,
   debugLogDiagnostics: true,
   routes: [
@@ -66,9 +66,13 @@ final router = GoRouter(
           builder: (context, state) => LoginPage(),
         ),
         GoRoute(
-          path: 'detail',
-          builder: (context, state) => OrderDetailsPage(),
+          path: 'detail/:transactionId',
+          builder: (context, state) {
+            final transactionId = state.pathParameters['transactionId']!;
+            return OrderDetailsPage(transactionId: transactionId);
+          },
         ),
+
         GoRoute(
           path: '/search',
           builder: (context, state) => SearchPage(),

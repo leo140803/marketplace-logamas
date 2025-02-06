@@ -29,15 +29,75 @@ class _CheckoutPageState extends State<CheckoutPage> {
   String? selectedVoucher; // Nama voucher yang diterapkan
   String? selectedVoucherOwnedId; // ID voucher yang dimiliki
   String? selectedVoucherId; // ID voucher
+  double taxAmount = 0; // Pajak yang diterapkan
+  String? _accessToken;
+  String _name = 'Loading...';
+  String _email = 'Loading...';
+  String _phone = 'Loading...';
+  String _userId = 'Loading...';
 
   @override
   void initState() {
     super.initState();
     storeProducts = widget.cartData['data'][0];
     print(widget.cartData);
+
+    // Calculate initial total price
     initialTotalPrice = _calculateTotalPrice();
-    totalPrice = initialTotalPrice; // Awalnya sama dengan total harga awal
+
+    // Now calculate the tax
+    _calculateTax();
+
+    // Calculate the total price after tax and discount
+    totalPrice = initialTotalPrice + taxAmount - discount;
+
+    // Fetch any available voucher data
     _fetchVoucherData();
+
+    _loadAccessTokenAndUserData();
+  }
+
+  Future<void> _loadAccessTokenAndUserData() async {
+    try {
+      final token = await getAccessToken();
+      final userId = await getUserId();
+      setState(() {
+        _accessToken = token;
+        _userId = userId;
+      });
+
+      if (_accessToken != null) {
+        await _fetchUserProfile();
+      }
+    } catch (e) {
+      print('Error loading access token or user data: $e');
+    }
+  }
+
+  Future<void> _fetchUserProfile() async {
+    try {
+      final response = await http.get(
+        Uri.parse('$apiBaseUrl/user/profile'),
+        headers: {
+          'Authorization': 'Bearer $_accessToken',
+        },
+      );
+      print(jsonDecode(response.body));
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        print(data);
+        setState(() {
+          _name = data['data']['name'];
+          _email = data['data']['email'];
+          _phone = data['data']['phone'];
+        });
+      } else {
+        print('Failed to fetch user profile: ${response.statusCode}');
+      }
+    } catch (e) {
+      print('Error fetching user profile: $e');
+    }
   }
 
   double _calculateTotalPrice() {
@@ -45,7 +105,24 @@ class _CheckoutPageState extends State<CheckoutPage> {
     for (var product in storeProducts['ProductList']) {
       price += product['productPrice'] * product['quantity'];
     }
+    print("Initial Total Price: $price");
     return price;
+  }
+
+  void _calculateTax() {
+    final taxPercentage =
+        double.tryParse(storeProducts['store']['tax_percentage'].toString()) ??
+            0.0;
+    print("Tax Percentage: $taxPercentage");
+    print("Initial Total Price: $initialTotalPrice");
+
+    // Calculate tax
+    taxAmount = (initialTotalPrice * taxPercentage) / 100;
+    print("Tax Amount: $taxAmount");
+
+    // Update the total price with the tax applied
+    totalPrice = initialTotalPrice + taxAmount - discount;
+    print("Total Price after Tax: $totalPrice");
   }
 
   int _calculateTotalPoints() {
@@ -65,32 +142,54 @@ class _CheckoutPageState extends State<CheckoutPage> {
   void _applyVoucher(Map<String, dynamic>? voucher) {
     setState(() {
       if (voucher == null) {
-        // Reset jika voucher dihapus
         discount = 0;
-        totalPrice = initialTotalPrice;
+        totalPrice = initialTotalPrice + taxAmount;
         selectedVoucher = null;
         selectedVoucherOwnedId = null;
         selectedVoucherId = null;
       } else {
-        // Hitung diskon berdasarkan persentase
         double calculatedDiscount =
             (voucher['discount_amount'] / 100) * initialTotalPrice;
-
-        // Batasi diskon hingga nilai max_discount
         discount = calculatedDiscount > voucher['max_discount']
             ? voucher['max_discount']
             : calculatedDiscount;
-
-        // Perbarui total harga setelah diskon
-        totalPrice = initialTotalPrice - discount;
-
-        // Simpan informasi voucher yang diterapkan
+        totalPrice = initialTotalPrice + taxAmount - discount;
         selectedVoucher = voucher['voucher_name'];
         selectedVoucherOwnedId = voucher['voucher_owned_id'];
         selectedVoucherId = voucher['voucher_id'];
       }
     });
   }
+
+  // void _applyVoucher(Map<String, dynamic>? voucher) {
+  //   setState(() {
+  //     if (voucher == null) {
+  //       // Reset jika voucher dihapus
+  //       discount = 0;
+  //       totalPrice = initialTotalPrice;
+  //       selectedVoucher = null;
+  //       selectedVoucherOwnedId = null;
+  //       selectedVoucherId = null;
+  //     } else {
+  //       // Hitung diskon berdasarkan persentase
+  //       double calculatedDiscount =
+  //           (voucher['discount_amount'] / 100) * initialTotalPrice;
+
+  //       // Batasi diskon hingga nilai max_discount
+  //       discount = calculatedDiscount > voucher['max_discount']
+  //           ? voucher['max_discount']
+  //           : calculatedDiscount;
+
+  //       // Perbarui total harga setelah diskon
+  //       totalPrice = initialTotalPrice - discount;
+
+  //       // Simpan informasi voucher yang diterapkan
+  //       selectedVoucher = voucher['voucher_name'];
+  //       selectedVoucherOwnedId = voucher['voucher_owned_id'];
+  //       selectedVoucherId = voucher['voucher_id'];
+  //     }
+  //   });
+  // }
 
   List<Map<String, dynamic>> voucherList = [
     {
@@ -110,151 +209,108 @@ class _CheckoutPageState extends State<CheckoutPage> {
     },
   ];
 
-  void _checkout() async {
+  Future<void> _checkout() async {
     try {
       final uuid = Uuid();
       final orderId = uuid.v4();
+
+      // Load user data before proceeding
+      await _loadAccessTokenAndUserData();
+
+      if (_name == null || _email == null || _phone == null) {
+        throw Exception("User data is missing. Please log in again.");
+      }
+
+      // Map items from storeProducts
       final List<Map<String, dynamic>> items = storeProducts['ProductList']
           .map<Map<String, dynamic>>((product) => {
-                "id": product['product_code_id'], // Gunakan product_code_id
+                "id": product['product_code_id'],
                 "price": product['productPrice'].toInt(),
                 "quantity": product['quantity'],
                 "name": product['productName'],
-                "brand": "Toko Emas ABC",
-                "category": "Perhiasan",
-                "merchant_name": storeProducts['store']
-                    ['store_name'], // Nama store
-                "url":
-                    "http://toko/${storeProducts['store']['store_id']}?item=${product['productName']}"
+                "weight": product['productWeight'],
               })
           .toList();
+      print(items);
 
-// Tambahkan diskon
+      // Calculate the total item price before discount
+      final totalItemPrice = items.fold(
+          0,
+          (sum, item) =>
+              sum + (item["price"] as int) * (item["quantity"] as int));
+
+      final grossAmount = totalItemPrice - discount + taxAmount;
+
+      // Add the discount as a negative item (if applicable)
       if (discount > 0) {
         items.add({
           "id": "DISCOUNT",
-          "price": -discount.toInt(),
+          "price": -discount.toInt(), // Negative price for discount
           "quantity": 1,
-          "name": "Discount Applied",
+          "name": "Voucher Discount",
         });
       }
 
-      // Validasi harga akhir
-      final calculatedGrossAmount = items.fold<int>(
-        0,
-        (total, item) {
-          final price = (item['price'] as num?)?.toInt() ?? 0;
-          final quantity = (item['quantity'] as num?)?.toInt() ?? 0;
-          return total + (price * quantity);
-        },
-      );
-
-      if (calculatedGrossAmount != (initialTotalPrice - discount).toInt()) {
-        throw Exception(
-            "Gross amount mismatch! Calculated: $calculatedGrossAmount, Expected: ${initialTotalPrice - discount}");
+      // Add tax as a separate item if applicable
+      if (taxAmount > 0) {
+        items.add({
+          "id": "TAX",
+          "price": taxAmount.toInt(), // Tax amount
+          "quantity": 1,
+          "name": "Tax (${storeProducts['store']['tax_percentage']}%)",
+        });
       }
 
-      final customerDetails = {
-        "first_name": "John",
-        "last_name": "Doe",
-        "email": "john.doe@example.com",
-        "phone": "+6281234567890",
-        "billing_address": {
-          "first_name": "John",
-          "last_name": "Doe",
-          "email": "john.doe@example.com",
-          "phone": "+6281234567890",
-          "address": "Jl. Sudirman",
-          "city": "Jakarta",
-          "postal_code": "12190",
-          "country_code": "IDN",
+      // Send the grossAmount and taxAmount to the backend
+      final response = await http.post(
+        Uri.parse('$apiBaseUrl/transactions/init-transaction'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $_accessToken', // Ensure token is passed
         },
-        "shipping_address": {
-          "first_name": "John",
-          "last_name": "Doe",
-          "email": "john.doe@example.com",
-          "phone": "+6281234567890",
-          "address": "Jl. Sudirman",
-          "city": "Jakarta",
-          "postal_code": "12190",
-          "country_code": "IDN",
-        }
-      };
-
-      // Panggil Midtrans untuk mendapatkan payment_link
-      final midtransResponse = await createMidtransTransaction(
-        orderId: orderId,
-        grossAmount: calculatedGrossAmount.toDouble(),
-        items: items,
-        customerDetails: customerDetails,
+        body: jsonEncode({
+          "orderId": orderId,
+          "grossAmount": grossAmount, // Gross amount (before tax)
+          "items": items,
+          "customerDetails": {
+            "first_name": _name.split(' ').first, // Extract first name
+            "last_name": _name.split(' ').length > 1
+                ? _name.split(' ').sublist(1).join(' ')
+                : "",
+            "email": _email,
+            "phone": _phone,
+          },
+          "storeId": storeProducts['store']['store_id'],
+          "customerId": _userId, // Dynamically fetched customer ID
+          "voucherOwnedId": selectedVoucherOwnedId,
+          "taxAmount": taxAmount,
+          "poin_earned": _calculateTotalPoints(),
+        }),
       );
 
-      final redirectUrl = midtransResponse['redirect_url'];
+      if (response.statusCode != 201) {
+        throw Exception("Failed to create transaction: ${response.body}");
+      }
+
+      final responseData = jsonDecode(response.body);
+      final redirectUrl = responseData['data']['paymentLink'];
+
       if (redirectUrl == null || redirectUrl.isEmpty) {
         throw Exception("Payment link is missing in the response");
       }
 
-      // Ambil customer_id
-      final customerId = await getUserId();
-
-      // Tambahkan expired_time (1 jam dari sekarang)
-      final expiredTime =
-          DateTime.now().add(const Duration(hours: 1)).toIso8601String();
-
-      // Kirim transaksi ke backend
-      final transactionPayload = {
-        "transaction_id": orderId,
-        "sub_total_price": initialTotalPrice.toDouble(),
-        "total_price": (initialTotalPrice - discount).toDouble(),
-        "payment_status": 0,
-        "payment_link": redirectUrl,
-        "voucher_own_id": selectedVoucherOwnedId,
-        "poin_earned": 100,
-        "customer_id": customerId,
-        "store_id": storeProducts['store']['store_id'],
-        "expired_time": expiredTime,
-        "items": items.map((item) {
-          return {
-            "product_id": item['id'], // Gunakan ID produk dari backend
-            "quantity": item['quantity'],
-            "sub_total": item['price'] * item['quantity'],
-          };
-        }).toList(),
-      };
-
-      print(transactionPayload);
-
-      final backendResponse = await http.post(
-        Uri.parse('$apiBaseUrl/transactions'),
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: jsonEncode(transactionPayload),
-      );
-
-      if (backendResponse.statusCode != 201) {
-        throw Exception(
-            "Failed to create transaction: ${backendResponse.body}");
-      }
-      print('sampai sini');
-      // Navigasi ke halaman pembayaran
+      // Navigate to the payment page
       Navigator.push(
         context,
         MaterialPageRoute(
           builder: (context) => WaitingForPaymentPage(orderId: orderId),
         ),
       );
-      // Buka URL pembayaran di browser
+
+      // Open the payment URL in the browser
       final uri = Uri.parse(redirectUrl);
-      if (kIsWeb) {
-        // Untuk web, gunakan metode standar untuk membuka di tab baru
-        await launchUrl(uri, mode: LaunchMode.externalApplication);
-      } else {
-        // Untuk platform non-web (Android/iOS), tetap gunakan metode biasa
-        await launchUrl(uri, mode: LaunchMode.externalApplication);
-      }
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
     } catch (e, stackTrace) {
-      // Log kesalahan
       print("Checkout Error: $e");
       print("Stack Trace: $stackTrace");
 
@@ -884,8 +940,17 @@ class _CheckoutPageState extends State<CheckoutPage> {
                         ),
                       ],
                     ),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                            'Tax (${storeProducts['store']['tax_percentage']}%)'),
+                        Text('Rp ${formatCurrency(taxAmount)}',
+                            style: TextStyle(fontWeight: FontWeight.bold)),
+                      ],
+                    ),
                     if (selectedVoucher != null) ...[
-                      SizedBox(height: 8),
+                      // SizedBox(height: 8),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [

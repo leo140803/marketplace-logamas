@@ -20,7 +20,8 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
     final url = Uri.parse('$apiBaseUrl/products/$productId');
     final response = await http.get(url);
     if (response.statusCode == 200) {
-      final responseBody = jsonDecode(response.body);
+      final Map<String, dynamic> responseBody = jsonDecode(response.body);
+      // Response format: { "success": true, "message": "...", "data": { ... } }
       return responseBody['data'];
     } else {
       throw Exception('Failed to load product');
@@ -29,15 +30,11 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
 
   Future<bool> addToCartAPI(String userId, String productCodeId) async {
     final url = Uri.parse('$apiBaseUrl/cart');
-    print(productCodeId);
     final body = jsonEncode({
       'user_id': userId,
       'product_code_id': productCodeId,
       'quantity': 1,
     });
-
-    print(body);
-
     try {
       final response = await http.post(
         url,
@@ -60,16 +57,10 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
       children: [
         Text(
           value,
-          style: const TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-          ),
+          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 4),
-        Text(
-          label,
-          style: const TextStyle(color: Colors.grey),
-        ),
+        Text(label, style: const TextStyle(color: Colors.grey)),
       ],
     );
   }
@@ -80,14 +71,10 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(
-            label,
-            style: const TextStyle(fontSize: 16, color: Colors.grey),
-          ),
-          Text(
-            value,
-            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-          ),
+          Text(label, style: const TextStyle(fontSize: 16, color: Colors.grey)),
+          Text(value,
+              style:
+                  const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
         ],
       ),
     );
@@ -99,43 +86,43 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
     required int rating,
   }) {
     return Card(
-      elevation: 2,
-      margin: const EdgeInsets.symmetric(vertical: 8.0),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-      ),
+      color: Colors.white,
+      elevation: 3,
+      margin: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 5),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // Customer Name + Rating
             Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
                   customerName,
                   style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                  ),
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF31394E)),
                 ),
-                const SizedBox(width: 8),
                 Row(
                   children: List.generate(
-                    rating,
-                    (index) => const Icon(
+                    5,
+                    (index) => Icon(
                       Icons.star,
-                      size: 16,
-                      color: Colors.amber,
+                      size: 18,
+                      color:
+                          index < rating ? Color(0xFF31394E) : Colors.grey[300],
                     ),
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 8),
-            Text(
-              review,
-              style: const TextStyle(fontSize: 14),
-            ),
+            const SizedBox(height: 6),
+            // Review Text
+            Text(review,
+                style: const TextStyle(fontSize: 14, color: Colors.black87)),
           ],
         ),
       ),
@@ -169,20 +156,16 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
               const Text(
                 'Select Product Code',
                 style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black87,
-                ),
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black87),
               ),
               const SizedBox(height: 16),
-
               // Content
               if (productCodes.isEmpty)
                 const Center(
-                  child: Text(
-                    'No available product codes.',
-                    style: TextStyle(fontSize: 16, color: Colors.grey),
-                  ),
+                  child: Text('No available product codes.',
+                      style: TextStyle(fontSize: 16, color: Colors.grey)),
                 )
               else
                 ListView.builder(
@@ -194,32 +177,24 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                       elevation: 3,
                       margin: const EdgeInsets.symmetric(vertical: 8.0),
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
+                          borderRadius: BorderRadius.circular(12)),
                       child: ListTile(
                         contentPadding: const EdgeInsets.symmetric(
-                          vertical: 8.0,
-                          horizontal: 16.0,
-                        ),
+                            vertical: 8.0, horizontal: 16.0),
                         title: Text(
                           'Barcode: ${productCode['barcode']}',
                           style: const TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 16,
-                          ),
+                              fontWeight: FontWeight.bold, fontSize: 16),
                         ),
                         subtitle: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
+                            Text('Weight: ${productCode['weight']} g',
+                                style: const TextStyle(
+                                    fontSize: 14, color: Colors.grey)),
+                            const SizedBox(height: 4),
                             Text(
-                              'Weight: ${productCode['weight']} g',
-                              style: const TextStyle(
-                                  fontSize: 14, color: Colors.grey),
-                            ),
-                            const SizedBox(
-                                height: 4), // Jarak antara weight dan price
-                            Text(
-                              'Price: Rp ${formatCurrency(productCode['total_price'].toDouble())}', // Menampilkan harga total
+                              'Price: Rp ${formatCurrency(productCode['total_price'].toDouble())}',
                               style: const TextStyle(
                                   fontSize: 14, color: Colors.black54),
                             ),
@@ -229,110 +204,92 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                           onPressed: () async {
                             try {
                               final userId = await getUserId();
-                              final success = await addToCartAPI(
-                                userId,
-                                productCode['id'],
-                              );
-                              print(success);
+                              final success =
+                                  await addToCartAPI(userId, productCode['id']);
                               if (success) {
-                                Navigator.pop(context); // Tutup modal drawer
-
-                                // Tampilkan snackbar di tengah layar
+                                Navigator.pop(context); // Close modal
+                                // Show success snackbar overlay
                                 OverlayState? overlayState =
                                     Overlay.of(context);
                                 OverlayEntry overlayEntry = OverlayEntry(
                                   builder: (context) => Positioned(
                                     top:
                                         MediaQuery.of(context).size.height / 2 -
-                                            40, // Vertikal tengah
+                                            40,
                                     left:
                                         MediaQuery.of(context).size.width / 2 -
-                                            150, // Horizontal tengah
+                                            150,
                                     child: Material(
                                       color: Colors.transparent,
                                       child: Container(
                                         width: 300,
                                         padding: const EdgeInsets.all(16.0),
                                         decoration: BoxDecoration(
-                                          color: const Color(
-                                              0xFFC58189), // Warna background
+                                          color: const Color(0xFFC58189),
                                           borderRadius:
                                               BorderRadius.circular(8.0),
                                           boxShadow: [
                                             BoxShadow(
-                                              color: Colors.black26,
-                                              blurRadius: 8,
-                                              offset: Offset(0, 4),
-                                            ),
+                                                color: Colors.black26,
+                                                blurRadius: 8,
+                                                offset: Offset(0, 4))
                                           ],
                                         ),
                                         child: const Text(
                                           'Product added to cart!',
                                           style: TextStyle(
-                                            color: Colors.white,
-                                            fontSize: 16,
-                                            fontWeight: FontWeight.bold,
-                                          ),
+                                              color: Colors.white,
+                                              fontSize: 16,
+                                              fontWeight: FontWeight.bold),
                                           textAlign: TextAlign.center,
                                         ),
                                       ),
                                     ),
                                   ),
                                 );
-
-                                // Masukkan ke dalam overlay
                                 overlayState?.insert(overlayEntry);
-
-                                // Hapus setelah 2 detik
                                 await Future.delayed(
                                     const Duration(seconds: 2));
                                 overlayEntry.remove();
                               }
                             } catch (e) {
-                              // Tampilkan snackbar error di tengah layar
+                              // Show error overlay
                               OverlayState? overlayState = Overlay.of(context);
                               OverlayEntry overlayEntry = OverlayEntry(
                                 builder: (context) => Positioned(
                                   top: MediaQuery.of(context).size.height / 2 -
-                                      40, // Vertikal tengah
+                                      40,
                                   left: MediaQuery.of(context).size.width / 2 -
-                                      150, // Horizontal tengah
+                                      150,
                                   child: Material(
                                     color: Colors.transparent,
                                     child: Container(
                                       width: 300,
                                       padding: const EdgeInsets.all(16.0),
                                       decoration: BoxDecoration(
-                                        color: Colors
-                                            .red, // Warna background untuk error
+                                        color: Colors.red,
                                         borderRadius:
                                             BorderRadius.circular(8.0),
                                         boxShadow: [
                                           BoxShadow(
-                                            color: Colors.black26,
-                                            blurRadius: 8,
-                                            offset: Offset(0, 4),
-                                          ),
+                                              color: Colors.black26,
+                                              blurRadius: 8,
+                                              offset: Offset(0, 4))
                                         ],
                                       ),
-                                      child: Text(
-                                        'Have Added to Cart!',
-                                        style: const TextStyle(
-                                          color: Colors.white,
-                                          fontSize: 16,
-                                          fontWeight: FontWeight.bold,
-                                        ),
+                                      child: const Text(
+                                        'Failed to add product to cart!',
+                                        style: TextStyle(
+                                            color: Colors.white,
+                                            fontSize: 16,
+                                            fontWeight: FontWeight.bold),
                                         textAlign: TextAlign.center,
                                       ),
                                     ),
                                   ),
                                 ),
                               );
-
-                              // Masukkan ke dalam overlay
                               overlayState?.insert(overlayEntry);
-
-                              // Hapus setelah 2 detik
                               await Future.delayed(const Duration(seconds: 2));
                               overlayEntry.remove();
                             }
@@ -340,16 +297,12 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                           style: ElevatedButton.styleFrom(
                             backgroundColor: const Color(0xFF31394E),
                             shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(8),
-                            ),
+                                borderRadius: BorderRadius.circular(8)),
                           ),
-                          child: const Text(
-                            'Add',
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              color: Color(0xFFC58189),
-                            ),
-                          ),
+                          child: const Text('Add',
+                              style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  color: Color(0xFFC58189))),
                         ),
                       ),
                     );
@@ -369,35 +322,22 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
       appBar: AppBar(
         title: const Text(
           'Product Detail',
-          style: TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.bold,
-          ),
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
         ),
         leading: GestureDetector(
           onTap: () => GoRouter.of(context).pop(),
-          child: const Icon(
-            Icons.arrow_back,
-            color: Colors.white,
-          ),
+          child: const Icon(Icons.arrow_back, color: Colors.white),
         ),
         actions: [
           Padding(
             padding: const EdgeInsets.fromLTRB(0, 0, 10, 10),
-            child: Stack(
-              clipBehavior: Clip.none,
-              children: [
-                IconButton(
-                  icon: Icon(
-                    Icons.shopping_cart_outlined,
-                    color: Colors.white,
-                  ),
-                  onPressed: () {
-                    getAccessToken();
-                    context.push('/cart');
-                  },
-                ),
-              ],
+            child: IconButton(
+              icon:
+                  const Icon(Icons.shopping_cart_outlined, color: Colors.white),
+              onPressed: () {
+                getAccessToken();
+                context.push('/cart');
+              },
             ),
           ),
         ],
@@ -410,35 +350,36 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
             return const Center(child: CircularProgressIndicator());
           } else if (snapshot.hasError) {
             return Center(
-              child: Text(
-                'Error: ${snapshot.error}',
-                style: const TextStyle(color: Colors.red, fontSize: 18),
-              ),
+              child: Text('Error: ${snapshot.error}',
+                  style: const TextStyle(color: Colors.red, fontSize: 18)),
             );
           } else if (!snapshot.hasData || snapshot.data == null) {
             return const Center(
-              child: Text('Product not found', style: TextStyle(fontSize: 18)),
-            );
+                child:
+                    Text('Product not found', style: TextStyle(fontSize: 18)));
           }
 
           final product = snapshot.data!;
           final productCodes = product['product_codes'] ?? [];
+          final reviews = product['reviews'] as List? ?? [];
           return SingleChildScrollView(
             child: Padding(
               padding: const EdgeInsets.all(16.0),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Product Image
+                  // Product Image Carousel (Placeholder Images)
+                  // Product Image Carousel (using dynamic image URL from the API)
                   SizedBox(
                     height: 300,
                     child: ListView.builder(
                       scrollDirection: Axis.horizontal,
-                      itemCount:
-                          5, // Jumlah gambar random yang ingin ditampilkan
+                      itemCount: product['images']?.length ??
+                          0, // Fetch the number of images from the API response
                       itemBuilder: (context, index) {
                         final imageUrl =
-                            'https://picsum.photos/seed/$index/600/400'; // URL gambar random
+                            'http://127.0.0.1:3000/uploads/${product['images'][index]}'; // Update URL to use the new pattern
+                        print(imageUrl);
                         return Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 8.0),
                           child: ClipRRect(
@@ -454,11 +395,8 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                                   width:
                                       MediaQuery.of(context).size.width * 0.8,
                                   color: Colors.grey[200],
-                                  child: const Icon(
-                                    Icons.broken_image,
-                                    size: 50,
-                                    color: Colors.grey,
-                                  ),
+                                  child: const Icon(Icons.broken_image,
+                                      size: 50, color: Colors.grey),
                                 );
                               },
                             ),
@@ -470,111 +408,97 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
 
                   const SizedBox(height: 16),
 
-                  // Product Name and Stock
+                  // Product Name
                   Text(
                     product['name'] ?? 'Product Name',
                     style: const TextStyle(
-                      fontSize: 28,
-                      fontWeight: FontWeight.bold,
-                    ),
+                        fontSize: 28, fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 8),
+
+                  // Price and Stock
                   Row(
-                    crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
-                      const Text(
-                        'Price:',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.grey,
-                        ),
-                      ),
+                      const Text('Price:',
+                          style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.grey)),
                       const SizedBox(width: 8),
                       if (product['low_price'] != null &&
                           product['high_price'] != null)
                         Text(
-                          (product['low_price'] != null &&
-                                  product['high_price'] != null)
-                              ? (product['low_price'] == product['high_price']
-                                  ? 'Rp ${formatCurrency(product['low_price'].toDouble())}' // Jika sama, tampilkan satu nilai
-                                  : 'Rp ${formatCurrency(product['low_price'].toDouble())} - Rp ${formatCurrency(product['high_price'].toDouble())}') // Jika berbeda, tampilkan rentang
-                              : 'Not available', // Jika salah satu null, tampilkan teks default
+                          product['low_price'] == product['high_price']
+                              ? 'Rp ${formatCurrency(product['low_price'].toDouble())}'
+                              : 'Rp ${formatCurrency(product['low_price'].toDouble())} - Rp ${formatCurrency(product['high_price'].toDouble())}',
                           style: TextStyle(
-                            fontSize: 16,
-                            color: Colors.green.shade700,
-                            fontWeight: FontWeight.bold,
-                          ),
+                              fontSize: 16,
+                              color: Colors.green.shade700,
+                              fontWeight: FontWeight.bold),
                         )
                       else
-                        Text(
-                          'Not available',
-                          style: TextStyle(
-                            fontSize: 16,
-                            color: Colors.red.shade600,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
+                        Text('Not available',
+                            style: TextStyle(
+                                fontSize: 16,
+                                color: Colors.red.shade600,
+                                fontWeight: FontWeight.bold)),
                     ],
                   ),
-
                   const SizedBox(height: 8),
                   Row(
                     children: [
-                      const Text(
-                        'Stock: ',
-                        style: TextStyle(fontSize: 16, color: Colors.grey),
-                      ),
+                      const Text('Stock: ',
+                          style: TextStyle(fontSize: 16, color: Colors.grey)),
                       Text(
                         product['stock'] > 0
                             ? '${product['stock']}'
                             : 'Out of Stock',
                         style: TextStyle(
-                          fontSize: 16,
-                          color:
-                              product['stock'] > 0 ? Colors.green : Colors.red,
-                          fontWeight: FontWeight.bold,
-                        ),
+                            fontSize: 16,
+                            color: product['stock'] > 0
+                                ? Colors.green
+                                : Colors.red,
+                            fontWeight: FontWeight.bold),
                       ),
                     ],
                   ),
                   const SizedBox(height: 16),
-                  // Product Stats
+
+                  // Stats Row (Rating, Terjual, Weight)
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       _buildStat(
-                        product['rating'] != null
-                            ? '⭐ ${product['rating']}'
+                        product['average_rating'] != null &&
+                                product['average_rating'] > 0
+                            ? '⭐ ${product['average_rating']}'
                             : 'No Rate',
                         'Rating',
                       ),
                       _buildStat(
-                          product['totalSold'] != null
-                              ? '${product['totalSold']}'
-                              : 'Not Sold',
-                          'Terjual'),
+                        product['totalSold'] != null
+                            ? '${product['totalSold']}'
+                            : 'Not Sold',
+                        'Terjual',
+                      ),
                       _buildStat(
                         (product['min_weight'] != null &&
                                 product['max_weight'] != null)
                             ? (product['min_weight'] == product['max_weight']
-                                ? '${product['min_weight']} g' // Jika sama, tampilkan salah satu
-                                : '${product['min_weight']} - ${product['max_weight']} g') // Jika berbeda, tampilkan rentang
-                            : 'N/A', // Jika salah satu null, tampilkan N/A
+                                ? '${product['min_weight']} g'
+                                : '${product['min_weight']} - ${product['max_weight']} g')
+                            : 'N/A',
                         'Weight',
                       ),
                     ],
                   ),
-
                   const SizedBox(height: 16),
 
                   // Product Details
                   Text(
                     'Details',
                     style: const TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.bold,
-                    ),
+                        fontSize: 22, fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 8),
                   _buildDetailRow(
@@ -585,15 +509,13 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                       'Metal Type',
                       MetalTypeConverter.getMetalType(
                           product['types']['category']['metal_type'])),
-
                   const SizedBox(height: 16),
 
+                  // Description
                   Text(
                     'Description',
                     style: const TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.bold,
-                    ),
+                        fontSize: 22, fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 8),
                   Text(
@@ -606,23 +528,18 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                   GestureDetector(
                     onTap: () {
                       final storeId = product['store']['store_id'];
-                      context
-                          .push('/store/$storeId'); // Navigasi ke halaman store
+                      context.push('/store/$storeId');
                     },
                     child: Card(
-                      elevation: 6, // Sedikit bayangan untuk tampilan modern
+                      elevation: 6,
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16),
-                      ),
+                          borderRadius: BorderRadius.circular(16)),
                       margin: const EdgeInsets.symmetric(
                           vertical: 8, horizontal: 5),
                       child: Container(
                         decoration: BoxDecoration(
                           gradient: const LinearGradient(
-                            colors: [
-                              Color(0xFFF4F4F4),
-                              Color(0xFFE8E8E8)
-                            ], // Gradasi warna
+                            colors: [Color(0xFFF4F4F4), Color(0xFFE8E8E8)],
                             begin: Alignment.topLeft,
                             end: Alignment.bottomRight,
                           ),
@@ -631,43 +548,37 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                         padding: const EdgeInsets.all(16),
                         child: Row(
                           children: [
-                            // Gambar Store
+                            // Store Image
                             Container(
                               height: 60,
                               width: 60,
                               decoration: BoxDecoration(
-                                shape: BoxShape.circle, // Gambar menjadi bulat
-                                border: Border.all(
-                                  color: Colors.white,
-                                  width: 2,
-                                ),
+                                shape: BoxShape.circle,
+                                border:
+                                    Border.all(color: Colors.white, width: 2),
                                 boxShadow: [
                                   BoxShadow(
-                                    color: Colors.black.withOpacity(0.1),
-                                    blurRadius: 10,
-                                    offset: const Offset(0, 5),
-                                  ),
+                                      color: Colors.black.withOpacity(0.1),
+                                      blurRadius: 10,
+                                      offset: const Offset(0, 5)),
                                 ],
                               ),
                               child: ClipOval(
                                 child: Image.network(
-                                  "$apiBaseUrlImage${product['store']['image_url'] ?? ''}",
+                                  "$apiBaseUrlImage${product['store']['logo'] ?? ''}",
                                   fit: BoxFit.cover,
                                   errorBuilder: (context, error, stackTrace) {
                                     return Container(
                                       color: Colors.grey[300],
-                                      child: const Icon(
-                                        Icons.store,
-                                        size: 30,
-                                        color: Colors.grey,
-                                      ),
+                                      child: const Icon(Icons.store,
+                                          size: 30, color: Colors.grey),
                                     );
                                   },
                                 ),
                               ),
                             ),
                             const SizedBox(width: 16),
-                            // Informasi Store
+                            // Store Info
                             Expanded(
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -676,28 +587,19 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                                     product['store']['store_name'] ??
                                         'Store Name',
                                     style: const TextStyle(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.bold,
-                                      color: Color(0xFF31394E),
-                                    ),
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.bold,
+                                        color: Color(0xFF31394E)),
                                   ),
                                   const SizedBox(height: 4),
-                                  const Text(
-                                    'Tap to view store',
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      color: Colors.grey,
-                                    ),
-                                  ),
+                                  const Text('Tap to view store',
+                                      style: TextStyle(
+                                          fontSize: 12, color: Colors.grey)),
                                 ],
                               ),
                             ),
-                            // Ikon Panah
-                            const Icon(
-                              Icons.arrow_forward_ios,
-                              size: 16,
-                              color: Colors.grey,
-                            ),
+                            const Icon(Icons.arrow_forward_ios,
+                                size: 16, color: Colors.grey),
                           ],
                         ),
                       ),
@@ -705,48 +607,54 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                   ),
 
                   const SizedBox(height: 10),
-                  // List of Reviews
-                  if (product['TransactionItem'] != null &&
-                      product['TransactionItem'] is List)
-                    Text(
-                      'Reviews',
-                      style: const TextStyle(
-                        fontSize: 22,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
+                  // Reviews Section
+                  Text(
+                    'Reviews',
+                    style: const TextStyle(
+                        fontSize: 22, fontWeight: FontWeight.bold),
+                  ),
                   const SizedBox(height: 6),
-                  if (product['TransactionItem'] != null &&
-                      (product['TransactionItem'] as List).isNotEmpty)
+                  // Display average rating and total reviews
+                  Row(
+                    children: [
+                      Text(
+                        product['average_rating'] != null &&
+                                product['average_rating'] > 0
+                            ? '⭐ ${product['average_rating']}'
+                            : 'No Rating',
+                        style: const TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFFC58189)),
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        '(${product['total_reviews']} Reviews)',
+                        style:
+                            const TextStyle(fontSize: 16, color: Colors.grey),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  // List Reviews
+                  if (product['reviews'] != null &&
+                      (product['reviews'] as List).isNotEmpty)
                     ListView.builder(
                       shrinkWrap: true,
                       physics: const NeverScrollableScrollPhysics(),
-                      itemCount: (product['TransactionItem'] as List)
-                          .where((item) =>
-                              item['review'] != null || item['rating'] != null)
-                          .length, // Hitung hanya yang punya review/rating
+                      itemCount: (product['reviews'] as List).length,
                       itemBuilder: (context, index) {
-                        final filteredReviews = (product['TransactionItem']
-                                as List)
-                            .where((item) =>
-                                item['review'] != null ||
-                                item['rating'] != null)
-                            .toList(); // Filter hanya yang punya review/rating
-                        final transactionItem = filteredReviews[index];
-                        final customer =
-                            transactionItem['transaction']['customer'];
+                        final review = (product['reviews'] as List)[index];
                         return _buildReviewCard(
-                          customerName: customer['name'],
-                          review: transactionItem['review'] ?? '',
-                          rating: transactionItem['rating'] ?? 0,
+                          customerName: review['customer_name'] ?? '',
+                          review: review['review'] ?? '',
+                          rating: review['rating'] ?? 0,
                         );
                       },
                     )
                   else
-                    const Text(
-                      'No reviews yet.',
-                      style: TextStyle(fontSize: 16, color: Colors.grey),
-                    ),
+                    const Text('No reviews yet.',
+                        style: TextStyle(fontSize: 16, color: Colors.grey)),
                 ],
               ),
             ),
