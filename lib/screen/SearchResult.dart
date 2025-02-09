@@ -241,9 +241,34 @@ class _SearchResultPageState extends State<SearchResultPage> {
         padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 10.0),
         child: filteredProducts.isEmpty && !isLoading
             ? Center(
-                child: Text(
-                  'No results found.',
-                  style: TextStyle(fontSize: 16),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.search_off,
+                      size: 80,
+                      color: Colors.grey.shade400,
+                    ),
+                    const SizedBox(height: 10),
+                    Text(
+                      'No results found',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Colors
+                            .grey.shade700,
+                      ),
+                    ),
+                    const SizedBox(height: 5),
+                    Text(
+                      'Try searching with different keywords.',
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Colors.grey.shade500,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
                 ),
               )
             : isLoading

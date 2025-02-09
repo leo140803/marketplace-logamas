@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:marketplace_logamas/function/Utils.dart';
 
 class SearchResultPage extends StatelessWidget {
   final List<Map<String, dynamic>> searchResults;
@@ -30,9 +31,33 @@ class SearchResultPage extends StatelessWidget {
       ),
       body: searchResults.isEmpty
           ? Center(
-              child: Text(
-                'Tidak ada toko yang ditemukan',
-                style: TextStyle(fontSize: 16, color: Colors.grey),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    Icons.store_mall_directory,
+                    size: 80,
+                    color: Colors.grey.shade400,
+                  ),
+                  const SizedBox(height: 10),
+                  Text(
+                    'Tidak ada toko yang ditemukan',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.grey.shade700,
+                    ),
+                  ),
+                  const SizedBox(height: 5),
+                  Text(
+                    'Coba gunakan kata kunci lain atau periksa koneksi Anda.',
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: Colors.grey.shade500,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ],
               ),
             )
           : ListView.builder(
@@ -67,12 +92,48 @@ class SearchResultPage extends StatelessWidget {
                           // Gambar toko
                           ClipRRect(
                             borderRadius: BorderRadius.circular(8.0),
-                            child: toko['image_url'] != null
+                            child: toko['logo'] != null &&
+                                    toko['logo'].isNotEmpty
                                 ? Image.network(
-                                    toko['image_url'],
+                                    '$apiBaseUrlImage${toko["logo"]}',
                                     width: 80,
                                     height: 80,
                                     fit: BoxFit.cover,
+                                    loadingBuilder:
+                                        (context, child, loadingProgress) {
+                                      if (loadingProgress == null) return child;
+                                      return Container(
+                                        width: 80,
+                                        height: 80,
+                                        color: Colors.grey[300],
+                                        child: Center(
+                                          child: CircularProgressIndicator(
+                                            value: loadingProgress
+                                                        .expectedTotalBytes !=
+                                                    null
+                                                ? loadingProgress
+                                                        .cumulativeBytesLoaded /
+                                                    (loadingProgress
+                                                            .expectedTotalBytes ??
+                                                        1)
+                                                : null,
+                                            color: Colors.grey[600],
+                                          ),
+                                        ),
+                                      );
+                                    },
+                                    errorBuilder: (context, error, stackTrace) {
+                                      return Container(
+                                        width: 80,
+                                        height: 80,
+                                        color: Colors.grey[300],
+                                        child: Icon(
+                                          Icons.store,
+                                          size: 40,
+                                          color: Colors.grey[600],
+                                        ),
+                                      );
+                                    },
                                   )
                                 : Container(
                                     width: 80,

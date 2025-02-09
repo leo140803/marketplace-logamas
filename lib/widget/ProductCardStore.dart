@@ -13,15 +13,15 @@ Card ProductCardStore(Map<String, dynamic> product) {
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Product Image
         Expanded(
           child: Container(
             decoration: BoxDecoration(
               borderRadius: BorderRadius.vertical(top: Radius.circular(8)),
               image: DecorationImage(
                 image: NetworkImage(
-                  product['image_url'] ??
-                      'https://picsum.photos/200/200?random=${Random().nextInt(1000)}',
+                  (product['images'] != null && product['images'].isNotEmpty)
+                      ? "$apiBaseUrlImage${product['images'][0]}"
+                      : "$apiBaseUrlImage/default_image.jpg", // Gambar default jika kosong
                 ),
                 fit: BoxFit.cover,
               ),
@@ -64,7 +64,7 @@ Card ProductCardStore(Map<String, dynamic> product) {
                   Icon(Icons.star, size: 14, color: Colors.orange),
                   SizedBox(width: 4),
                   Text(
-                    '${product['rating']?.toStringAsFixed(1) ?? 'No Rate'} | ${product['totalSold'] ?? 0} Terjual',
+                    '${product['average_rating']?.toStringAsFixed(1) ?? 'No Rate'} | ${product['totalSold'] ?? 0} Terjual',
                     style: TextStyle(fontSize: 12),
                   ),
                 ],

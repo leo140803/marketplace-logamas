@@ -504,13 +504,38 @@ class _StorePageState extends State<StorePage> {
                     Expanded(
                       child: poinHistory.isEmpty
                           ? Center(
-                              child: Text(
-                                'No poin history available',
-                                style:
-                                    TextStyle(fontSize: 16, color: Colors.grey),
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    Icons
+                                        .history_toggle_off,
+                                    size: 80,
+                                    color: Colors.grey.shade400,
+                                  ),
+                                  const SizedBox(height: 10),
+                                  Text(
+                                    'Tidak ada riwayat poin',
+                                    style: TextStyle(
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.grey.shade700,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 5),
+                                  Text(
+                                    'Mulailah berbelanja dan dapatkan poin!',
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      color: Colors.grey.shade500,
+                                    ),
+                                    textAlign: TextAlign.center,
+                                  ),
+                                ],
                               ),
                             )
                           : ListView.builder(
+                              padding: const EdgeInsets.symmetric(vertical: 10),
                               itemCount: poinHistory.length,
                               itemBuilder: (context, index) {
                                 final history = poinHistory[index];
@@ -655,41 +680,70 @@ class _StorePageState extends State<StorePage> {
                           color: Colors.black,
                         ),
                       ),
-                      SizedBox(height: 10),
-                      ListView.builder(
-                        shrinkWrap: true,
-                        physics: NeverScrollableScrollPhysics(),
-                        itemCount: availableVouchers.length,
-                        itemBuilder: (context, index) {
-                          final voucher = availableVouchers[index];
-                          return _buildVoucherCard(
-                            voucher['voucher_name'],
-                            'Discount: ${voucher['discount_amount']}%',
-                            'Points: ${voucher['poin_price']}',
-                            'Valid: ${voucher['start_date'].split('T')[0]} - ${voucher['end_date'].split('T')[0]}',
-                            double.parse(voucher['minimum_purchase']),
-                            onTap: () async {
-                              // Ambil token dan store ID
-                              String accessToken =
-                                  await getAccessToken(); // Ambil access token
-                              String storeId =
-                                  widget.storeId; // Ambil store ID dari widget
+                      const SizedBox(height: 10),
+                      availableVouchers.isEmpty
+                          ? Center(
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    Icons
+                                        .local_offer_outlined, // Ikon voucher kosong
+                                    size: 80,
+                                    color: Colors.grey.shade400,
+                                  ),
+                                  const SizedBox(height: 10),
+                                  Text(
+                                    'Tidak ada voucher tersedia',
+                                    style: TextStyle(
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.grey.shade700,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 5),
+                                  Text(
+                                    'Cek kembali nanti atau coba di toko lain.',
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      color: Colors.grey.shade500,
+                                    ),
+                                    textAlign: TextAlign.center,
+                                  ),
+                                ],
+                              ),
+                            )
+                          : ListView.builder(
+                              shrinkWrap: true,
+                              physics: NeverScrollableScrollPhysics(),
+                              itemCount: availableVouchers.length,
+                              itemBuilder: (context, index) {
+                                final voucher = availableVouchers[index];
+                                return _buildVoucherCard(
+                                  voucher['voucher_name'],
+                                  'Discount: ${voucher['discount_amount']}%',
+                                  'Points: ${voucher['poin_price']}',
+                                  'Valid: ${voucher['start_date'].split('T')[0]} - ${voucher['end_date'].split('T')[0]}',
+                                  double.parse(voucher['minimum_purchase']),
+                                  onTap: () async {
+                                    // Ambil token dan store ID
+                                    String accessToken = await getAccessToken();
+                                    String storeId = widget.storeId;
 
-                              // Tampilkan dialog konfirmasi
-                              showPurchaseConfirmationDialog(
-                                context,
-                                voucher['voucher_name'],
-                                voucher['poin_price'],
-                                () async {
-                                  // Proses pembelian voucher
-                                  await buyVoucher(context, accessToken,
-                                      voucher['voucher_id'], storeId);
-                                },
-                              );
-                            },
-                          );
-                        },
-                      ),
+                                    // Tampilkan dialog konfirmasi
+                                    showPurchaseConfirmationDialog(
+                                      context,
+                                      voucher['voucher_name'],
+                                      voucher['poin_price'],
+                                      () async {
+                                        await buyVoucher(context, accessToken,
+                                            voucher['voucher_id'], storeId);
+                                      },
+                                    );
+                                  },
+                                );
+                              },
+                            ),
                     ],
                   ),
                 ),
@@ -1159,39 +1213,66 @@ class _StorePageState extends State<StorePage> {
                     ),
                     SliverPadding(
                       padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                      sliver: SliverGrid(
-                        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: 2,
-                          crossAxisSpacing: 10,
-                          mainAxisSpacing: 10,
-                          childAspectRatio: 0.65,
-                        ),
-                        delegate: SliverChildBuilderDelegate(
-                          (context, index) {
-                            final product = filteredProducts[index];
-                            return GestureDetector(
-                              onTap: () {
-                                final productId =
-                                    product['product_id']; // Ambil ID produk
-                                if (productId != null) {
-                                  context.push(
-                                      '/product-detail/$productId'); // Navigasi ke detail produk
-                                } else {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
-                                      content: Text('Product ID is missing'),
-                                      backgroundColor: Colors.red,
+                      sliver: filteredProducts.isEmpty
+                          ? SliverToBoxAdapter(
+                              child: Center(
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(
+                                      Icons
+                                          .shopping_bag_outlined, // Ikon produk kosong
+                                      size: 80,
+                                      color: Colors.grey.shade400,
                                     ),
+                                    const SizedBox(height: 10),
+                                    Text(
+                                      'Produk tidak ditemukan',
+                                      style: TextStyle(
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.grey.shade700,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            )
+                          : SliverGrid(
+                              gridDelegate:
+                                  SliverGridDelegateWithFixedCrossAxisCount(
+                                crossAxisCount: 2,
+                                crossAxisSpacing: 10,
+                                mainAxisSpacing: 10,
+                                childAspectRatio: 0.65,
+                              ),
+                              delegate: SliverChildBuilderDelegate(
+                                (context, index) {
+                                  final product = filteredProducts[index];
+                                  return GestureDetector(
+                                    onTap: () {
+                                      final productId = product['product_id'];
+                                      if (productId != null) {
+                                        context
+                                            .push('/product-detail/$productId');
+                                      } else {
+                                        ScaffoldMessenger.of(context)
+                                            .showSnackBar(
+                                          SnackBar(
+                                            content:
+                                                Text('Product ID is missing'),
+                                            backgroundColor: Colors.red,
+                                          ),
+                                        );
+                                      }
+                                    },
+                                    child: ProductCardStore(product),
                                   );
-                                }
-                              },
-                              child: ProductCardStore(product),
-                            );
-                          },
-                          childCount: filteredProducts.length,
-                        ),
-                      ),
-                    ),
+                                },
+                                childCount: filteredProducts.length,
+                              ),
+                            ),
+                    )
                   ],
                 ),
               ),
@@ -1248,8 +1329,7 @@ class _StorePageState extends State<StorePage> {
                             .map((filter) => filter['name'])
                             .toSet()
                             .map((name) {
-                          final isSelected =
-                              selectedTypes.contains(name);
+                          final isSelected = selectedTypes.contains(name);
 
                           return GestureDetector(
                             onTap: () {

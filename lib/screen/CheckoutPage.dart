@@ -127,15 +127,15 @@ class _CheckoutPageState extends State<CheckoutPage> {
 
   int _calculateTotalPoints() {
     int points = 0;
-    final poinConfig = storeProducts['store']['poin_config'] ??
-        0; // Pastikan poin_config tersedia
-    for (var product in storeProducts['ProductList']) {
-      points +=
-          (((product['productPrice'] as int) * (product['quantity'] as int)) *
-                  (poinConfig as int) /
-                  100)
-              .floor();
-    }
+    final poinConfig = storeProducts['store']['poin_config'];
+    final totalAmount = storeProducts['ProductList'].fold(
+        0,
+        (sum, product) =>
+            sum + (product['productPrice'] * product['quantity']));
+
+    points = (totalAmount / poinConfig)
+        .floor(); // Hitung jumlah poin berdasarkan akumulasi
+
     return points;
   }
 
@@ -229,6 +229,10 @@ class _CheckoutPageState extends State<CheckoutPage> {
                 "quantity": product['quantity'],
                 "name": product['productName'],
                 "weight": product['productWeight'],
+                "price_per_gram": product['productWeight'] > 0
+                    ? (product['productPrice'] / product['productWeight'])
+                        .toDouble()
+                    : 0.0,
               })
           .toList();
       print(items);
@@ -446,10 +450,33 @@ class _CheckoutPageState extends State<CheckoutPage> {
                           children: [
                             if (availableVouchers.isEmpty)
                               Center(
-                                child: Text(
-                                  'No available vouchers for this transaction.',
-                                  style: TextStyle(
-                                      fontSize: 16, color: Colors.grey),
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(
+                                      Icons.card_giftcard,
+                                      size: 80,
+                                      color: Colors.grey.shade400,
+                                    ),
+                                    const SizedBox(height: 10),
+                                    Text(
+                                      'Tidak ada voucher tersedia',
+                                      style: TextStyle(
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.grey.shade700,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 5),
+                                    Text(
+                                      'Voucher untuk transaksi ini tidak tersedia saat ini.\nCoba cek promo lain atau kumpulkan lebih banyak poin!',
+                                      style: TextStyle(
+                                        fontSize: 14,
+                                        color: Colors.grey.shade500,
+                                      ),
+                                      textAlign: TextAlign.center,
+                                    ),
+                                  ],
                                 ),
                               )
                             else
@@ -496,10 +523,34 @@ class _CheckoutPageState extends State<CheckoutPage> {
                             SizedBox(height: 10),
                             if (notApplicableVouchers.isEmpty)
                               Center(
-                                child: Text(
-                                  'No not applicable vouchers.',
-                                  style: TextStyle(
-                                      fontSize: 16, color: Colors.grey),
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(
+                                      Icons
+                                          .discount_outlined,
+                                      size: 80,
+                                      color: Colors.grey.shade400,
+                                    ),
+                                    const SizedBox(height: 10),
+                                    Text(
+                                      'Tidak ada voucher yang dapat digunakan',
+                                      style: TextStyle(
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.grey.shade700,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 5),
+                                    Text(
+                                      'Voucher ini tidak dapat digunakan untuk transaksi ini.\nCoba cek kembali syarat dan ketentuannya!',
+                                      style: TextStyle(
+                                        fontSize: 14,
+                                        color: Colors.grey.shade500,
+                                      ),
+                                      textAlign: TextAlign.center,
+                                    ),
+                                  ],
                                 ),
                               )
                             else

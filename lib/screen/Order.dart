@@ -18,6 +18,7 @@ class _OrdersPageState extends State<OrdersPage>
   List<Map<String, dynamic>> pendingOrders = [];
   List<Map<String, dynamic>> readyToPickupOrders = [];
   List<Map<String, dynamic>> completedOrders = [];
+  String? _accessToken;
   bool isLoading = true;
 
   Future<List<Map<String, dynamic>>> fetchTransactionsByStatus(
@@ -26,7 +27,10 @@ class _OrdersPageState extends State<OrdersPage>
       final response = await http.get(
         Uri.parse(
             '$apiBaseUrl/transactions?payment_status=$status'), // ✅ Memperbaiki query parameter
-        headers: {'Content-Type': 'application/json'},
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $_accessToken',
+        },
       );
 
       if (response.statusCode != 200) {
@@ -47,6 +51,17 @@ class _OrdersPageState extends State<OrdersPage>
     } catch (e) {
       print('Error fetching transactions: $e');
       return [];
+    }
+  }
+
+  Future<void> loadAccessToken() async {
+    try {
+      final token = await getAccessToken();
+      setState(() {
+        _accessToken = token;
+      });
+    } catch (e) {
+      print('Error loading access token or user data: $e');
     }
   }
 
@@ -74,6 +89,7 @@ class _OrdersPageState extends State<OrdersPage>
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
     _loadOrders();
+    loadAccessToken();
   }
 
   @override

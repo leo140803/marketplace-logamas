@@ -166,141 +166,121 @@ class _OrderDetailsPageState extends State<OrderDetailsPage> {
       color: Colors.grey[200],
       child: Padding(
         padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment:
-                  MainAxisAlignment.spaceBetween, // Keep text & icon aligned
-              children: [
-                Expanded(
-                  child: Text(
-                    'Kode Transaksi: ${_transactionData!['code']}',
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.black87,
-                    ),
-                    overflow: TextOverflow
-                        .ellipsis, // Prevents long text from overflowing
-                  ),
-                ),
-                IconButton(
-                  icon: Icon(
-                    Icons.copy,
-                    color: Colors.grey[700],
-                    size: 14,
-                  ),
-                  padding: EdgeInsets.zero, // Remove default padding
-                  constraints: BoxConstraints(), // Shrink button size
-                  onPressed: () {
-                    _copyToClipboard(_transactionData!['code']);
-                  },
-                ),
-              ],
-            ),
-            Text(
-              'Tanggal Transaksi: ${_formatDateTime(_transactionData!['created_at'])}',
-              style: TextStyle(fontSize: 14, color: Colors.black54),
-            ),
-
-            Divider(color: Colors.grey[400]),
-            // Status Pesanan
-            if (paymentStatus == 1)
-              _buildStatusMessage('Siap Diambil', Colors.blue),
-            if (paymentStatus == 2)
-              _buildStatusMessage('Sudah Diambil (Done)', Colors.green),
-
-            // Countdown Timer (Hanya jika paymentStatus == 0)
-            if (paymentStatus == 0) ...[
+        child: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text('Expired At:',
-                      style:
-                          TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                  Text(
-                    _isExpired
-                        ? 'Expired'
-                        : '${_timeLeft.inHours}:${(_timeLeft.inMinutes % 60).toString().padLeft(2, '0')}:${(_timeLeft.inSeconds % 60).toString().padLeft(2, '0')}',
-                    style: TextStyle(
-                        fontSize: 18,
-                        color: _isExpired ? Colors.red : Colors.redAccent,
-                        fontWeight: FontWeight.bold),
+                  Expanded(
+                    child: Text(
+                      'Kode Transaksi: ${_transactionData!['code']}',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black87,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  IconButton(
+                    icon: Icon(
+                      Icons.copy,
+                      color: Colors.grey[700],
+                      size: 14,
+                    ),
+                    padding: EdgeInsets.zero,
+                    constraints: BoxConstraints(),
+                    onPressed: () {
+                      _copyToClipboard(_transactionData!['code']);
+                    },
                   ),
                 ],
               ),
-              SizedBox(height: 16),
-            ],
-
-            // Store Name
-            Text(
-              _transactionData!['store']['store_name'],
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-            ),
-            SizedBox(height: 16),
-
-            // Product List
-            Flexible(
-              child: ListView.builder(
-                shrinkWrap: true,
-                itemCount: _transactionData!['transaction_products'].length,
-                itemBuilder: (context, index) {
-                  var product =
-                      _transactionData!['transaction_products'][index];
-                  return _buildProductItem(product);
-                },
+              Text(
+                'Tanggal Transaksi: ${_formatDateTime(_transactionData!['created_at'])}',
+                style: TextStyle(fontSize: 14, color: Colors.black54),
               ),
-            ),
-            Divider(color: Colors.grey[400]),
-
-            // Order Details
-            Text('Rincian Pesanan',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-            SizedBox(height: 8),
-            _buildOrderDetailRow('Harga Sebelum Voucher',
-                'Rp ${formatCurrency(double.tryParse(_transactionData!['sub_total_price'].toString()) ?? 0)}'),
-            _buildOrderDetailRow('Tax (${_getTaxPercentage()}%)',
-                'Rp ${formatCurrency(double.tryParse(_transactionData!['tax_price'].toString()) ?? 0)}'),
-            _buildOrderDetailRow(
-              'Potongan Voucher',
-              '-Rp ${formatCurrency(_getDiscountAmount())}',
-            ),
-
-            _buildOrderDetailRow(
-                'Poin Earned', '${_transactionData!['poin_earned']} Poin'),
-            Divider(color: Colors.grey[400]),
-            _buildOrderDetailRow('Total Bayar',
-                'Rp ${formatCurrency(double.tryParse(_transactionData!['total_price'].toString()) ?? 0)}',
-                isBold: true),
-
-            SizedBox(height: 16),
-
-            // Payment Button (Hanya jika paymentStatus == 0)
-            if (paymentStatus == 0)
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    padding: EdgeInsets.symmetric(vertical: 15),
-                    backgroundColor: Color(0xFF31394E),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(30),
+              Divider(color: Colors.grey[400]),
+              if (paymentStatus == 1)
+                _buildStatusMessage('Siap Diambil', Colors.blue),
+              if (paymentStatus == 2)
+                _buildStatusMessage('Sudah Diambil (Done)', Colors.green),
+              if (paymentStatus == 0) ...[
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text('Expired At:',
+                        style:
+                            TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                    Text(
+                      _isExpired
+                          ? 'Expired'
+                          : '${_timeLeft.inHours}:${(_timeLeft.inMinutes % 60).toString().padLeft(2, '0')}:${(_timeLeft.inSeconds % 60).toString().padLeft(2, '0')}',
+                      style: TextStyle(
+                          fontSize: 18,
+                          color: _isExpired ? Colors.red : Colors.redAccent,
+                          fontWeight: FontWeight.bold),
+                    ),
+                  ],
+                ),
+                SizedBox(height: 16),
+              ],
+              Text(
+                _transactionData!['store']['store_name'],
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+              ),
+              SizedBox(height: 16),
+              Column(
+                children: _transactionData!['transaction_products']
+                    .map<Widget>((product) => _buildProductItem(product))
+                    .toList(),
+              ),
+              Divider(color: Colors.grey[400]),
+              Text('Rincian Pesanan',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              SizedBox(height: 8),
+              _buildOrderDetailRow('Harga Sebelum Voucher',
+                  'Rp ${formatCurrency(double.tryParse(_transactionData!['sub_total_price'].toString()) ?? 0)}'),
+              _buildOrderDetailRow('Tax (${_getTaxPercentage()}%)',
+                  'Rp ${formatCurrency(double.tryParse(_transactionData!['tax_price'].toString()) ?? 0)}'),
+              _buildOrderDetailRow(
+                'Potongan Voucher',
+                '-Rp ${formatCurrency(_getDiscountAmount())}',
+              ),
+              _buildOrderDetailRow(
+                  'Poin Earned', '${_transactionData!['poin_earned']} Poin'),
+              Divider(color: Colors.grey[400]),
+              _buildOrderDetailRow('Total Bayar',
+                  'Rp ${formatCurrency(double.tryParse(_transactionData!['total_price'].toString()) ?? 0)}',
+                  isBold: true),
+              SizedBox(height: 16),
+              if (paymentStatus == 0)
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      padding: EdgeInsets.symmetric(vertical: 15),
+                      backgroundColor: Color(0xFF31394E),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(30),
+                      ),
+                    ),
+                    onPressed: () {
+                      _openPaymentLink();
+                    },
+                    child: Text(
+                      'Bayar Sekarang',
+                      style: TextStyle(
+                          fontSize: 18,
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold),
                     ),
                   ),
-                  onPressed: () {
-                    _openPaymentLink();
-                  },
-                  child: Text(
-                    'Bayar Sekarang',
-                    style: TextStyle(
-                        fontSize: 18,
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold),
-                  ),
                 ),
-              ),
-          ],
+            ],
+          ),
         ),
       ),
     );
