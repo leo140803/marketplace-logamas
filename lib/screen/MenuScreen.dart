@@ -182,7 +182,14 @@ class _MenuScreenState extends State<MenuScreen> {
                         Icon(Icons.chevron_right, color: Colors.grey.shade400),
                     onTap: () => context.goNamed('order'),
                   ),
-                  _buildMenuItem('Daftar Penjualan', Icons.sell_outlined),
+                  ListTile(
+                    leading: const Icon(Icons.sell_outlined,
+                        color: Colors.grey), // Icon Service
+                    title: const Text('Daftar Penjualan'),
+                    trailing:
+                        Icon(Icons.chevron_right, color: Colors.grey.shade400),
+                    onTap: () => context.push('/sell'),
+                  ),
                   ListTile(
                     leading: const Icon(Icons.build_circle,
                         color: Colors.grey), // Icon Service

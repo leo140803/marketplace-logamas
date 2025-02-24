@@ -199,7 +199,7 @@ class _LocationScreenState extends State<LocationScreen> {
       context: context,
       builder: (context) {
         return Dialog(
-          backgroundColor: Color(0xFF31394E),
+          backgroundColor: Colors.white,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16.0),
           ),
@@ -209,45 +209,89 @@ class _LocationScreenState extends State<LocationScreen> {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                Text(
-                  toko['nama'],
-                  style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white),
+                // Store Logo
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(12.0),
+                  child: toko['logo'] != null && toko['logo'].isNotEmpty
+                      ? Image.network(
+                          "$apiBaseUrlImage${toko['logo']}",
+                          width: 100,
+                          height: 100,
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) =>
+                              Icon(Icons.store, size: 80, color: Colors.grey),
+                        )
+                      : Icon(Icons.store, size: 80, color: Colors.grey),
                 ),
                 SizedBox(height: 10),
+
+                // Store Name
+                Text(
+                  toko['nama'] ?? "Unknown Store",
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black87,
+                  ),
+                ),
+                SizedBox(height: 8),
+
+                // Address
+                if (toko['address'] != null)
+                  Text(
+                    toko['address'],
+                    textAlign: TextAlign.center,
+                    style: TextStyle(fontSize: 14, color: Colors.black54),
+                  ),
+                SizedBox(height: 8),
+
+                // Distance
                 if (toko.containsKey('distance'))
                   Text(
-                    'Distance: ${toko['distance'].toStringAsFixed(2)} km',
-                    style: TextStyle(
-                        fontSize: 16,
-                        color: Color(0xFFC58189),
-                        fontWeight: FontWeight.bold),
+                    "Distance: ${toko['distance'].toStringAsFixed(2)} km",
+                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
                   ),
                 SizedBox(height: 20),
-                TextButton(
-                  onPressed: () {
-                    _openGoogleMaps(toko['lat'], toko['lon']);
-                  },
-                  style: TextButton.styleFrom(
-                    padding: const EdgeInsets.all(12),
-                    backgroundColor: Color(0xFFC58189),
+
+                // "Visit Store" Button
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    onPressed: () {
+                      context.push('/store/${toko['store_id']}');
+                    },
+                    icon: Icon(Icons.store, color: Colors.white),
+                    label: Text('Visit Store',
+                        style: TextStyle(color: Colors.white)),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.black87,
+                      padding: EdgeInsets.symmetric(vertical: 12),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
                   ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        Icons.map_outlined,
-                        color: Colors.white,
-                        weight: 10,
+                ),
+                SizedBox(height: 10),
+
+                // "Open in Maps" Button
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    onPressed: () {
+                      _openGoogleMaps(toko['lat'], toko['lon']);
+                    },
+                    icon: Icon(Icons.map_outlined, color: Colors.white),
+                    label: Text("Open in Maps",
+                        style: TextStyle(color: Colors.white)),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Color(0xFF31394E),
+                      padding: EdgeInsets.symmetric(vertical: 12),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
                       ),
-                      SizedBox(width: 8),
-                      Text(
-                        "Open in Maps",
-                        style: TextStyle(color: Color(0xFF31394E)),
-                      ),
-                    ],
+                    ),
                   ),
                 ),
               ],
