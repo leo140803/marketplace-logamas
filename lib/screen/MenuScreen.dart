@@ -199,8 +199,6 @@ class _MenuScreenState extends State<MenuScreen> {
                         Icon(Icons.chevron_right, color: Colors.grey.shade400),
                     onTap: () => context.push('/my-poin'),
                   ),
-                  _buildMenuItem(
-                      'Toko yang Di-follow', Icons.storefront_outlined),
                 ],
               ),
             ),

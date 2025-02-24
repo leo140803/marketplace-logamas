@@ -84,19 +84,25 @@ class _HomePageWidgetState extends State<HomePageWidget> {
     }
   }
 
-  Future<void> fetchProducts() async {
+  Future<List<Map<String, dynamic>>> fetchProducts() async {
     try {
-      final response = await http.get(Uri.parse('$apiBaseUrl/products'));
-      print(jsonDecode(response.body));
+      final token = await getAccessToken();
+      final response = await http.get(
+        Uri.parse('$apiBaseUrl/products/recommendation'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+      );
+
       if (response.statusCode == 200) {
         final List<dynamic> data = json.decode(response.body)['data'];
-        setState(() {
-          products = data;
-        });
+        return data.map((product) => product as Map<String, dynamic>).toList();
       } else {
         throw Exception('Failed to load products');
       }
     } catch (e) {
+      print(e);
       throw Exception('Failed to fetch Product Data');
     }
   }
@@ -815,35 +821,63 @@ class _HomePageWidgetState extends State<HomePageWidget> {
                 ),
                 SliverPadding(
                   padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                  sliver: SliverGrid(
-                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: 2,
-                      crossAxisSpacing: 10,
-                      mainAxisSpacing: 10,
-                      childAspectRatio: 0.65,
-                    ),
-                    delegate: SliverChildBuilderDelegate(
-                      (context, index) {
-                        final product = products[index];
-                        return GestureDetector(
-                          onTap: () {
-                            final productId = product['product_id'];
-                            if (productId != null) {
-                              context.push('/product-detail/$productId');
-                            } else {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Text('Product ID is missing'),
-                                  backgroundColor: Colors.red,
-                                ),
-                              );
-                            }
-                          },
-                          child: ProductCard(product),
+                  sliver: FutureBuilder<List<Map<String, dynamic>>>(
+                    future: fetchProducts(),
+                    builder: (context, snapshot) {
+                      if (snapshot.connectionState == ConnectionState.waiting) {
+                        return SliverGrid(
+                          gridDelegate:
+                              SliverGridDelegateWithFixedCrossAxisCount(
+                            crossAxisCount: 2,
+                            crossAxisSpacing: 10,
+                            mainAxisSpacing: 10,
+                            childAspectRatio: 0.65,
+                          ),
+                          delegate: SliverChildBuilderDelegate(
+                            (context, index) => shimmerProductCard(),
+                            childCount:
+                                6, // Jumlah shimmer cards yang muncul saat loading
+                          ),
                         );
-                      },
-                      childCount: products.length,
-                    ),
+                      } else if (snapshot.hasError || !snapshot.hasData) {
+                        return SliverToBoxAdapter(
+                          child: Center(child: Text('Failed to load products')),
+                        );
+                      } else {
+                        final products = snapshot.data!;
+                        return SliverGrid(
+                          gridDelegate:
+                              SliverGridDelegateWithFixedCrossAxisCount(
+                            crossAxisCount: 2,
+                            crossAxisSpacing: 10,
+                            mainAxisSpacing: 10,
+                            childAspectRatio: 0.65,
+                          ),
+                          delegate: SliverChildBuilderDelegate(
+                            (context, index) {
+                              final product = products[index];
+                              return GestureDetector(
+                                onTap: () {
+                                  final productId = product['product_id'];
+                                  if (productId != null) {
+                                    context.push('/product-detail/$productId');
+                                  } else {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text('Product ID is missing'),
+                                        backgroundColor: Colors.red,
+                                      ),
+                                    );
+                                  }
+                                },
+                                child: ProductCard(product),
+                              );
+                            },
+                            childCount: products.length,
+                          ),
+                        );
+                      }
+                    },
                   ),
                 ),
               ],
@@ -881,6 +915,53 @@ class _HomePageWidgetState extends State<HomePageWidget> {
             color: isSelected ? Colors.white : Colors.black,
             fontWeight: FontWeight.bold,
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget shimmerProductCard() {
+    return Shimmer.fromColors(
+      baseColor: Colors.grey[300]!,
+      highlightColor: Colors.grey[100]!,
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              height: 20,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.vertical(top: Radius.circular(10)),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: Container(
+                height: 20,
+                width: double.infinity,
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(5),
+                ),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8.0),
+              child: Container(
+                height: 20,
+                width: 100,
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(5),
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );

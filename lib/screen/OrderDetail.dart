@@ -162,6 +162,7 @@ class _OrderDetailsPageState extends State<OrderDetailsPage> {
 
   Widget _buildOrderDetails() {
     int paymentStatus = _transactionData!['status']; // Status pembayaran
+    final operations = _transactionData!['TransactionOperation'] ?? [];
 
     return Container(
       color: Colors.grey[200],
@@ -186,11 +187,7 @@ class _OrderDetailsPageState extends State<OrderDetailsPage> {
                     ),
                   ),
                   IconButton(
-                    icon: Icon(
-                      Icons.copy,
-                      color: Colors.grey[700],
-                      size: 14,
-                    ),
+                    icon: Icon(Icons.copy, color: Colors.grey[700], size: 14),
                     padding: EdgeInsets.zero,
                     constraints: BoxConstraints(),
                     onPressed: () {
@@ -204,6 +201,8 @@ class _OrderDetailsPageState extends State<OrderDetailsPage> {
                 style: TextStyle(fontSize: 14, color: Colors.black54),
               ),
               Divider(color: Colors.grey[400]),
+
+              // 🔹 STATUS PEMBAYARAN
               if (paymentStatus == 1)
                 _buildStatusMessage('Siap Diambil', Colors.blue),
               if (paymentStatus == 2)
@@ -228,35 +227,74 @@ class _OrderDetailsPageState extends State<OrderDetailsPage> {
                 ),
                 SizedBox(height: 16),
               ],
+
+              // 🔹 INFORMASI TOKO
               Text(
                 _transactionData!['store']['store_name'],
                 style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
               ),
               SizedBox(height: 16),
+
+              // 🔹 LIST PRODUK
               Column(
                 children: _transactionData!['transaction_products']
                     .map<Widget>((product) => _buildProductItem(product))
                     .toList(),
               ),
+
+              // 🔹 LIST TRANSACTION OPERATIONS (JIKA ADA)
+              if (operations.isNotEmpty) ...[
+                SizedBox(height: 16),
+                Text(
+                  "Additional Service",
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+                Divider(color: Colors.grey[400]),
+                Column(
+                  children: operations.map<Widget>((operation) {
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 4.0),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            "${operation['name']} (x${operation['unit']})",
+                            style: TextStyle(fontSize: 16),
+                          ),
+                          Text(
+                            "Rp ${formatCurrency(double.tryParse(operation['total_price'].toString()) ?? 0)}",
+                            style: TextStyle(fontSize: 16),
+                          ),
+                        ],
+                      ),
+                    );
+                  }).toList(),
+                ),
+                SizedBox(height: 16),
+              ],
+
               Divider(color: Colors.grey[400]),
+
+              // 🔹 RINCIAN PESANAN
               Text('Rincian Pesanan',
                   style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
               SizedBox(height: 8),
+
               _buildOrderDetailRow('Harga Sebelum Voucher',
                   'Rp ${formatCurrency(double.tryParse(_transactionData!['sub_total_price'].toString()) ?? 0)}'),
               _buildOrderDetailRow('Tax (${_getTaxPercentage()}%)',
                   'Rp ${formatCurrency(double.tryParse(_transactionData!['tax_price'].toString()) ?? 0)}'),
-              _buildOrderDetailRow(
-                'Potongan Voucher',
-                '-Rp ${formatCurrency(_getDiscountAmount())}',
-              ),
+              _buildOrderDetailRow('Potongan Voucher',
+                  '-Rp ${formatCurrency(_getDiscountAmount())}'),
               _buildOrderDetailRow(
                   'Poin Earned', '${_transactionData!['poin_earned']} Poin'),
+
               Divider(color: Colors.grey[400]),
               _buildOrderDetailRow('Total Bayar',
                   'Rp ${formatCurrency(double.tryParse(_transactionData!['total_price'].toString()) ?? 0)}',
                   isBold: true),
               SizedBox(height: 16),
+
               if (paymentStatus == 0)
                 SizedBox(
                   width: double.infinity,
@@ -283,6 +321,33 @@ class _OrderDetailsPageState extends State<OrderDetailsPage> {
             ],
           ),
         ),
+      ),
+    );
+  }
+
+// 🔹 FUNCTION MEMBANGUN ROW DETAIL ORDER
+  Widget _buildOrderDetailRow(String label, String value,
+      {bool isBold = false}) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4.0),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            label,
+            style: TextStyle(
+                fontSize: 16,
+                fontWeight: isBold ? FontWeight.bold : FontWeight.normal,
+                color: Color(0xFF31394E)),
+          ),
+          Text(
+            value,
+            style: TextStyle(
+                fontSize: 16,
+                fontWeight: isBold ? FontWeight.bold : FontWeight.normal,
+                color: isBold ? Colors.redAccent : Colors.grey[700]),
+          ),
+        ],
       ),
     );
   }
@@ -681,31 +746,6 @@ class _OrderDetailsPageState extends State<OrderDetailsPage> {
     }
   }
 
-  Widget _buildOrderDetailRow(String label, String value,
-      {bool isBold = false}) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4.0),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(
-            label,
-            style: TextStyle(
-                fontSize: 16,
-                fontWeight: isBold ? FontWeight.bold : FontWeight.normal,
-                color: Color(0xFF31394E)),
-          ),
-          Text(
-            value,
-            style: TextStyle(
-                fontSize: 16,
-                fontWeight: isBold ? FontWeight.bold : FontWeight.normal,
-                color: isBold ? Colors.redAccent : Colors.grey[700]),
-          ),
-        ],
-      ),
-    );
-  }
 
   void _openPaymentLink() async {
     if (_transactionData != null && _transactionData!['payment_link'] != null) {

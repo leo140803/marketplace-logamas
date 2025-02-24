@@ -423,7 +423,7 @@ class _OrdersPageState extends State<OrdersPage>
     return Scaffold(
       appBar: AppBar(
         title: const Text(
-          'Pesanan Saya',
+          'Daftar Pembelian',
           style: TextStyle(
             color: Colors.white,
             fontWeight: FontWeight.bold,
@@ -498,28 +498,26 @@ class _OrdersPageState extends State<OrdersPage>
       itemBuilder: (context, index) {
         final order = orders[index];
         final products = order['transaction_products'] ?? [];
+        final operations = order['TransactionOperation'] ?? [];
         final expirationTime = order['expired_at'] != null
             ? DateTime.tryParse(order['expired_at'])
             : null;
 
-        // Calculate subTotal, totalPrice, discount, and tax
+        // Calculate prices
         double subTotal =
             double.tryParse(order['sub_total_price'].toString()) ?? 0;
         double totalPrice =
             double.tryParse(order['total_price'].toString()) ?? 0;
         double taxPrice = double.tryParse(order['tax_price'].toString()) ?? 0;
-        // Calculate voucher discount from (sub_total_price + tax) - total_price
         double discount = (subTotal + taxPrice) - totalPrice;
         int pointsEarned = order['poin_earned'] ?? 0;
-        double tax = double.tryParse(order['tax_price']) ?? 0;
         double taxPercentage = (subTotal > 0) ? (taxPrice / subTotal) * 100 : 0;
-        print(tax);
 
         String? formattedCreatedAt;
         if (order['created_at'] != null) {
           DateTime? parsedDate = DateTime.tryParse(order['created_at'])
               ?.toUtc()
-              .add(Duration(hours: 7));
+              .add(const Duration(hours: 7));
           if (parsedDate != null) {
             formattedCreatedAt =
                 DateFormat("dd-MM-yyyy HH:mm").format(parsedDate);
@@ -528,9 +526,8 @@ class _OrdersPageState extends State<OrdersPage>
 
         return Card(
           margin: const EdgeInsets.only(bottom: 16.0),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(10),
-          ),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
           elevation: 3,
           child: InkWell(
             onTap: () {
@@ -538,7 +535,7 @@ class _OrdersPageState extends State<OrdersPage>
             },
             child: Column(
               children: [
-                // Header
+                // 🔹 HEADER PESANAN
                 Container(
                   decoration: BoxDecoration(
                     color: order['status'] == 0
@@ -553,68 +550,34 @@ class _OrdersPageState extends State<OrdersPage>
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Column(
-                        crossAxisAlignment: CrossAxisAlignment
-                            .start, // Rata kiri agar lebih rapi
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
                             order['store']?['store_name'] ??
                                 'Toko Tidak Diketahui',
                             style: const TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 16,
-                            ),
+                                fontWeight: FontWeight.bold, fontSize: 16),
                           ),
                           const SizedBox(height: 4),
                           Text(
                             'Tanggal: $formattedCreatedAt',
                             style: const TextStyle(
-                              fontSize: 14,
-                              color: Colors.black54,
-                            ),
+                                fontSize: 14, color: Colors.black54),
                           ),
                         ],
                       ),
                       if (order['status'] == 1)
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 8, vertical: 4),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF81C784),
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                          child: const Text(
-                            'Siap Diambil',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 12,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
+                        _buildStatusLabel(
+                            "Siap Diambil", const Color(0xFF81C784)),
                       if (order['status'] == 2)
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 8, vertical: 4),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF81C784),
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                          child: const Text(
-                            'Done',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 12,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
+                        _buildStatusLabel("Selesai", const Color(0xFF81C784)),
                       if (order['status'] == 0 && expirationTime != null)
                         CountdownTimer(expirationTime),
                     ],
                   ),
                 ),
 
-                // Body
+                // 🔹 DETAIL PESANAN
                 Padding(
                   padding: const EdgeInsets.all(16.0),
                   child: Column(
@@ -628,6 +591,7 @@ class _OrdersPageState extends State<OrdersPage>
                             children: [
                               Text(
                                 '${product['product_code']['product']['name']} (${product['weight']}g)',
+                                style: const TextStyle(fontSize: 14),
                               ),
                               Text(
                                 'Rp ${formatCurrency(double.tryParse(product['total_price'].toString()) ?? 0)}',
@@ -638,87 +602,94 @@ class _OrdersPageState extends State<OrdersPage>
                         );
                       }).toList(),
 
+                      // 🔹 TAMPILKAN TRANSACTION OPERATIONS (Jika Ada)
+                      if (operations.isNotEmpty) ...[
+                        const SizedBox(height: 6),
+                        const Text(
+                          "Additional Service",
+                          style: TextStyle(
+                              fontSize: 14, fontWeight: FontWeight.bold),
+                        ),
+                        ...operations.map((operation) {
+                          return Padding(
+                            padding: const EdgeInsets.only(top: 4.0),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(
+                                    "${operation['name']} (x${operation['unit']})"),
+                                Text(
+                                  "Rp ${formatCurrency(double.tryParse(operation['total_price'].toString()) ?? 0)}",
+                                  style: const TextStyle(fontSize: 14),
+                                ),
+                              ],
+                            ),
+                          );
+                        }).toList(),
+                      ],
+
                       const Divider(height: 16, thickness: 1),
 
-                      // Harga Sebelum Voucher
+                      // 🔹 Harga Sebelum Voucher
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          const Text(
-                            'Harga Sebelum Voucher',
-                            style: TextStyle(fontSize: 14),
-                          ),
-                          Text(
-                            'Rp ${formatCurrency(subTotal)}',
-                            style: const TextStyle(fontSize: 14),
-                          ),
+                          const Text('Harga Sebelum Voucher',
+                              style: TextStyle(fontSize: 14)),
+                          Text('Rp ${formatCurrency(subTotal)}',
+                              style: const TextStyle(fontSize: 14)),
                         ],
                       ),
 
-                      // Potongan Voucher (Tampil jika > 0)
+                      // 🔹 Potongan Voucher (Tampil jika > 0)
                       if (discount > 0)
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            const Text(
-                              'Potongan Voucher',
-                              style:
-                                  TextStyle(fontSize: 14, color: Colors.green),
-                            ),
-                            Text(
-                              '-Rp ${formatCurrency(discount)}',
-                              style: const TextStyle(
-                                  fontSize: 14, color: Colors.green),
-                            ),
+                            const Text('Potongan Voucher',
+                                style: TextStyle(
+                                    fontSize: 14, color: Colors.green)),
+                            Text('-Rp ${formatCurrency(discount)}',
+                                style: const TextStyle(
+                                    fontSize: 14, color: Colors.green)),
                           ],
                         ),
 
-                      if (tax > 0)
+                      // 🔹 Tax (Jika Ada)
+                      if (taxPrice > 0)
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            Text(
-                              'Tax (${taxPercentage.toStringAsFixed(1)}%)',
-                              style:
-                                  TextStyle(fontSize: 14, color: Colors.black),
-                            ),
-                            Text(
-                              'Rp ${formatCurrency(tax)}',
-                              style: const TextStyle(
-                                  fontSize: 14, color: Colors.black),
-                            ),
+                            Text('Pajak (${taxPercentage.toStringAsFixed(1)}%)',
+                                style: const TextStyle(fontSize: 14)),
+                            Text('Rp ${formatCurrency(taxPrice)}',
+                                style: const TextStyle(fontSize: 14)),
                           ],
                         ),
 
-                      // Poin Earned (Tampil jika > 0)
+                      // 🔹 Poin Earned (Jika Ada)
                       if (pointsEarned > 0)
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            const Text(
-                              'Poin Earned',
-                              style:
-                                  TextStyle(fontSize: 14, color: Colors.blue),
-                            ),
-                            Text(
-                              '$pointsEarned Poin',
-                              style: const TextStyle(
-                                  fontSize: 14, color: Colors.blue),
-                            ),
+                            const Text('Poin Earned',
+                                style: TextStyle(
+                                    fontSize: 14, color: Colors.blue)),
+                            Text('$pointsEarned Poin',
+                                style: const TextStyle(
+                                    fontSize: 14, color: Colors.blue)),
                           ],
                         ),
 
                       const Divider(height: 16, thickness: 1),
 
-                      // Total Bayar
+                      // 🔹 Total Bayar
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          const Text(
-                            'Total Bayar',
-                            style: TextStyle(
-                                fontSize: 16, fontWeight: FontWeight.bold),
-                          ),
+                          const Text('Total Bayar',
+                              style: TextStyle(
+                                  fontSize: 16, fontWeight: FontWeight.bold)),
                           Text(
                             'Rp ${formatCurrency(totalPrice)}',
                             style: const TextStyle(
@@ -737,6 +708,7 @@ class _OrdersPageState extends State<OrdersPage>
     );
   }
 
+// 🔹 Widget Label Status
   Widget _buildStatusLabel(String text, Color color) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -747,10 +719,7 @@ class _OrdersPageState extends State<OrdersPage>
       child: Text(
         text,
         style: const TextStyle(
-          color: Colors.white,
-          fontSize: 12,
-          fontWeight: FontWeight.bold,
-        ),
+            color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
       ),
     );
   }
