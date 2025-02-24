@@ -51,7 +51,7 @@ class _OrdersPageState extends State<OrdersPage>
       print(_accessToken);
       final response = await http.get(
         Uri.parse(
-            '$apiBaseUrl/transactions?payment_status=$status'), // ✅ Memperbaiki query parameter
+            '$apiBaseUrl/transactions?payment_status=$status&type=1'), // ✅ Memperbaiki query parameter
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $_accessToken',

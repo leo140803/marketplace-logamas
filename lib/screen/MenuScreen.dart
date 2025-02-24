@@ -184,6 +184,14 @@ class _MenuScreenState extends State<MenuScreen> {
                   ),
                   _buildMenuItem('Daftar Penjualan', Icons.sell_outlined),
                   ListTile(
+                    leading: const Icon(Icons.build_circle,
+                        color: Colors.grey), // Icon Service
+                    title: const Text('Daftar Service'),
+                    trailing:
+                        Icon(Icons.chevron_right, color: Colors.grey.shade400),
+                    onTap: () => context.push('/service'),
+                  ),
+                  ListTile(
                     leading:
                         const Icon(Icons.favorite_outline, color: Colors.grey),
                     title: const Text('Daftar Wishlist'),

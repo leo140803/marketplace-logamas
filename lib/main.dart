@@ -18,6 +18,7 @@ import 'package:marketplace_logamas/screen/LocationScreen.dart';
 import 'package:marketplace_logamas/screen/LoginPage.dart';
 import 'package:marketplace_logamas/screen/MenuScreen.dart';
 import 'package:marketplace_logamas/screen/NearbyStore.dart';
+import 'package:marketplace_logamas/screen/NotFoundPage.dart';
 import 'package:marketplace_logamas/screen/Order.dart';
 import 'package:marketplace_logamas/screen/OrderDetail.dart';
 import 'package:marketplace_logamas/screen/PaymentSuccessScreen.dart';
@@ -263,6 +264,8 @@ final router = GoRouter(
       ],
     ),
   ],
+
+  errorBuilder: (context, state) => NotFoundPage(),
   redirect: (context, state) {
     print('Incoming URL: ${state.uri}');
 
