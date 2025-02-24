@@ -832,11 +832,38 @@ class _StorePageState extends State<StorePage> {
     setState(() {});
   }
 
+  void _openGoogleMaps(double lat, double lon) async {
+    final url = 'http://maps.google.com/maps?z=12&t=m&q=loc:$lat+$lon';
+    if (await canLaunchUrl(Uri.parse(url))) {
+      await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Could not open Google Maps')),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: () => FocusScope.of(context).unfocus(),
       child: Scaffold(
+        floatingActionButton: (storeData != null &&
+                storeData!.containsKey("latitude") &&
+                storeData!.containsKey("longitude") &&
+                storeData!["latitude"] != null &&
+                storeData!["longitude"] != null)
+            ? FloatingActionButton(
+                onPressed: () {
+                  _openGoogleMaps(
+                    double.parse(storeData!["latitude"].toString()),
+                    double.parse(storeData!["longitude"].toString()),
+                  );
+                },
+                child: Icon(Icons.map, color: Colors.white),
+                backgroundColor: Color(0xFF31394E),
+              )
+            : null,
         backgroundColor: Colors.grey[100],
         body: storeData == null
             ? Center(child: CircularProgressIndicator()) // Loading indicator
