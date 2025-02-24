@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
 class PaymentSuccessScreen extends StatelessWidget {
   final String orderId;
@@ -23,8 +24,7 @@ class PaymentSuccessScreen extends StatelessWidget {
             SizedBox(height: 24),
             ElevatedButton(
               onPressed: () {
-                Navigator.pushNamedAndRemoveUntil(
-                    context, '/home', (route) => false);
+                context.push('/home');
               },
               child: Text('Go to Home'),
             ),

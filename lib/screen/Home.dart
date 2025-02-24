@@ -191,6 +191,7 @@ class _HomePageWidgetState extends State<HomePageWidget> {
       banners = fetchBannerImages();
       goldPrices = fetchGoldPrices();
       followedStores = fetchFollowedStores();
+      fetchProducts();
     });
   }
 

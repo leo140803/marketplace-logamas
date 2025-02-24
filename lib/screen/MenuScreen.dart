@@ -183,6 +183,22 @@ class _MenuScreenState extends State<MenuScreen> {
                     onTap: () => context.goNamed('order'),
                   ),
                   _buildMenuItem('Daftar Penjualan', Icons.sell_outlined),
+                  ListTile(
+                    leading:
+                        const Icon(Icons.favorite_outline, color: Colors.grey),
+                    title: const Text('Daftar Wishlist'),
+                    trailing:
+                        Icon(Icons.chevron_right, color: Colors.grey.shade400),
+                    onTap: () => context.push('/wishlist'),
+                  ),
+                  ListTile(
+                    leading:
+                        const Icon(Icons.card_giftcard, color: Colors.grey),
+                    title: const Text('My Poin'),
+                    trailing:
+                        Icon(Icons.chevron_right, color: Colors.grey.shade400),
+                    onTap: () => context.push('/my-poin'),
+                  ),
                   _buildMenuItem(
                       'Toko yang Di-follow', Icons.storefront_outlined),
                 ],
@@ -217,8 +233,7 @@ class _MenuScreenState extends State<MenuScreen> {
                     title: const Text('Change Password'),
                     trailing:
                         Icon(Icons.chevron_right, color: Colors.grey.shade400),
-                    onTap: () => context.push(
-                        '/change-password'),
+                    onTap: () => context.push('/change-password'),
                   ),
                   const Divider(height: 1),
                   // Logout Option

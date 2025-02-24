@@ -17,6 +17,7 @@ import 'package:marketplace_logamas/screen/Home.dart';
 import 'package:marketplace_logamas/screen/LocationScreen.dart';
 import 'package:marketplace_logamas/screen/LoginPage.dart';
 import 'package:marketplace_logamas/screen/MenuScreen.dart';
+import 'package:marketplace_logamas/screen/NearbyStore.dart';
 import 'package:marketplace_logamas/screen/Order.dart';
 import 'package:marketplace_logamas/screen/OrderDetail.dart';
 import 'package:marketplace_logamas/screen/PaymentSuccessScreen.dart';
@@ -26,7 +27,10 @@ import 'package:marketplace_logamas/screen/ResetPassword.dart';
 import 'package:marketplace_logamas/screen/Search.dart';
 import 'package:marketplace_logamas/screen/SearchResult.dart';
 import 'package:marketplace_logamas/screen/StorePage.dart';
+import 'package:marketplace_logamas/screen/UserPoinPage.dart';
+import 'package:marketplace_logamas/screen/UserStorePoinPage.dart';
 import 'package:marketplace_logamas/screen/Welcome.dart';
+import 'package:marketplace_logamas/screen/WishlistPage.dart';
 
 final navigatorKey = GlobalKey<NavigatorState>();
 
@@ -80,6 +84,10 @@ final router = GoRouter(
         GoRoute(
           path: '/forgot-password',
           builder: (context, state) => ForgotPasswordPage(),
+        ),
+        GoRoute(
+          path: 'wishlist',
+          builder: (context, state) => WishlistPage(),
         ),
         GoRoute(
           path: '/search-result',
@@ -145,9 +153,44 @@ final router = GoRouter(
           builder: (context, state) => LocationScreen(),
         ),
         GoRoute(
+          path: '/nearby-stores',
+          builder: (context, state) {
+            final stores = state.extra as List<Map<String, dynamic>>;
+            return NearbyStoresPage(stores: stores);
+          },
+        ),
+
+        GoRoute(
+          path: 'my-poin',
+          builder: (context, state) => UserPointsPage(),
+        ),
+        GoRoute(
           path: '/email_verified',
           builder: (context, state) => EmailVerifiedPage(),
         ),
+        GoRoute(
+          path: '/store-points/:storeId',
+          builder: (context, state) {
+            final storeId = state.pathParameters['storeId'];
+            final extra = state.extra as Map<String, dynamic>?;
+
+            if (storeId == null || storeId.isEmpty) {
+              return const Scaffold(
+                body: Center(child: Text("Store ID must be provided!")),
+              );
+            }
+
+            final storeName = extra?['storeName'] ?? 'Unknown Store';
+            final storeLogo = extra?['storeLogo'];
+
+            return StorePointsPage(
+              storeId: storeId,
+              storeName: storeName,
+              storeLogo: storeLogo,
+            );
+          },
+        ),
+
         // Tambahkan ini ke router Anda
         GoRoute(
           path: '/change-password',

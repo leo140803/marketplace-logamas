@@ -3,6 +3,15 @@ import 'package:marketplace_logamas/function/Utils.dart';
 import 'package:flutter/material.dart';
 
 Card ProductCard(Map<String, dynamic> product) {
+  // Ambil gambar dari product_codes index 0 jika tersedia
+  String productImage = product['product_codes'] != null &&
+          product['product_codes'].isNotEmpty &&
+          product['product_codes'][0]['image'] != null
+      ? 'http://127.0.0.1:3000${product['product_codes'][0]['image']}'
+      : (product['images'] != null && product['images'].isNotEmpty
+          ? 'http://127.0.0.1:3000/uploads/${product['images'][0]}'
+          : 'https://picsum.photos/200/200?random=${Random().nextInt(1000)}');
+
   return Card(
     color: Colors.white,
     clipBehavior: Clip.antiAlias,
@@ -19,11 +28,7 @@ Card ProductCard(Map<String, dynamic> product) {
             decoration: BoxDecoration(
               borderRadius: BorderRadius.vertical(top: Radius.circular(8)),
               image: DecorationImage(
-                image: NetworkImage(
-                  product['images'] != null
-                      ? 'http://127.0.0.1:3000/uploads/${product['images'][0]}'
-                      : 'https://picsum.photos/200/200?random=${Random().nextInt(1000)}',
-                ),
+                image: NetworkImage(productImage),
                 fit: BoxFit.cover,
               ),
             ),
@@ -78,6 +83,7 @@ Card ProductCard(Map<String, dynamic> product) {
                 ],
               ),
               SizedBox(height: 4),
+
               // Location Info
               Row(
                 children: [

@@ -19,8 +19,8 @@ Card ProductCardStore(Map<String, dynamic> product) {
               borderRadius: BorderRadius.vertical(top: Radius.circular(8)),
               image: DecorationImage(
                 image: NetworkImage(
-                  (product['images'] != null && product['images'].isNotEmpty)
-                      ? "$apiBaseUrlImage${product['images'][0]}"
+                  (product['product_code_images'] != null && product['product_code_images'].isNotEmpty)
+                      ? "$apiBaseUrlImage${product['product_code_images'][0]}"
                       : "$apiBaseUrlImage/default_image.jpg", // Gambar default jika kosong
                 ),
                 fit: BoxFit.cover,

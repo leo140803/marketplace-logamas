@@ -27,6 +27,8 @@ class _SearchResultPageState extends State<SearchResultPage> {
   TextEditingController highPriceController = TextEditingController();
   bool isFilterApplied = false;
   bool isLoading = false;
+  TextEditingController lowWeightController = TextEditingController();
+  TextEditingController highWeightController = TextEditingController();
 
   @override
   void initState() {
@@ -75,6 +77,8 @@ class _SearchResultPageState extends State<SearchResultPage> {
     Set<String> selectedMetalTypes, {
     double? lowPrice,
     double? highPrice,
+    double? lowWeight,
+    double? highWeight,
   }) {
     if (lowPrice != null && highPrice != null && lowPrice > highPrice) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -86,17 +90,31 @@ class _SearchResultPageState extends State<SearchResultPage> {
       return;
     }
 
+    if (lowWeight != null && highWeight != null && lowWeight > highWeight) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Low Weight cannot be greater than High Weight.'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
     setState(() {
       isFilterApplied = selectedCategoryNames.isNotEmpty ||
           selectedPurities.isNotEmpty ||
           selectedMetalTypes.isNotEmpty ||
           lowPrice != null ||
-          highPrice != null;
+          highPrice != null ||
+          lowWeight != null ||
+          highWeight != null;
 
       filteredProducts = products.where((product) {
         final type = product['types'] as Map<String, dynamic>? ?? {};
         final category = type['category'] as Map<String, dynamic>? ?? {};
         final price = product['price'] as int? ?? 0;
+        final minWeight = product['min_weight'] as double? ?? 0;
+        final maxWeight = product['max_weight'] as double? ?? 0;
 
         final nameMatches = selectedCategoryNames.isEmpty ||
             selectedCategoryNames.contains(category['name']);
@@ -111,7 +129,14 @@ class _SearchResultPageState extends State<SearchResultPage> {
         final priceMatches = (lowPrice == null || price >= lowPrice) &&
             (highPrice == null || price <= highPrice);
 
-        return nameMatches && purityMatches && metalTypeMatches && priceMatches;
+        final weightMatches = (lowWeight == null || maxWeight >= lowWeight) &&
+            (highWeight == null || minWeight <= highWeight);
+
+        return nameMatches &&
+            purityMatches &&
+            metalTypeMatches &&
+            priceMatches &&
+            weightMatches;
       }).toList();
     });
   }
@@ -255,8 +280,7 @@ class _SearchResultPageState extends State<SearchResultPage> {
                       style: TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
-                        color: Colors
-                            .grey.shade700,
+                        color: Colors.grey.shade700,
                       ),
                     ),
                     const SizedBox(height: 5),
@@ -586,13 +610,96 @@ class _SearchResultPageState extends State<SearchResultPage> {
 
                       SizedBox(height: 24),
 
-                      // Apply Button
+// Filter by Weight Range
+                      Text(
+                        'Set Weight Range (grams)',
+                        style: TextStyle(
+                            fontSize: 18, fontWeight: FontWeight.bold),
+                      ),
+                      SizedBox(height: 10),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: TextField(
+                              controller: lowWeightController,
+                              keyboardType: TextInputType.number,
+                              inputFormatters: [
+                                FilteringTextInputFormatter.allow(
+                                    RegExp(r'^\d+(\.\d{0,2})?$')),
+                              ],
+                              decoration: InputDecoration(
+                                labelText: 'Min Weight',
+                                labelStyle: TextStyle(
+                                    color: Color(0xFF31394E),
+                                    fontWeight: FontWeight.bold),
+                                prefixIcon: Icon(Icons.balance,
+                                    color: Color(0xFFC58189)),
+                                filled: true,
+                                fillColor: Colors.grey[100],
+                                enabledBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(10),
+                                  borderSide: BorderSide(
+                                      color: Colors.grey.shade300, width: 1.5),
+                                ),
+                                focusedBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(10),
+                                  borderSide: BorderSide(
+                                      color: Color(0xFFC58189), width: 2),
+                                ),
+                                contentPadding: EdgeInsets.symmetric(
+                                    vertical: 16, horizontal: 16),
+                              ),
+                            ),
+                          ),
+                          SizedBox(width: 10),
+                          Expanded(
+                            child: TextField(
+                              controller: highWeightController,
+                              keyboardType: TextInputType.number,
+                              inputFormatters: [
+                                FilteringTextInputFormatter.allow(
+                                    RegExp(r'^\d+(\.\d{0,2})?$')),
+                              ],
+                              decoration: InputDecoration(
+                                labelText: 'Max Weight',
+                                labelStyle: TextStyle(
+                                    color: Color(0xFF31394E),
+                                    fontWeight: FontWeight.bold),
+                                prefixIcon:
+                                    Icon(Icons.scale, color: Color(0xFFC58189)),
+                                filled: true,
+                                fillColor: Colors.grey[100],
+                                enabledBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(10),
+                                  borderSide: BorderSide(
+                                      color: Colors.grey.shade300, width: 1.5),
+                                ),
+                                focusedBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(10),
+                                  borderSide: BorderSide(
+                                      color: Color(0xFFC58189), width: 2),
+                                ),
+                                contentPadding: EdgeInsets.symmetric(
+                                    vertical: 16, horizontal: 16),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+
+                      SizedBox(height: 24),
+
+// Apply Button
                       ElevatedButton(
                         onPressed: () {
                           final double? lowPrice =
                               double.tryParse(lowPriceController.text);
                           final double? highPrice =
                               double.tryParse(highPriceController.text);
+                          final double? lowWeight =
+                              double.tryParse(lowWeightController.text);
+                          final double? highWeight =
+                              double.tryParse(highWeightController.text);
 
                           applyFilter(
                             selectedTypes,
@@ -600,6 +707,8 @@ class _SearchResultPageState extends State<SearchResultPage> {
                             selectedMetalTypes,
                             lowPrice: lowPrice,
                             highPrice: highPrice,
+                            lowWeight: lowWeight,
+                            highWeight: highWeight,
                           );
 
                           Navigator.pop(context);

@@ -527,8 +527,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
                                     Icon(
-                                      Icons
-                                          .discount_outlined,
+                                      Icons.discount_outlined,
                                       size: 80,
                                       color: Colors.grey.shade400,
                                     ),
@@ -855,10 +854,25 @@ class _CheckoutPageState extends State<CheckoutPage> {
                                     ClipRRect(
                                       borderRadius: BorderRadius.circular(10),
                                       child: Image.network(
-                                        "https://picsum.photos/200/200?random=${Random().nextInt(1000)}",
+                                        "$apiBaseUrlImage${product['image']}",
                                         width: 80,
                                         height: 80,
                                         fit: BoxFit.cover,
+                                        errorBuilder:
+                                            (context, error, stackTrace) {
+                                          return Container(
+                                            width: 80,
+                                            height: 80,
+                                            color: Colors.grey[
+                                                300], // Placeholder background color
+                                            child: Icon(
+                                              Icons.broken_image,
+                                              color: Colors
+                                                  .grey[600], // Icon color
+                                              size: 40,
+                                            ),
+                                          );
+                                        },
                                       ),
                                     ),
                                     SizedBox(width: 16),

@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:flutter_map/flutter_map.dart';
+import 'package:go_router/go_router.dart';
 import 'package:latlong2/latlong.dart';
 import 'dart:math' as math;
 import 'package:http/http.dart' as http;
 import 'package:marketplace_logamas/function/Utils.dart';
+import 'package:marketplace_logamas/screen/NearbyStore.dart';
 import 'package:marketplace_logamas/screen/SearchResultPage.dart';
 import 'package:marketplace_logamas/widget/BottomNavigationBar.dart';
 import 'package:marketplace_logamas/widget/Dialog.dart';
@@ -43,28 +45,41 @@ class _LocationScreenState extends State<LocationScreen> {
 
   Future<void> _fetchTokoData() async {
     try {
-      final response = await http.get(Uri.parse('$apiBaseUrl/store'));
+      final response =
+          await http.get(Uri.parse('http://127.0.0.1:3001/api/store'));
       if (response.statusCode == 200) {
-        final jsonResponse = json.decode(response.body) as Map<String, dynamic>;
-        final data = jsonResponse['data'] as List<dynamic>;
-        print(data);
+        final jsonResponse = json.decode(response.body);
+        final List<dynamic> data = jsonResponse['data'];
+
+        List<Map<String, dynamic>> tokoList = [];
+
+        for (var item in data) {
+          double tokoLat = item['latitude'];
+          double tokoLon = item['longitude'];
+          double distance =
+              _haversine(_latitude!, _longitude!, tokoLat, tokoLon);
+
+          tokoList.add({
+            "store_id": item['store_id'],
+            "nama": item['store_name'],
+            "lat": tokoLat,
+            "lon": tokoLon,
+            "distance": distance,
+            "logo": item['logo'],
+            "address": item['address'],
+          });
+        }
+
+        tokoList.sort((a, b) => a["distance"].compareTo(b["distance"]));
+        print(tokoList);
         setState(() {
-          _tokoList.clear();
-          for (var item in data) {
-            _tokoList.add({
-              "nama": item['store_name'],
-              "lat": double.parse(item['latitude'].toString()),
-              "lon": double.parse(item['longitude'].toString()),
-            });
-          }
+          _tokoDalamRadius = tokoList;
         });
       } else {
-        dialog(context, 'Error', 'An Error Occured');
-        throw Exception('Failed to fetch data: ${response.statusCode}');
+        print("Failed to fetch data: ${response.statusCode}");
       }
     } catch (e) {
-      print(e);
-      dialog(context, 'Error', 'An Error Occured');
+      print("Error fetching data: $e");
     }
   }
 
@@ -91,8 +106,8 @@ class _LocationScreenState extends State<LocationScreen> {
   }
 
   void _initializeLocation() async {
-    await _fetchTokoData();
     await _getCurrentLocation();
+    await _fetchTokoData();
     setState(() {
       _isLoading = false;
     });
@@ -269,6 +284,19 @@ class _LocationScreenState extends State<LocationScreen> {
                   backgroundColor: Color(0xFF31394E),
                   automaticallyImplyLeading: false,
                   toolbarHeight: 80,
+                  actions: [
+                    IconButton(
+                        icon: Icon(
+                          Icons.location_searching_sharp,
+                          color: Colors.white,
+                        ),
+                        onPressed: () {
+                          context.push(
+                            '/nearby-stores',
+                            extra: _tokoDalamRadius, // Kirim data toko
+                          );
+                        }),
+                  ],
                   title: Padding(
                     padding: const EdgeInsets.only(bottom: 10.0),
                     child: Row(

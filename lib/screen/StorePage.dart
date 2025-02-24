@@ -30,6 +30,8 @@ class StorePage extends StatefulWidget {
 class _StorePageState extends State<StorePage> {
   TextEditingController lowPriceController = TextEditingController();
   TextEditingController highPriceController = TextEditingController();
+  TextEditingController lowWeightController = TextEditingController();
+  TextEditingController highWeightController = TextEditingController();
   final TextEditingController _textController = TextEditingController();
   final FocusNode _textFieldFocusNode = FocusNode();
   Set<String> selectedTypes = {};
@@ -110,45 +112,59 @@ class _StorePageState extends State<StorePage> {
     Set<String> selectedMetalTypes, {
     double? lowPrice,
     double? highPrice,
+    double? lowWeight,
+    double? highWeight,
   }) {
     setState(() {
       isFilterApplied = selectedCategoryNames.isNotEmpty ||
           selectedPurities.isNotEmpty ||
           selectedMetalTypes.isNotEmpty ||
           lowPrice != null ||
-          highPrice != null;
+          highPrice != null ||
+          lowWeight != null ||
+          highWeight != null;
 
-      // Pastikan `products` memiliki tipe data yang benar
       final products = List<Map<String, dynamic>>.from(storeData!['products']);
 
       filteredProducts = products.where((product) {
         final category = product['types']['category'] as Map<String, dynamic>;
         final price = product['low_price'] as int;
+        final minWeight = product['min_weight'] as double? ?? 0;
+        final maxWeight = product['max_weight'] as double? ?? 0;
 
-        // Filter berdasarkan kategori (name)
+        // Filter kategori
         final nameMatches = selectedCategoryNames.isEmpty ||
             selectedCategoryNames.contains(category['name']);
 
-        // Filter berdasarkan purity
+        // Filter kemurnian emas
         final purityMatches = selectedPurities.isEmpty ||
             selectedPurities.contains(category['purity']);
 
-        // Filter berdasarkan metal_type
+        // Filter jenis logam
         final metalTypeMatches = selectedMetalTypes.isEmpty ||
             selectedMetalTypes
                 .contains(_getMetalTypeName(category['metal_type'] as int));
 
-        // Filter berdasarkan rentang harga
+        // Filter rentang harga
         final priceMatches = (lowPrice == null || price >= lowPrice) &&
             (highPrice == null || price <= highPrice);
 
-        return nameMatches && purityMatches && metalTypeMatches && priceMatches;
+        // Filter rentang berat
+        final weightMatches = (lowWeight == null || maxWeight >= lowWeight) &&
+            (highWeight == null || minWeight <= highWeight);
+
+        return nameMatches &&
+            purityMatches &&
+            metalTypeMatches &&
+            priceMatches &&
+            weightMatches;
       }).toList();
     });
   }
 
   Future<void> fetchStoreData() async {
     try {
+      print('Store ID ' + widget.storeId);
       final response = await http.get(
         Uri.parse("$apiBaseUrl/store/${widget.storeId}"),
       );
@@ -508,8 +524,7 @@ class _StorePageState extends State<StorePage> {
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
                                   Icon(
-                                    Icons
-                                        .history_toggle_off,
+                                    Icons.history_toggle_off,
                                     size: 80,
                                     color: Colors.grey.shade400,
                                   ),
@@ -1019,9 +1034,7 @@ class _StorePageState extends State<StorePage> {
                                               Text(
                                                 storeData!['overall_rating'] !=
                                                         null
-                                                    ? storeData![
-                                                            'overall_rating']
-                                                        .toString()
+                                                    ? '${storeData!['overall_rating'].toString()}(${storeData!['total_reviews']})'
                                                     : 'No review',
                                                 style: TextStyle(
                                                   fontSize: 14,
@@ -1564,6 +1577,83 @@ class _StorePageState extends State<StorePage> {
                           ),
                         ],
                       ),
+                      SizedBox(height: 20),
+                      // Filter by Weight Range
+                      Text(
+                        'Set Weight Range (grams)',
+                        style: TextStyle(
+                            fontSize: 18, fontWeight: FontWeight.bold),
+                      ),
+                      SizedBox(height: 10),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: TextField(
+                              controller: lowWeightController,
+                              keyboardType: TextInputType.number,
+                              inputFormatters: [
+                                FilteringTextInputFormatter.allow(
+                                    RegExp(r'^\d+(\.\d{0,2})?$')),
+                              ],
+                              decoration: InputDecoration(
+                                labelText: 'Min Weight',
+                                labelStyle: TextStyle(
+                                    color: Color(0xFF31394E),
+                                    fontWeight: FontWeight.bold),
+                                prefixIcon: Icon(Icons.balance,
+                                    color: Color(0xFFC58189)),
+                                filled: true,
+                                fillColor: Colors.grey[100],
+                                enabledBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(10),
+                                  borderSide: BorderSide(
+                                      color: Colors.grey.shade300, width: 1.5),
+                                ),
+                                focusedBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(10),
+                                  borderSide: BorderSide(
+                                      color: Color(0xFFC58189), width: 2),
+                                ),
+                                contentPadding: EdgeInsets.symmetric(
+                                    vertical: 16, horizontal: 16),
+                              ),
+                            ),
+                          ),
+                          SizedBox(width: 10),
+                          Expanded(
+                            child: TextField(
+                              controller: highWeightController,
+                              keyboardType: TextInputType.number,
+                              inputFormatters: [
+                                FilteringTextInputFormatter.allow(
+                                    RegExp(r'^\d+(\.\d{0,2})?$')),
+                              ],
+                              decoration: InputDecoration(
+                                labelText: 'Max Weight',
+                                labelStyle: TextStyle(
+                                    color: Color(0xFF31394E),
+                                    fontWeight: FontWeight.bold),
+                                prefixIcon:
+                                    Icon(Icons.scale, color: Color(0xFFC58189)),
+                                filled: true,
+                                fillColor: Colors.grey[100],
+                                enabledBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(10),
+                                  borderSide: BorderSide(
+                                      color: Colors.grey.shade300, width: 1.5),
+                                ),
+                                focusedBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(10),
+                                  borderSide: BorderSide(
+                                      color: Color(0xFFC58189), width: 2),
+                                ),
+                                contentPadding: EdgeInsets.symmetric(
+                                    vertical: 16, horizontal: 16),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
 
                       SizedBox(height: 24),
 
@@ -1574,6 +1664,10 @@ class _StorePageState extends State<StorePage> {
                               double.tryParse(lowPriceController.text);
                           final double? highPrice =
                               double.tryParse(highPriceController.text);
+                          final double? lowWeight =
+                              double.tryParse(lowWeightController.text);
+                          final double? highWeight =
+                              double.tryParse(highWeightController.text);
 
                           applyFilter(
                             selectedTypes,
@@ -1581,6 +1675,8 @@ class _StorePageState extends State<StorePage> {
                             selectedMetalTypes,
                             lowPrice: lowPrice,
                             highPrice: highPrice,
+                            lowWeight: lowWeight,
+                            highWeight: highWeight,
                           );
 
                           Navigator.pop(context);

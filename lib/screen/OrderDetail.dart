@@ -80,20 +80,20 @@ class _OrderDetailsPageState extends State<OrderDetailsPage> {
   }
 
   double _getDiscountAmount() {
-    if (_transactionData == null)
-      return 0; // Ensure `_transactionData` is not null
+    if (_transactionData == null) return 0;
 
-    // Check if a voucher was used
-    if (_transactionData!['voucher_own_id'] != null) {
-      double subTotal =
-          double.tryParse(_transactionData!['sub_total_price'].toString()) ?? 0;
-      double totalPrice =
-          double.tryParse(_transactionData!['total_price'].toString()) ?? 0;
+    // Ambil nilai dari response API
+    double totalPrice =
+        double.tryParse(_transactionData!['total_price'].toString()) ?? 0;
+    double subTotal =
+        double.tryParse(_transactionData!['sub_total_price'].toString()) ?? 0;
+    double taxPrice =
+        double.tryParse(_transactionData!['tax_price'].toString()) ?? 0;
 
-      return subTotal - totalPrice; // ✅ Calculate discount dynamically
-    }
+    // Hitung diskon berdasarkan rumus
+    double discount = totalPrice - (subTotal + taxPrice);
 
-    return 0; // No voucher, no discount
+    return discount; // Hasil akhir diskon
   }
 
   void _setCountdown() {
@@ -138,6 +138,7 @@ class _OrderDetailsPageState extends State<OrderDetailsPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.grey[200],
       appBar: AppBar(
         title: Text(
           'Rincian Pemesanan',
@@ -212,8 +213,8 @@ class _OrderDetailsPageState extends State<OrderDetailsPage> {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text('Expired At:',
-                        style:
-                            TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                        style: TextStyle(
+                            fontSize: 18, fontWeight: FontWeight.bold)),
                     Text(
                       _isExpired
                           ? 'Expired'
@@ -309,6 +310,11 @@ class _OrderDetailsPageState extends State<OrderDetailsPage> {
     var transactionReview =
         product['TransactionReview']; // Ambil review jika ada
 
+    // 🕒 Perhitungan batas akhir review (updated_at + 7 hari)
+    DateTime updatedAt = DateTime.parse(product['updated_at']);
+    DateTime reviewDeadline = updatedAt.add(Duration(days: 7));
+    bool canReview = DateTime.now().isBefore(reviewDeadline);
+
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8.0),
       child: Container(
@@ -340,7 +346,7 @@ class _OrderDetailsPageState extends State<OrderDetailsPage> {
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(10),
                     child: Image.network(
-                      '$apiBaseUrlImage${product['product_code']['product']['images'][0]}', // Placeholder image
+                      '$apiBaseUrlImage${product['product_code']['image']}',
                       fit: BoxFit.cover,
                       errorBuilder: (context, error, stackTrace) => Icon(
                         Icons.image_not_supported,
@@ -367,6 +373,14 @@ class _OrderDetailsPageState extends State<OrderDetailsPage> {
                       SizedBox(height: 4),
                       Text(
                         'Subtotal: Rp ${formatCurrency(double.tryParse(product['total_price'].toString()) ?? 0)}',
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Colors.grey[700],
+                        ),
+                      ),
+                      SizedBox(height: 4),
+                      Text(
+                        'Weight: ${product['weight']}gr',
                         style: TextStyle(
                           fontSize: 14,
                           color: Colors.grey[700],
@@ -446,24 +460,38 @@ class _OrderDetailsPageState extends State<OrderDetailsPage> {
                 ),
               ),
 
-            // 🎯 Tampilkan tombol "Beri Penilaian" jika review belum ada
-            if (paymentStatus == 2 && transactionReview == null)
-              Align(
-                alignment: Alignment.centerRight,
-                child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.blueAccent,
-                    padding: EdgeInsets.symmetric(horizontal: 15, vertical: 8),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
+            // 🎯 Tampilkan tombol "Beri Penilaian" jika review belum ada dan masih dalam batas waktu
+            if (paymentStatus == 2 && transactionReview == null && canReview)
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  // 🕒 Batas Akhir Review
+                  Text(
+                    "Beri review sebelum: ${DateFormat('dd MMM yyyy').format(reviewDeadline)}",
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.grey[600],
                     ),
                   ),
-                  onPressed: () => _showRatingDialog(product['id']),
-                  child: Text(
-                    "Beri Penilaian",
-                    style: TextStyle(fontSize: 14, color: Colors.white),
+
+                  // 📝 Tombol Beri Penilaian
+                  ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.blueAccent,
+                      padding:
+                          EdgeInsets.symmetric(horizontal: 15, vertical: 8),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    onPressed: () => _showRatingDialog(product['id']),
+                    child: Text(
+                      "Beri Penilaian",
+                      style: TextStyle(fontSize: 14, color: Colors.white),
+                    ),
                   ),
-                ),
+                ],
               ),
           ],
         ),

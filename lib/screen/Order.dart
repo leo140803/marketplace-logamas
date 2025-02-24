@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:intl/intl.dart';
 import 'package:marketplace_logamas/function/Utils.dart';
 import 'package:marketplace_logamas/widget/Timer.dart';
 import 'package:http/http.dart' as http;
@@ -20,10 +21,34 @@ class _OrdersPageState extends State<OrdersPage>
   List<Map<String, dynamic>> completedOrders = [];
   String? _accessToken;
   bool isLoading = true;
+  DateTime? selectedStartDate;
+  DateTime? selectedEndDate;
+  int selectedFilter = 0; // 0: Semua, 1: 30 Hari, 2: 90 Hari, 3: Custom
+
+  Future<void> _selectDateRange(BuildContext context) async {
+    DateTimeRange? picked = await showDateRangePicker(
+      context: context,
+      firstDate: DateTime(2022, 1, 1),
+      lastDate: DateTime.now(),
+      initialDateRange: selectedStartDate != null && selectedEndDate != null
+          ? DateTimeRange(start: selectedStartDate!, end: selectedEndDate!)
+          : null,
+    );
+
+    if (picked != null) {
+      setState(() {
+        selectedStartDate = picked.start;
+        selectedEndDate = picked.end;
+        selectedFilter = 3; // Custom Date
+        _loadOrders(); // Refresh data setelah memilih filter
+      });
+    }
+  }
 
   Future<List<Map<String, dynamic>>> fetchTransactionsByStatus(
       int status) async {
     try {
+      print(_accessToken);
       final response = await http.get(
         Uri.parse(
             '$apiBaseUrl/transactions?payment_status=$status'), // ✅ Memperbaiki query parameter
@@ -69,18 +94,82 @@ class _OrdersPageState extends State<OrdersPage>
     setState(() => isLoading = true);
 
     try {
-      final pending = await fetchTransactionsByStatus(0); // Belum Bayar
-      final readyToPickup = await fetchTransactionsByStatus(1); // Siap Ambil
-      final completed =
-          await fetchTransactionsByStatus(2); // Sudah Diambil (Done)
+      DateTime now = DateTime.now();
+      DateTime? startDate;
+      DateTime? endDate;
+
+      // Tentukan filter waktu berdasarkan pilihan pengguna
+      if (selectedFilter == 1) {
+        startDate = now.subtract(const Duration(days: 30));
+      } else if (selectedFilter == 2) {
+        startDate = now.subtract(const Duration(days: 90));
+      } else if (selectedFilter == 3) {
+        startDate = selectedStartDate;
+        endDate = selectedEndDate;
+      }
+
+      List<Map<String, dynamic>> allOrders = [];
+      for (int status = 0; status <= 2; status++) {
+        final orders = await fetchTransactionsByStatus(status);
+        allOrders.addAll(orders);
+      }
+
+      // Filter berdasarkan tanggal jika ada filter yang dipilih
+      if (startDate != null) {
+        allOrders = allOrders.where((order) {
+          DateTime orderDate =
+              DateTime.tryParse(order['created_at']) ?? DateTime(2000);
+          return orderDate.isAfter(startDate!.subtract(Duration(seconds: 1))) &&
+              (endDate == null ||
+                  orderDate.isBefore(endDate!.add(Duration(days: 1))));
+        }).toList();
+      }
 
       setState(() {
-        pendingOrders = pending;
-        readyToPickupOrders = readyToPickup;
-        completedOrders = completed;
+        pendingOrders = allOrders.where((o) => o['status'] == 0).toList();
+        readyToPickupOrders = allOrders.where((o) => o['status'] == 1).toList();
+        completedOrders = allOrders.where((o) => o['status'] == 2).toList();
       });
     } finally {
       setState(() => isLoading = false);
+    }
+  }
+
+  Future<void> _pickStartDate(
+      BuildContext context, StateSetter setState) async {
+    DateTime? picked = await showDatePicker(
+      context: context,
+      initialDate: selectedStartDate ?? DateTime.now(),
+      firstDate: DateTime(2022, 1, 1),
+      lastDate: DateTime.now(),
+    );
+
+    if (picked != null) {
+      setState(() {
+        selectedStartDate = picked;
+      });
+    }
+  }
+
+  Future<void> _pickEndDate(BuildContext context, StateSetter setState) async {
+    DateTime? picked = await showDatePicker(
+      context: context,
+      initialDate: selectedEndDate ?? DateTime.now(),
+      firstDate: selectedStartDate ?? DateTime(2022, 1, 1),
+      lastDate: DateTime.now(),
+    );
+
+    if (picked != null) {
+      setState(() {
+        selectedEndDate = picked;
+      });
+    }
+  }
+
+  void _selectCustomDate(BuildContext context, StateSetter setState) async {
+    await _pickStartDate(context, setState);
+    if (selectedStartDate != null) {
+      await _pickEndDate(context, setState);
     }
   }
 
@@ -88,14 +177,245 @@ class _OrdersPageState extends State<OrdersPage>
   void initState() {
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
-    _loadOrders();
-    loadAccessToken();
+    loadAccessToken().then((_) {
+      if (_accessToken != null) {
+        _loadOrders();
+      }
+    });
   }
 
   @override
   void dispose() {
     _tabController.dispose();
     super.dispose();
+  }
+
+  void _showFilterDrawer(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (BuildContext context, StateSetter setState) {
+            return FractionallySizedBox(
+              heightFactor: 0.4, // Setengah layar
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 16.0, vertical: 16.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // 🔹 Header Drawer
+                    Center(
+                      child: Container(
+                        width: 50,
+                        height: 6,
+                        margin: const EdgeInsets.only(bottom: 16),
+                        decoration: BoxDecoration(
+                          color: Colors.grey[300],
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
+                    ),
+                    const Text(
+                      'Filter Waktu Transaksi',
+                      style:
+                          TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 10),
+
+                    // 🔹 Dropdown Filter Waktu
+                    Container(
+                      decoration: BoxDecoration(
+                        color: Colors.grey[100], // Latar belakang dropdown
+                        borderRadius:
+                            BorderRadius.circular(10), // Membulatkan sudut
+                        border:
+                            Border.all(color: Colors.grey.shade300, width: 1.5),
+                      ),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12), // Padding dalam container
+                      child: DropdownButtonHideUnderline(
+                        child: DropdownButton<int>(
+                          value: selectedFilter,
+                          isExpanded: true,
+                          icon: const Icon(Icons.arrow_drop_down,
+                              color: Color(0xFFC58189),
+                              size: 30), // Icon dropdown modern
+                          dropdownColor: Colors.white, // Warna latar dropdown
+                          borderRadius: BorderRadius.circular(
+                              10), // Membulatkan sudut dropdown
+                          items: const [
+                            DropdownMenuItem(
+                                value: 0, child: Text("📅 Semua Tanggal")),
+                            DropdownMenuItem(
+                                value: 1, child: Text("🗓 30 Hari Terakhir")),
+                            DropdownMenuItem(
+                                value: 2, child: Text("📆 90 Hari Terakhir")),
+                            DropdownMenuItem(
+                                value: 3,
+                                child: Text("📍 Pilih Tanggal Sendiri")),
+                          ],
+                          onChanged: (value) {
+                            setState(() {
+                              selectedFilter = value!;
+                              if (selectedFilter == 3) {
+                                _selectCustomDate(context, setState);
+                              }
+                            });
+                          },
+                          style: const TextStyle(
+                            fontSize: 16,
+                            color: Colors
+                                .black87, // Warna teks lebih gelap untuk kontras
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ),
+
+                    const SizedBox(height: 16),
+
+                    // 🔹 Jika Custom Date Dipilih, Tampilkan Rentang Tanggal
+                    if (selectedFilter == 3)
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(
+                              color: Colors.grey.shade300, width: 1.5),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              "Pilih Rentang Tanggal:",
+                              style: TextStyle(
+                                  fontSize: 16, fontWeight: FontWeight.bold),
+                            ),
+                            const SizedBox(height: 8),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                // 🔹 Tanggal Mulai
+                                GestureDetector(
+                                  onTap: () =>
+                                      _pickStartDate(context, setState),
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 12, vertical: 10),
+                                    decoration: BoxDecoration(
+                                      color: Colors.grey[100],
+                                      borderRadius: BorderRadius.circular(8),
+                                      border: Border.all(
+                                          color: Colors.grey.shade300,
+                                          width: 1.5),
+                                    ),
+                                    child: Row(
+                                      children: [
+                                        const Icon(Icons.calendar_today,
+                                            size: 18, color: Color(0xFFC58189)),
+                                        const SizedBox(width: 8),
+                                        Text(
+                                          selectedStartDate != null
+                                              ? "${selectedStartDate!.day} ${_getMonthName(selectedStartDate!.month)} ${selectedStartDate!.year}"
+                                              : "Pilih Tanggal",
+                                          style: const TextStyle(
+                                              fontSize: 14,
+                                              fontWeight: FontWeight.bold),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                                const Text(" - "),
+                                // 🔹 Tanggal Akhir
+                                GestureDetector(
+                                  onTap: () => _pickEndDate(context, setState),
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 12, vertical: 10),
+                                    decoration: BoxDecoration(
+                                      color: Colors.grey[100],
+                                      borderRadius: BorderRadius.circular(8),
+                                      border: Border.all(
+                                          color: Colors.grey.shade300,
+                                          width: 1.5),
+                                    ),
+                                    child: Row(
+                                      children: [
+                                        const Icon(Icons.calendar_today,
+                                            size: 18, color: Color(0xFFC58189)),
+                                        const SizedBox(width: 8),
+                                        Text(
+                                          selectedEndDate != null
+                                              ? "${selectedEndDate!.day} ${_getMonthName(selectedEndDate!.month)} ${selectedEndDate!.year}"
+                                              : "Pilih Tanggal",
+                                          style: const TextStyle(
+                                              fontSize: 14,
+                                              fontWeight: FontWeight.bold),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+
+                    const Spacer(),
+
+                    // 🔹 Tombol Terapkan
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFFC58189),
+                        ),
+                        onPressed: () {
+                          Navigator.pop(context); // Tutup drawer
+                          _loadOrders(); // Terapkan filter
+                        },
+                        child: const Text("Terapkan Filter",
+                            style: TextStyle(color: Colors.white)),
+                      ),
+                    ),
+
+                    const SizedBox(height: 16),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  String _getMonthName(int month) {
+    const months = [
+      "",
+      "Januari",
+      "Februari",
+      "Maret",
+      "April",
+      "Mei",
+      "Juni",
+      "Juli",
+      "Agustus",
+      "September",
+      "Oktober",
+      "November",
+      "Desember"
+    ];
+    return months[month];
   }
 
   @override
@@ -111,11 +431,16 @@ class _OrdersPageState extends State<OrdersPage>
         ),
         leading: IconButton(
           onPressed: () => context.go('/information'),
-          icon: const Icon(
-            Icons.arrow_back,
-            color: Colors.white,
-          ),
+          icon: const Icon(Icons.arrow_back, color: Colors.white),
         ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.filter_list, color: Colors.white),
+            onPressed: () {
+              _showFilterDrawer(context);
+            },
+          ),
+        ],
         backgroundColor: const Color(0xFF31394E),
         bottom: TabBar(
           controller: _tabController,
@@ -190,6 +515,17 @@ class _OrdersPageState extends State<OrdersPage>
         double taxPercentage = (subTotal > 0) ? (taxPrice / subTotal) * 100 : 0;
         print(tax);
 
+        String? formattedCreatedAt;
+        if (order['created_at'] != null) {
+          DateTime? parsedDate = DateTime.tryParse(order['created_at'])
+              ?.toUtc()
+              .add(Duration(hours: 7));
+          if (parsedDate != null) {
+            formattedCreatedAt =
+                DateFormat("dd-MM-yyyy HH:mm").format(parsedDate);
+          }
+        }
+
         return Card(
           margin: const EdgeInsets.only(bottom: 16.0),
           shape: RoundedRectangleBorder(
@@ -216,12 +552,27 @@ class _OrdersPageState extends State<OrdersPage>
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text(
-                        order['store']?['store_name'] ?? 'Toko Tidak Diketahui',
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16,
-                        ),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment
+                            .start, // Rata kiri agar lebih rapi
+                        children: [
+                          Text(
+                            order['store']?['store_name'] ??
+                                'Toko Tidak Diketahui',
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            'Tanggal: $formattedCreatedAt',
+                            style: const TextStyle(
+                              fontSize: 14,
+                              color: Colors.black54,
+                            ),
+                          ),
+                        ],
                       ),
                       if (order['status'] == 1)
                         Container(
