@@ -598,19 +598,69 @@ class _OrdersPageState extends State<OrdersPage>
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       ...products.map((product) {
+                        double price =
+                            double.tryParse(product['price'].toString()) ?? 0;
+                        double adjPrice = double.tryParse(
+                                product['adjustment_price'].toString()) ??
+                            0;
+                        double discount =
+                            double.tryParse(product['discount'].toString()) ??
+                                0;
+                        double totalPrice = double.tryParse(
+                                product['total_price'].toString()) ??
+                            0;
+
                         return Padding(
                           padding: const EdgeInsets.only(bottom: 4.0),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text(
-                                '${product['product_code']['product']['name']} (${product['weight']}g)',
-                                style: const TextStyle(fontSize: 14),
+                              Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Text(
+                                    '${product['product_code']['product']['name']} (${product['weight']}g)',
+                                    style: const TextStyle(fontSize: 14),
+                                  ),
+                                  Text(
+                                    'Rp ${formatCurrency(totalPrice)}',
+                                    style: const TextStyle(fontSize: 14),
+                                  ),
+                                ],
                               ),
-                              Text(
-                                'Rp ${formatCurrency(double.tryParse(product['total_price'].toString()) ?? 0)}',
-                                style: const TextStyle(fontSize: 14),
-                              ),
+                              // 🔹 Tampilkan Adjustment Price Jika > 0
+                              if (adjPrice > 0)
+                                Row(
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    const Text("Adjustment Price",
+                                        style: TextStyle(
+                                            fontSize: 14, color: Colors.blue)),
+                                    Text(
+                                      "+Rp ${formatCurrency(adjPrice)}",
+                                      style: const TextStyle(
+                                          fontSize: 14, color: Colors.blue),
+                                    ),
+                                  ],
+                                ),
+                              // 🔹 Tampilkan Discount Jika > 0
+                              if (discount > 0)
+                                Row(
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    const Text("Discount",
+                                        style: TextStyle(
+                                            fontSize: 14, color: Colors.green)),
+                                    Text(
+                                      "-Rp ${formatCurrency(discount)}",
+                                      style: const TextStyle(
+                                          fontSize: 14, color: Colors.green),
+                                    ),
+                                  ],
+                                ),
                             ],
                           ),
                         );

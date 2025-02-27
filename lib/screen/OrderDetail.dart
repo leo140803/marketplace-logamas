@@ -397,6 +397,13 @@ class _OrderDetailsPageState extends State<OrderDetailsPage> {
     DateTime reviewDeadline = updatedAt.add(Duration(days: 7));
     bool canReview = DateTime.now().isBefore(reviewDeadline);
 
+    // Ambil Harga, Adjustment Price, dan Discount
+    double price = double.tryParse(product['price'].toString()) ?? 0;
+    double adjPrice =
+        double.tryParse(product['adjustment_price'].toString()) ?? 0;
+    double discount = double.tryParse(product['discount'].toString()) ?? 0;
+    double totalPrice = double.tryParse(product['total_price'].toString()) ?? 0;
+
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8.0),
       child: Container(
@@ -454,7 +461,7 @@ class _OrderDetailsPageState extends State<OrderDetailsPage> {
                       ),
                       SizedBox(height: 4),
                       Text(
-                        'Subtotal: Rp ${formatCurrency(double.tryParse(product['total_price'].toString()) ?? 0)}',
+                        'Subtotal: Rp ${formatCurrency(totalPrice)}',
                         style: TextStyle(
                           fontSize: 14,
                           color: Colors.grey[700],
@@ -468,6 +475,36 @@ class _OrderDetailsPageState extends State<OrderDetailsPage> {
                           color: Colors.grey[700],
                         ),
                       ),
+
+                      // 🔹 Tampilkan Adjustment Price Jika > 0
+                      if (adjPrice > 0)
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            const Text("Adjustment Price",
+                                style: TextStyle(
+                                    fontSize: 14, color: Colors.blue)),
+                            Text(
+                              "+Rp ${formatCurrency(adjPrice)}",
+                              style: const TextStyle(
+                                  fontSize: 14, color: Colors.blue),
+                            ),
+                          ],
+                        ),
+
+                      // 🔹 Tampilkan Discount Jika > 0
+                      if (discount > 0)
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            const Text("Discount",
+                                style: TextStyle(
+                                    fontSize: 14, color: Colors.green)),
+                            Text("-Rp ${formatCurrency(discount)}",
+                                style: const TextStyle(
+                                    fontSize: 14, color: Colors.green)),
+                          ],
+                        ),
                     ],
                   ),
                 ),
