@@ -168,6 +168,21 @@ class _NearbyStoresPageState extends State<NearbyStoresPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        backgroundColor:
+            Colors.transparent, // Buat transparan agar gambar terlihat
+        flexibleSpace: Stack(
+          fit: StackFit.expand,
+          children: [
+            Image.asset(
+              'assets/images/appbar.png', // Ganti dengan path gambar yang sesuai
+              fit: BoxFit.cover, // Pastikan gambar memenuhi seluruh AppBar
+            ),
+            Container(
+              color: Colors.black
+                  .withOpacity(0.2), // Overlay agar teks tetap terbaca
+            ),
+          ],
+        ),
         title: Text(
           'Nearby Stores',
           style: TextStyle(
@@ -185,7 +200,6 @@ class _NearbyStoresPageState extends State<NearbyStoresPage> {
             ),
           ),
         ),
-        backgroundColor: Color(0xFF31394E),
         actions: [
           IconButton(
             icon: Icon(Icons.filter_alt_outlined, color: Colors.white),

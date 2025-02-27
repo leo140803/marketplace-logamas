@@ -96,6 +96,24 @@ class _MenuScreenState extends State<MenuScreen> {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
+        backgroundColor:
+            Colors.transparent, // Buat transparan agar gambar terlihat
+        flexibleSpace: Stack(
+          fit: StackFit.expand,
+          children: [
+            Image.asset(
+              'assets/images/appbar.png', // Ganti dengan path gambar yang sesuai
+              fit: BoxFit.cover, // Pastikan gambar memenuhi seluruh AppBar
+            ),
+            Container(
+              color: Colors.black
+                  .withOpacity(0.2), // Overlay agar teks tetap terbaca
+            ),
+          ],
+        ),
+        automaticallyImplyLeading: false,
+        centerTitle: true,
+        elevation: 0,
         title: const Text(
           'Menu Utama',
           style: TextStyle(
@@ -103,10 +121,6 @@ class _MenuScreenState extends State<MenuScreen> {
             fontWeight: FontWeight.bold,
           ),
         ),
-        automaticallyImplyLeading: false,
-        centerTitle: true,
-        elevation: 0,
-        backgroundColor: Color(0xFF31394E),
         foregroundColor: Colors.black,
       ),
       body: SingleChildScrollView(

@@ -12,6 +12,21 @@ class SearchResultPage extends StatelessWidget {
     return Scaffold(
       backgroundColor: Color(0xFFFFFFFF), // Latar belakang halaman putih
       appBar: AppBar(
+        backgroundColor:
+            Colors.transparent, // Buat transparan agar gambar terlihat
+        flexibleSpace: Stack(
+          fit: StackFit.expand,
+          children: [
+            Image.asset(
+              'assets/images/appbar.png', // Ganti dengan path gambar yang sesuai
+              fit: BoxFit.cover, // Pastikan gambar memenuhi seluruh AppBar
+            ),
+            Container(
+              color: Colors.black
+                  .withOpacity(0.2), // Overlay agar teks tetap terbaca
+            ),
+          ],
+        ),
         leading: GestureDetector(
           onTap: () => context.pop(),
           child: Padding(
@@ -22,13 +37,15 @@ class SearchResultPage extends StatelessWidget {
             ),
           ),
         ),
-        title: Text('Hasil Pencarian',
-            style: TextStyle(
-              color: Colors.white,
-              fontWeight: FontWeight.bold,
-            )),
-        backgroundColor: Color(0xFF31394E), // Warna AppBar sesuai palet
+        title: Text(
+          'Hasil Pencarian',
+          style: TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
       ),
+
       body: searchResults.isEmpty
           ? Center(
               child: Column(

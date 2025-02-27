@@ -59,14 +59,31 @@ class _FAQPageState extends State<FAQPage> {
     return Scaffold(
       backgroundColor: Color(0xFFF4F4F4),
       appBar: AppBar(
-        title: Text(
-          "FAQ",
-          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+        backgroundColor:
+            Colors.transparent, // Buat transparan agar gambar terlihat
+        flexibleSpace: Stack(
+          fit: StackFit.expand,
+          children: [
+            Image.asset(
+              'assets/images/appbar.png', // Ganti dengan path gambar yang sesuai
+              fit: BoxFit.cover, // Pastikan gambar memenuhi seluruh AppBar
+            ),
+            Container(
+              color: Colors.black
+                  .withOpacity(0.2), // Overlay agar teks tetap terbaca
+            ),
+          ],
         ),
-        backgroundColor: Color(0xFF31394E),
+        title: const Text(
+          "FAQ",
+          style: TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
         leading: IconButton(
-          onPressed: () => {context.go('/information')},
-          icon: Icon(Icons.arrow_back, color: Colors.white),
+          onPressed: () => context.go('/information'),
+          icon: const Icon(Icons.arrow_back, color: Colors.white),
         ),
       ),
       body: isLoading

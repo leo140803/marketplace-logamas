@@ -803,15 +803,32 @@ class _CheckoutPageState extends State<CheckoutPage> {
     return Scaffold(
       backgroundColor: Color(0xFFF4F4F4),
       appBar: AppBar(
-        title: Text(
+        backgroundColor:
+            Colors.transparent, // Buat transparan agar gambar terlihat
+        flexibleSpace: Stack(
+          fit: StackFit.expand,
+          children: [
+            Image.asset(
+              'assets/images/appbar.png', // Ganti dengan path gambar yang sesuai
+              fit: BoxFit.cover, // Pastikan gambar memenuhi seluruh AppBar
+            ),
+            Container(
+              color: Colors.black
+                  .withOpacity(0.2), // Overlay agar teks tetap terbaca
+            ),
+          ],
+        ),
+        title: const Text(
           'Checkout',
-          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+          style: TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+          ),
         ),
         leading: IconButton(
-          icon: Icon(Icons.arrow_back, color: Colors.white),
+          icon: const Icon(Icons.arrow_back, color: Colors.white),
           onPressed: () => Navigator.pop(context),
         ),
-        backgroundColor: Color(0xFF31394E),
       ),
       body: SingleChildScrollView(
         child: Column(

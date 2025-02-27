@@ -157,11 +157,28 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Edit Profile',
-            style: TextStyle(
-              color: Colors.white,
-              fontWeight: FontWeight.bold,
-            )),
+        backgroundColor:
+            Colors.transparent, // Buat transparan agar gambar terlihat
+        flexibleSpace: Stack(
+          fit: StackFit.expand,
+          children: [
+            Image.asset(
+              'assets/images/appbar.png', // Ganti dengan path gambar yang sesuai
+              fit: BoxFit.cover, // Pastikan gambar memenuhi seluruh AppBar
+            ),
+            Container(
+              color: Colors.black
+                  .withOpacity(0.2), // Overlay agar teks tetap terbaca
+            ),
+          ],
+        ),
+        title: const Text(
+          'Edit Profile',
+          style: TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
         leading: IconButton(
           onPressed: () => context.go('/information'),
           icon: const Icon(
@@ -169,7 +186,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
             color: Colors.white,
           ),
         ),
-        backgroundColor: const Color(0xFF31394E),
       ),
       body: _isLoading
           ? const Center(

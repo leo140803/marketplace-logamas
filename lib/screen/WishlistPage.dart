@@ -60,12 +60,6 @@ class _WishlistPageState extends State<WishlistPage> {
       }
     } catch (e) {
       print('Error fetching wishlist: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Failed to fetch wishlist'),
-          backgroundColor: Colors.red,
-        ),
-      );
     } finally {
       setState(() {
         isLoading = false;
@@ -164,9 +158,27 @@ class _WishlistPageState extends State<WishlistPage> {
     return Scaffold(
       backgroundColor: Colors.grey[100],
       appBar: AppBar(
+        backgroundColor:
+            Colors.transparent, // Buat transparan agar gambar terlihat
+        flexibleSpace: Stack(
+          fit: StackFit.expand,
+          children: [
+            Image.asset(
+              'assets/images/appbar.png', // Ganti dengan path gambar yang sesuai
+              fit: BoxFit.cover, // Pastikan gambar memenuhi seluruh AppBar
+            ),
+            Container(
+              color: Colors.black
+                  .withOpacity(0.2), // Overlay agar teks tetap terbaca
+            ),
+          ],
+        ),
         title: const Text(
           'Wishlist',
-          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+          style: TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+          ),
         ),
         leading: IconButton(
           onPressed: () => context.go('/information'),
@@ -175,7 +187,6 @@ class _WishlistPageState extends State<WishlistPage> {
             color: Colors.white,
           ),
         ),
-        backgroundColor: const Color(0xFF31394E),
       ),
       body: isLoading
           ? const Center(

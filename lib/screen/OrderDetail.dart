@@ -140,12 +140,29 @@ class _OrderDetailsPageState extends State<OrderDetailsPage> {
     return Scaffold(
       backgroundColor: Colors.grey[200],
       appBar: AppBar(
-        title: Text(
-          'Rincian Pemesanan',
-          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-        ),
-        backgroundColor: const Color(0xFF31394E),
+        backgroundColor:
+            Colors.transparent, // Buat transparan agar gambar terlihat
         elevation: 0,
+        flexibleSpace: Stack(
+          fit: StackFit.expand,
+          children: [
+            Image.asset(
+              'assets/images/appbar.png', // Ganti dengan path gambar yang sesuai
+              fit: BoxFit.cover, // Pastikan gambar memenuhi seluruh AppBar
+            ),
+            Container(
+              color: Colors.black
+                  .withOpacity(0.2), // Overlay agar teks tetap terbaca
+            ),
+          ],
+        ),
+        title: const Text(
+          'Rincian Pemesanan',
+          style: TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
         leading: IconButton(
           onPressed: () => context.pop(),
           icon: const Icon(
@@ -745,7 +762,6 @@ class _OrderDetailsPageState extends State<OrderDetailsPage> {
       print("Error: ${responseData['message']}");
     }
   }
-
 
   void _openPaymentLink() async {
     if (_transactionData != null && _transactionData!['payment_link'] != null) {

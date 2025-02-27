@@ -878,13 +878,28 @@ class _StorePageState extends State<StorePage> {
                     SliverAppBar(
                       pinned: true,
                       floating: true,
-                      backgroundColor: Color(0xFF31394E),
+                      backgroundColor: Colors
+                          .transparent, // Buat transparan agar gambar terlihat
                       automaticallyImplyLeading: false,
                       toolbarHeight: 80,
+                      flexibleSpace: Stack(
+                        fit: StackFit.expand,
+                        children: [
+                          Image.asset(
+                            'assets/images/appbar.png', // Ganti dengan path gambar yang sesuai
+                            fit: BoxFit
+                                .cover, // Pastikan gambar memenuhi seluruh AppBar
+                          ),
+                          Container(
+                            color: Colors.black.withOpacity(
+                                0.2), // Overlay agar teks tetap terbaca
+                          ),
+                        ],
+                      ),
                       leading: GestureDetector(
                         onTap: () => GoRouter.of(context).pop(),
-                        child: Padding(
-                          padding: const EdgeInsets.only(bottom: 10.0),
+                        child: const Padding(
+                          padding: EdgeInsets.only(bottom: 10.0),
                           child: Icon(
                             Icons.arrow_back,
                             color: Colors.white,
@@ -902,31 +917,33 @@ class _StorePageState extends State<StorePage> {
                                 decoration: InputDecoration(
                                   isDense: true,
                                   hintText: 'Cari...',
-                                  hintStyle: TextStyle(
+                                  hintStyle: const TextStyle(
                                     fontSize: 14,
                                     color: Color(0xFFC58189),
                                   ),
                                   enabledBorder: OutlineInputBorder(
-                                    borderSide:
-                                        BorderSide(color: Colors.transparent),
+                                    borderSide: const BorderSide(
+                                        color: Colors.transparent),
                                     borderRadius: BorderRadius.circular(8),
                                   ),
                                   focusedBorder: OutlineInputBorder(
-                                    borderSide:
-                                        BorderSide(color: Colors.transparent),
+                                    borderSide: const BorderSide(
+                                        color: Colors.transparent),
                                     borderRadius: BorderRadius.circular(8),
                                   ),
                                   filled: true,
                                   fillColor: Colors.white,
-                                  prefixIcon: Icon(
+                                  prefixIcon: const Icon(
                                     Icons.search,
                                     color: Color(0xFFC58189),
                                   ),
                                   suffixIcon: IconButton(
-                                    icon: Icon(isFilterApplied
-                                        ? Icons.filter_alt
-                                        : Icons.filter_alt_outlined),
-                                    color: Color(0xFFC58189),
+                                    icon: Icon(
+                                      isFilterApplied
+                                          ? Icons.filter_alt
+                                          : Icons.filter_alt_outlined,
+                                      color: const Color(0xFFC58189),
+                                    ),
                                     onPressed: () {
                                       _showFilterDrawer(context);
                                     },
@@ -944,15 +961,13 @@ class _StorePageState extends State<StorePage> {
                             clipBehavior: Clip.none,
                             children: [
                               IconButton(
-                                icon: Icon(
+                                icon: const Icon(
                                   Icons.shopping_cart_outlined,
                                   color: Colors.white,
                                 ),
                                 onPressed: () {
                                   getAccessToken();
                                   context.push('/cart');
-                                  // Navigator.pushReplacementNamed(
-                                  //     context, '/cart');
                                 },
                               ),
                             ],

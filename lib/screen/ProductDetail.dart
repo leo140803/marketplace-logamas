@@ -225,111 +225,111 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
   }
 
   Widget _buildReviewCard({
-  required String customerName,
-  required String review,
-  required int rating,
-  String? replyAdmin,
-}) {
-  return Card(
-    color: Colors.white,
-    elevation: 4,
-    margin: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 5),
-    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-    child: Padding(
-      padding: const EdgeInsets.all(16.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Customer Name + Rating
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                customerName,
-                style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF31394E)),
-              ),
-              Row(
-                children: List.generate(
-                  5,
-                  (index) => Icon(
-                    Icons.star,
-                    size: 18,
-                    color: index < rating ? Color(0xFFF2C94C) : Colors.grey[300],
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 6),
-
-          // Review Text
-          Text(
-            review,
-            style: const TextStyle(fontSize: 14, color: Colors.black87),
-          ),
-
-          // Admin Reply (if available)
-          if (replyAdmin != null && replyAdmin.isNotEmpty) ...[
-            const SizedBox(height: 14),
+    required String customerName,
+    required String review,
+    required int rating,
+    String? replyAdmin,
+  }) {
+    return Card(
+      color: Colors.white,
+      elevation: 4,
+      margin: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 5),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Customer Name + Rating
             Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Icon(Icons.admin_panel_settings_rounded,
-                    color: Colors.blue.shade700, size: 20),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(12),
-                      gradient: const LinearGradient(
-                        colors: [Color(0xFFDBEAFE), Color(0xFF93C5FD)],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.blue.withOpacity(0.2),
-                          blurRadius: 6,
-                          offset: const Offset(0, 3),
-                        ),
-                      ],
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          "Admin",
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.bold,
-                            color: Color(0xFF1E3A8A),
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          replyAdmin,
-                          style: const TextStyle(
-                            fontSize: 14,
-                            color: Colors.black87,
-                          ),
-                        ),
-                      ],
+                Text(
+                  customerName,
+                  style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF31394E)),
+                ),
+                Row(
+                  children: List.generate(
+                    5,
+                    (index) => Icon(
+                      Icons.star,
+                      size: 18,
+                      color:
+                          index < rating ? Color(0xFFF2C94C) : Colors.grey[300],
                     ),
                   ),
                 ),
               ],
             ),
-          ],
-        ],
-      ),
-    ),
-  );
-}
+            const SizedBox(height: 6),
 
+            // Review Text
+            Text(
+              review,
+              style: const TextStyle(fontSize: 14, color: Colors.black87),
+            ),
+
+            // Admin Reply (if available)
+            if (replyAdmin != null && replyAdmin.isNotEmpty) ...[
+              const SizedBox(height: 14),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(Icons.admin_panel_settings_rounded,
+                      color: Colors.blue.shade700, size: 20),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(12),
+                        gradient: const LinearGradient(
+                          colors: [Color(0xFFDBEAFE), Color(0xFF93C5FD)],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.blue.withOpacity(0.2),
+                            blurRadius: 6,
+                            offset: const Offset(0, 3),
+                          ),
+                        ],
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            "Admin",
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.bold,
+                              color: Color(0xFF1E3A8A),
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            replyAdmin,
+                            style: const TextStyle(
+                              fontSize: 14,
+                              color: Colors.black87,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
 
   void _showProductCodesModal(
       BuildContext context, List productCodes, String productId) {
@@ -375,8 +375,7 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                   itemCount: productCodes.length,
                   itemBuilder: (context, index) {
                     final productCode = productCodes[index];
-                    final imageUrl =
-                        '$apiBaseUrlImage${productCode['image']}';
+                    final imageUrl = '$apiBaseUrlImage${productCode['image']}';
                     print(imageUrl);
                     return Card(
                       elevation: 3,
@@ -543,9 +542,27 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
+        backgroundColor:
+            Colors.transparent, // Buat transparan agar gambar terlihat
+        flexibleSpace: Stack(
+          fit: StackFit.expand,
+          children: [
+            Image.asset(
+              'assets/images/appbar.png', // Ganti dengan path gambar yang sesuai
+              fit: BoxFit.cover, // Pastikan gambar memenuhi seluruh AppBar
+            ),
+            Container(
+              color: Colors.black
+                  .withOpacity(0.2), // Overlay agar teks tetap terbaca
+            ),
+          ],
+        ),
         title: const Text(
           'Product Detail',
-          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+          style: TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+          ),
         ),
         leading: GestureDetector(
           onTap: () => GoRouter.of(context).pop(),
@@ -579,7 +596,6 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
             ),
           ),
         ],
-        backgroundColor: const Color(0xFF31394E),
       ),
       body: FutureBuilder<Map<String, dynamic>>(
         future: fetchProductDetail(widget.productId),

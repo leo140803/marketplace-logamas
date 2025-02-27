@@ -28,7 +28,22 @@ class _BarcodePageState extends State<BarcodePage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(
+        backgroundColor:
+            Colors.transparent, // Buat transparan agar gambar terlihat
+        flexibleSpace: Stack(
+          fit: StackFit.expand,
+          children: [
+            Image.asset(
+              'assets/images/appbar.png', // Ganti dengan path gambar yang sesuai
+              fit: BoxFit.cover, // Pastikan gambar memenuhi seluruh AppBar
+            ),
+            Container(
+              color: Colors.black
+                  .withOpacity(0.2), // Overlay agar teks tetap terbaca
+            ),
+          ],
+        ),
+        title: const Text(
           'User ID Barcode',
           style: TextStyle(
             color: Colors.white,
@@ -36,13 +51,12 @@ class _BarcodePageState extends State<BarcodePage> {
           ),
         ),
         leading: IconButton(
-            onPressed: () => {context.go('/information')},
-            icon: Icon(
-              Icons.arrow_back,
-              color: Colors.white,
-              weight: 2,
-            )),
-        backgroundColor: Color(0xFF31394E),
+          onPressed: () => context.go('/information'),
+          icon: const Icon(
+            Icons.arrow_back,
+            color: Colors.white,
+          ),
+        ),
       ),
       body: Center(
         child: userId == null
