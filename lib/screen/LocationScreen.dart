@@ -325,21 +325,37 @@ class _LocationScreenState extends State<LocationScreen> {
                 SliverAppBar(
                   pinned: true,
                   floating: true,
-                  backgroundColor: Color(0xFF31394E),
+                  backgroundColor: Colors
+                      .transparent, // Buat transparan agar gambar terlihat
                   automaticallyImplyLeading: false,
                   toolbarHeight: 80,
+                  flexibleSpace: Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      Image.asset(
+                        'assets/images/appbar.png', // Path ke gambar asset
+                        fit: BoxFit
+                            .cover, // Pastikan gambar mengisi seluruh AppBar
+                      ),
+                      Container(
+                        color: Colors.black.withOpacity(
+                            0.2), // Overlay agar teks tetap terlihat
+                      ),
+                    ],
+                  ),
                   actions: [
                     IconButton(
-                        icon: Icon(
-                          Icons.location_searching_sharp,
-                          color: Colors.white,
-                        ),
-                        onPressed: () {
-                          context.push(
-                            '/nearby-stores',
-                            extra: _tokoDalamRadius, // Kirim data toko
-                          );
-                        }),
+                      icon: Icon(
+                        Icons.location_searching_sharp,
+                        color: Colors.white,
+                      ),
+                      onPressed: () {
+                        context.push(
+                          '/nearby-stores',
+                          extra: _tokoDalamRadius, // Kirim data toko
+                        );
+                      },
+                    ),
                   ],
                   title: Padding(
                     padding: const EdgeInsets.only(bottom: 10.0),
@@ -364,7 +380,7 @@ class _LocationScreenState extends State<LocationScreen> {
                                 List<Map<String, dynamic>> results =
                                     await searchStores(value);
 
-                                // Navigasikan ke halaman hasil pencarian
+                                // Navigasi ke halaman hasil pencarian
                                 Navigator.push(
                                   context,
                                   MaterialPageRoute(

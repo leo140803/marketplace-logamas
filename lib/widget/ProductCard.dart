@@ -7,7 +7,7 @@ Card ProductCard(Map<String, dynamic> product) {
   String productImage = product['product_codes'] != null &&
           product['product_codes'].isNotEmpty &&
           product['product_codes'][0]['image'] != null
-      ? 'http://127.0.0.1:3000${product['product_codes'][0]['image']}'
+      ? 'http://127.0.0.1:3000/${product['product_codes'][0]['image']}'
       : (product['images'] != null && product['images'].isNotEmpty
           ? 'http://127.0.0.1:3000/uploads/${product['images'][0]}'
           : 'https://picsum.photos/200/200?random=${Random().nextInt(1000)}');

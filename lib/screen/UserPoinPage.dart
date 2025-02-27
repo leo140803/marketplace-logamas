@@ -88,7 +88,28 @@ class _UserPointsPageState extends State<UserPointsPage> {
       body: isLoading
           ? Center(child: CircularProgressIndicator())
           : userPoints.isEmpty
-              ? Center(child: Text('No points available'))
+              ? Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      Icon(Icons.star_border, size: 80, color: Colors.grey),
+                      SizedBox(height: 16),
+                      Text(
+                        'No Points Available',
+                        style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.black54),
+                      ),
+                      SizedBox(height: 8),
+                      Text(
+                        'Start earning points by completing transactions!',
+                        style: TextStyle(fontSize: 14, color: Colors.grey),
+                      ),
+                    ],
+                  ),
+                )
               : Column(
                   children: [
                     // Total Points Display

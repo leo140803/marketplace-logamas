@@ -165,6 +165,7 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
     if (response.statusCode == 200) {
       final Map<String, dynamic> responseBody = jsonDecode(response.body);
       // Response format: { "success": true, "message": "...", "data": { ... } }
+      print(responseBody['data']);
       return responseBody['data'];
     } else {
       throw Exception('Failed to load product');
@@ -374,10 +375,9 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                   itemCount: productCodes.length,
                   itemBuilder: (context, index) {
                     final productCode = productCodes[index];
-                    final imageUrl = productCode['image'] != null
-                        ? 'http://127.0.0.1:3000${productCode['image']}'
-                        : 'https://via.placeholder.com/150'; // Placeholder jika tidak ada gambar
-
+                    final imageUrl =
+                        '$apiBaseUrlImage${productCode['image']}';
+                    print(imageUrl);
                     return Card(
                       elevation: 3,
                       margin: const EdgeInsets.symmetric(vertical: 8.0),
@@ -393,15 +393,15 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                             width: 60,
                             height: 60,
                             fit: BoxFit.cover,
-                            errorBuilder: (context, error, stackTrace) {
-                              return Container(
-                                width: 60,
-                                height: 60,
-                                color: Colors.grey[300],
-                                child: const Icon(Icons.broken_image,
-                                    size: 30, color: Colors.grey),
-                              );
-                            },
+                            // errorBuilder: (context, error, stackTrace) {
+                            //   return Container(
+                            //     width: 60,
+                            //     height: 60,
+                            //     color: Colors.grey[300],
+                            //     child: const Icon(Icons.broken_image,
+                            //         size: 30, color: Colors.grey),
+                            //   );
+                            // },
                           ),
                         ),
                         title: Text(
@@ -629,7 +629,7 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
 
                             final imageUrl = productCode != null &&
                                     productCode['image'] != null
-                                ? 'http://127.0.0.1:3000${productCode['image']}'
+                                ? '$apiBaseUrlImage${productCode['image']}'
                                 : 'http://127.0.0.1:3000/uploads/${product['images'][index]}';
 
                             return Padding(

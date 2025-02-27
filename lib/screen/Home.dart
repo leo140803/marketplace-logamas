@@ -491,50 +491,65 @@ class _HomePageWidgetState extends State<HomePageWidget> {
                 SliverAppBar(
                   pinned: true,
                   floating: true,
-                  backgroundColor: Color(0xFF31394E),
+                  backgroundColor:
+                      Colors.transparent, // Set transparan agar image terlihat
                   automaticallyImplyLeading: false,
                   toolbarHeight: 80,
+                  flexibleSpace: Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      Image.asset(
+                        'assets/images/appbar.png', // Ganti dengan path gambar
+                        fit:
+                            BoxFit.cover, // Agar gambar memenuhi seluruh AppBar
+                      ),
+                      Container(
+                        color: Colors.black.withOpacity(
+                            0.2), // Overlay gelap agar teks lebih terbaca
+                      ),
+                    ],
+                  ),
                   title: Padding(
                     padding: const EdgeInsets.fromLTRB(10, 0, 10, 10),
                     child: Row(
                       children: [
                         Expanded(
-                            child: TextFormField(
-                          controller: _textController,
-                          focusNode: _textFieldFocusNode,
-                          autocorrect: false,
-                          readOnly:
-                              false, // Sekarang pengguna dapat mengetik di dalam field
-                          onFieldSubmitted: (value) {
-                            // Ketika pengguna menekan Enter, arahkan ke halaman pencarian
-                            if (value.trim().isNotEmpty) {
-                              context.push('/search-result',
-                                  extra: {'query': value});
-                            }
-                          },
-                          decoration: InputDecoration(
-                            isDense: true,
-                            hintText: 'Search Product...',
-                            hintStyle: TextStyle(
-                              fontSize: 14,
-                              color: Color(0xFFC58189),
-                            ),
-                            enabledBorder: OutlineInputBorder(
-                              borderSide: BorderSide(color: Colors.transparent),
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            focusedBorder: OutlineInputBorder(
-                              borderSide: BorderSide(color: Colors.transparent),
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            filled: true,
-                            fillColor: Colors.white,
-                            prefixIcon: Icon(
-                              Icons.search,
-                              color: Color(0xFFC58189),
+                          child: TextFormField(
+                            controller: _textController,
+                            focusNode: _textFieldFocusNode,
+                            autocorrect: false,
+                            onFieldSubmitted: (value) {
+                              if (value.trim().isNotEmpty) {
+                                context.push('/search-result',
+                                    extra: {'query': value});
+                              }
+                            },
+                            decoration: InputDecoration(
+                              isDense: true,
+                              hintText: 'Search Product...',
+                              hintStyle: TextStyle(
+                                fontSize: 14,
+                                color: Color(0xFFC58189),
+                              ),
+                              enabledBorder: OutlineInputBorder(
+                                borderSide:
+                                    BorderSide(color: Colors.transparent),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              focusedBorder: OutlineInputBorder(
+                                borderSide:
+                                    BorderSide(color: Colors.transparent),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              filled: true,
+                              fillColor: Colors.white,
+                              prefixIcon: Icon(
+                                Icons.search,
+                                color: Color(0xFFC58189),
+                              ),
                             ),
                           ),
-                        )),
+                        ),
                       ],
                     ),
                   ),

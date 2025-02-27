@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 class WelcomeScreen extends StatefulWidget {
   const WelcomeScreen({super.key});
@@ -22,8 +23,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
     String? accessToken = prefs.getString('access_token');
 
     if (accessToken != null) {
-      // If access_token exists, navigate to /home
-      // Navigator.pushReplacementNamed(context, '/home');
+      context.go('/home'); // Navigasi jika token tersedia
     }
   }
 
@@ -32,34 +32,39 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
     return Scaffold(
       body: Container(
         decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [
-              Color(0xFF31394E), // Warna atas
-              Color(0xFF475271), // Warna bawah
-            ],
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
+          image: DecorationImage(
+            image: AssetImage('assets/images/background.png'), // Path gambar
+            fit: BoxFit.cover,
           ),
         ),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             const Spacer(),
-            const Spacer(),
             Text(
               "Selamat datang di",
-              style: TextStyle(
-                  fontSize: 24,
-                  color: Colors.white,
-                  fontWeight: FontWeight.w300),
+              style: GoogleFonts.openSans(
+                fontSize: 22,
+                color: Colors.white,
+                fontWeight: FontWeight.w400,
+                letterSpacing: 1.2,
+                shadows: [
+                  Shadow(
+                      blurRadius: 5,
+                      color: Colors.black45,
+                      offset: Offset(2, 2)),
+                ],
+              ),
             ),
             const SizedBox(height: 10),
             Text(
               "Logamas",
-              style: TextStyle(
-                fontSize: 36,
+              style: GoogleFonts.playfairDisplay(
+                fontSize: 42, // Ukuran lebih besar
                 color: Colors.white,
-                fontWeight: FontWeight.bold,
+                fontWeight: FontWeight.w700,
+                fontStyle: FontStyle.italic, // Italic agar lebih elegan
+                letterSpacing: 1.5,
               ),
             ),
             const SizedBox(height: 200),
