@@ -129,8 +129,13 @@ class _StorePageState extends State<StorePage> {
       filteredProducts = products.where((product) {
         final category = product['types']['category'] as Map<String, dynamic>;
         final price = product['low_price'] as int;
-        final minWeight = product['min_weight'] as double? ?? 0;
-        final maxWeight = product['max_weight'] as double? ?? 0;
+        final minWeight = (product['min_weight'] is int)
+            ? (product['min_weight'] as int).toDouble()
+            : (product['min_weight'] as double? ?? 0);
+
+        final maxWeight = (product['max_weight'] is int)
+            ? (product['max_weight'] as int).toDouble()
+            : (product['max_weight'] as double? ?? 0);
 
         // Filter kategori
         final nameMatches = selectedCategoryNames.isEmpty ||

@@ -113,8 +113,13 @@ class _SearchResultPageState extends State<SearchResultPage> {
         final type = product['types'] as Map<String, dynamic>? ?? {};
         final category = type['category'] as Map<String, dynamic>? ?? {};
         final price = product['price'] as int? ?? 0;
-        final minWeight = product['min_weight'] as double? ?? 0;
-        final maxWeight = product['max_weight'] as double? ?? 0;
+        final minWeight = (product['min_weight'] is int)
+            ? (product['min_weight'] as int).toDouble()
+            : (product['min_weight'] as double? ?? 0);
+
+        final maxWeight = (product['max_weight'] is int)
+            ? (product['max_weight'] as int).toDouble()
+            : (product['max_weight'] as double? ?? 0);
 
         final nameMatches = selectedCategoryNames.isEmpty ||
             selectedCategoryNames.contains(category['name']);

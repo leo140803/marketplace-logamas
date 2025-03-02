@@ -571,7 +571,7 @@ class _OrderDetailsPageState extends State<OrderDetailsPage> {
                         child: Row(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Icon(Icons.reply, color: Colors.white, size: 16),
+                            Icon(Icons.admin_panel_settings_rounded, color: Colors.white, size: 16),
                             SizedBox(width: 6),
                             Expanded(
                               child: Text(
