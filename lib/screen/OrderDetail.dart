@@ -7,6 +7,7 @@ import 'package:intl/intl.dart';
 import 'dart:convert';
 
 import 'package:marketplace_logamas/function/Utils.dart';
+import 'package:marketplace_logamas/screen/FullScreenImageView.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class OrderDetailsPage extends StatefulWidget {
@@ -436,26 +437,41 @@ class _OrderDetailsPageState extends State<OrderDetailsPage> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 // Product Image
-                Container(
-                  width: 70, // Bigger image for better visibility
-                  height: 70,
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(10),
-                    color: Colors.grey[300],
-                  ),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(10),
-                    child: Image.network(
-                      '$apiBaseUrlImage${product['product_code']['image']}',
-                      fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) => Icon(
-                        Icons.image_not_supported,
-                        size: 40,
-                        color: Colors.grey,
+                GestureDetector(
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => FullScreenImageView(
+                          imageUrl:
+                              '$apiBaseUrlImage${product['product_code']['image']}',
+                        ),
+                      ),
+                    );
+                  },
+                  child: Container(
+                    width: 70,
+                    height: 70,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(10),
+                      color: Colors.grey[300],
+                    ),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(10),
+                      child: Image.network(
+                        '$apiBaseUrlImage${product['product_code']['image']}',
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) =>
+                            const Icon(
+                          Icons.image_not_supported,
+                          size: 40,
+                          color: Colors.grey,
+                        ),
                       ),
                     ),
                   ),
                 ),
+
                 SizedBox(width: 16),
 
                 // Product Details
@@ -571,7 +587,8 @@ class _OrderDetailsPageState extends State<OrderDetailsPage> {
                         child: Row(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Icon(Icons.admin_panel_settings_rounded, color: Colors.white, size: 16),
+                            Icon(Icons.admin_panel_settings_rounded,
+                                color: Colors.white, size: 16),
                             SizedBox(width: 6),
                             Expanded(
                               child: Text(
