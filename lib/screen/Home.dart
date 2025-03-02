@@ -653,7 +653,7 @@ class _HomePageWidgetState extends State<HomePageWidget> {
                 ),
                 SliverToBoxAdapter(
                   child: SizedBox(
-                    height: 150,
+                    height: 180, // Sedikit lebih tinggi agar lebih menarik
                     child: FutureBuilder<List<Map<String, dynamic>>>(
                       future: followedStores,
                       builder: (context, snapshot) {
@@ -672,58 +672,120 @@ class _HomePageWidgetState extends State<HomePageWidget> {
                           final stores = snapshot.data!;
                           return Padding(
                             padding:
-                                const EdgeInsets.symmetric(horizontal: 20.0),
+                                const EdgeInsets.symmetric(horizontal: 16.0),
                             child: ListView.builder(
                               scrollDirection: Axis.horizontal,
                               itemCount: stores.length,
                               itemBuilder: (context, index) {
                                 final store = stores[index];
+                                final storeId = store['store']['store_id'];
+                                final storeName = store['store']['store_name'];
+                                final storeAddress = store['store']
+                                        ['address'] ??
+                                    "Alamat tidak tersedia";
+                                final storeLogoUrl =
+                                    "$apiBaseUrlImage${store['store']['logo']}";
+
                                 return GestureDetector(
                                   onTap: () {
-                                    final storeId = store['store'][
-                                        'store_id']; // Ambil store_id dari store
-                                    context.push(
-                                      '/store/$storeId', // Gunakan storeId sebagai bagian dari path
-                                    );
+                                    context.push('/store/$storeId');
                                   },
                                   child: Container(
-                                    width:
-                                        MediaQuery.of(context).size.width * 0.7,
-                                    margin: EdgeInsets.only(right: 8),
+                                    width: MediaQuery.of(context).size.width *
+                                        0.65, // Lebih kecil agar tidak terlalu besar
+                                    margin: EdgeInsets.only(right: 12),
                                     decoration: BoxDecoration(
-                                      image: DecorationImage(
-                                        image: NetworkImage(
-                                          "$apiBaseUrlImage${store['store']['logo']}",
-                                          // "$apiBaseUrlImage${store['store']['image_url']}",
+                                      borderRadius: BorderRadius.circular(15),
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: Colors.black26,
+                                          blurRadius: 6,
+                                          offset: Offset(2, 4),
                                         ),
-                                        fit: BoxFit.cover,
-                                      ),
-                                      borderRadius: BorderRadius.circular(10),
+                                      ],
                                     ),
                                     child: Stack(
                                       children: [
+                                        // Store Image
+                                        ClipRRect(
+                                          borderRadius:
+                                              BorderRadius.circular(15),
+                                          child: Image.network(
+                                            storeLogoUrl,
+                                            width: double.infinity,
+                                            height: 180,
+                                            fit: BoxFit.cover,
+                                            errorBuilder:
+                                                (context, error, stackTrace) =>
+                                                    Container(
+                                              color: Colors.grey[300],
+                                              child: Center(
+                                                child: Icon(Icons.store,
+                                                    size: 40,
+                                                    color: Colors.grey),
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+
+                                        // Gradient Overlay
                                         Positioned(
                                           bottom: 0,
                                           left: 0,
                                           right: 0,
                                           child: Container(
-                                            padding: EdgeInsets.all(10),
+                                            padding: EdgeInsets.all(12),
                                             decoration: BoxDecoration(
-                                              color: Colors.black
-                                                  .withOpacity(0.35),
                                               borderRadius:
                                                   BorderRadius.vertical(
-                                                bottom: Radius.circular(10),
+                                                      bottom:
+                                                          Radius.circular(15)),
+                                              gradient: LinearGradient(
+                                                begin: Alignment.topCenter,
+                                                end: Alignment.bottomCenter,
+                                                colors: [
+                                                  Colors.black.withOpacity(0.1),
+                                                  Colors.black.withOpacity(0.6),
+                                                ],
                                               ),
                                             ),
-                                            child: Text(
-                                              store['store']['store_name'],
-                                              style: TextStyle(
-                                                color: Colors.white,
-                                                fontWeight: FontWeight.bold,
-                                                fontSize: 16,
-                                              ),
-                                              textAlign: TextAlign.center,
+                                            child: Column(
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment.start,
+                                              children: [
+                                                Text(
+                                                  storeName,
+                                                  style: TextStyle(
+                                                    color: Colors.white,
+                                                    fontWeight: FontWeight.bold,
+                                                    fontSize: 16,
+                                                  ),
+                                                  maxLines: 1,
+                                                  overflow:
+                                                      TextOverflow.ellipsis,
+                                                ),
+                                                SizedBox(height: 4),
+                                                Row(
+                                                  children: [
+                                                    Icon(Icons.location_on,
+                                                        size: 14,
+                                                        color: Colors.white70),
+                                                    SizedBox(width: 4),
+                                                    Expanded(
+                                                      child: Text(
+                                                        storeAddress,
+                                                        style: TextStyle(
+                                                          color: Colors.white70,
+                                                          fontSize: 12,
+                                                        ),
+                                                        maxLines: 1,
+                                                        overflow: TextOverflow
+                                                            .ellipsis,
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                              ],
                                             ),
                                           ),
                                         ),
@@ -753,22 +815,48 @@ class _HomePageWidgetState extends State<HomePageWidget> {
                             color: Colors.black,
                           ),
                         ),
-                        Container(
-                          width: 40,
-                          height: 40,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color:
-                                Color(0xFF2E2E48), // Warna background lingkaran
-                          ),
-                          child: IconButton(
-                            icon:
-                                Icon(Icons.line_axis, color: Color(0xFFC58189)),
-                            onPressed: () {
-                              // Panggil fungsi untuk menampilkan chart pergerakan harga emas
-                              showGoldPriceChart(context);
-                            },
-                          ),
+                        Row(
+                          children: [
+                            // Tooltip dengan Icon Info
+                            GestureDetector(
+                              child: Tooltip(
+                                message:
+                                    "Harga emas diambil dari https://www.indogold.id",
+                                preferBelow: false,
+                                decoration: BoxDecoration(
+                                  color: Colors.black87,
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                textStyle: TextStyle(
+                                    color: Colors.white, fontSize: 12),
+                                padding: EdgeInsets.all(8),
+                                child: Icon(
+                                  Icons.info_outline,
+                                  color: Colors.grey,
+                                  size: 18,
+                                ),
+                              ),
+                            ),
+                            SizedBox(width: 8),
+                            // Button untuk Chart
+                            Container(
+                              width: 40,
+                              height: 40,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: Color(
+                                    0xFF2E2E48), // Warna background lingkaran
+                              ),
+                              child: IconButton(
+                                icon: Icon(Icons.line_axis,
+                                    color: Color(0xFFC58189)),
+                                onPressed: () {
+                                  // Panggil fungsi untuk menampilkan chart pergerakan harga emas
+                                  showGoldPriceChart(context);
+                                },
+                              ),
+                            ),
+                          ],
                         ),
                       ],
                     ),

@@ -21,6 +21,7 @@ class _OrdersPageState extends State<OrdersPage>
   List<Map<String, dynamic>> completedOrders = [];
   String? _accessToken;
   bool isLoading = true;
+  TextEditingController _searchController = TextEditingController();
   DateTime? selectedStartDate;
   DateTime? selectedEndDate;
   int selectedFilter = 0; // 0: Semua, 1: 30 Hari, 2: 90 Hari, 3: Custom
@@ -122,6 +123,36 @@ class _OrdersPageState extends State<OrdersPage>
           return orderDate.isAfter(startDate!.subtract(Duration(seconds: 1))) &&
               (endDate == null ||
                   orderDate.isBefore(endDate!.add(Duration(days: 1))));
+        }).toList();
+      }
+
+      // Filter berdasarkan pencarian produk
+      String searchQuery = _searchController.text.trim().toLowerCase();
+      print("Search Query: $searchQuery");
+
+      if (searchQuery.isNotEmpty) {
+        allOrders = allOrders.where((order) {
+          final products = order['transaction_products'];
+
+          if (products is List) {
+            return products.any((product) {
+              if (product is Map<String, dynamic>) {
+                final productCode = product['product_code'];
+                final productData = productCode is Map<String, dynamic>
+                    ? productCode['product']
+                    : null;
+                final productName = productData is Map<String, dynamic>
+                    ? productData['name']
+                    : null;
+
+                if (productName is String) {
+                  return productName.toLowerCase().contains(searchQuery);
+                }
+              }
+              return false;
+            });
+          }
+          return false;
         }).toList();
       }
 
@@ -437,11 +468,43 @@ class _OrdersPageState extends State<OrdersPage>
             ),
           ],
         ),
-        title: const Text(
-          'Daftar Pembelian',
-          style: TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.bold,
+        title: Padding(
+          padding: const EdgeInsets.only(bottom: 10.0),
+          child: Row(
+            children: [
+              Expanded(
+                child: TextFormField(
+                  autocorrect: false,
+                  controller: _searchController,
+                  onFieldSubmitted: (value) {
+                    _loadOrders(); // Load ulang data berdasarkan pencarian saat Enter ditekan
+                  },
+                  // focusNode: _textFieldFocusNode,
+                  decoration: InputDecoration(
+                    isDense: true,
+                    hintText: 'Cari Produk...',
+                    hintStyle: TextStyle(
+                      fontSize: 14,
+                      color: Color(0xFFC58189),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderSide: BorderSide(color: Colors.transparent),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderSide: BorderSide(color: Colors.transparent),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    filled: true,
+                    fillColor: Colors.white,
+                    prefixIcon: Icon(
+                      Icons.search,
+                      color: Color(0xFFC58189),
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
         leading: IconButton(
@@ -450,7 +513,7 @@ class _OrdersPageState extends State<OrdersPage>
         ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.filter_list, color: Colors.white),
+            icon: const Icon(Icons.date_range, color: Colors.white),
             onPressed: () {
               _showFilterDrawer(context);
             },

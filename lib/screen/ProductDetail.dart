@@ -279,7 +279,7 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Icon(Icons.admin_panel_settings_rounded,
-                      color: Colors.blue.shade700, size: 20),
+                      color: Color(0xFFC58189), size: 20),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Container(
@@ -287,7 +287,10 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                       decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(12),
                         gradient: const LinearGradient(
-                          colors: [Color(0xFFDBEAFE), Color(0xFF93C5FD)],
+                          colors: [
+                            Color.fromARGB(255, 252, 239, 241),
+                            Color.fromARGB(255, 255, 169, 179)
+                          ],
                           begin: Alignment.topLeft,
                           end: Alignment.bottomRight,
                         ),
@@ -307,7 +310,7 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                             style: TextStyle(
                               fontSize: 14,
                               fontWeight: FontWeight.bold,
-                              color: Color(0xFF1E3A8A),
+                              color: Color(0xFFC58189),
                             ),
                           ),
                           const SizedBox(height: 4),
@@ -1013,8 +1016,11 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
             _showProductCodesModal(context, productCodes, widget.productId);
           }
         },
-        child: const Icon(Icons.add_shopping_cart),
-        backgroundColor: const Color(0xFFC58189),
+        child: const Icon(
+          Icons.add_shopping_cart,
+          color: Colors.white,
+        ),
+        backgroundColor: const Color(0xFF31394E),
       ),
     );
   }

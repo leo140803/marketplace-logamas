@@ -170,6 +170,17 @@ class _OrderDetailsPageState extends State<OrderDetailsPage> {
             color: Colors.white,
           ),
         ),
+        actions: [
+          IconButton(
+            onPressed: () {
+              // TODO: Tambahkan logika untuk melihat nota order
+            },
+            icon: const Icon(
+              Icons.receipt_long,
+              color: Colors.white,
+            ),
+          ),
+        ],
       ),
       body: _isLoading
           ? Center(child: CircularProgressIndicator())
