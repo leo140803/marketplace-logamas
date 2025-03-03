@@ -340,13 +340,30 @@ class _StorePageState extends State<StorePage> {
   }
 
   Future<void> _openWhatsApp() async {
-    const phoneNumber = "6281615750759"; // Replace with your WhatsApp number
-    final whatsappUrl = Uri.parse("https://wa.me/$phoneNumber");
+    if (storeData != null && storeData!.containsKey("wa_number")) {
+      String phoneNumber = storeData!["wa_number"].toString();
+      print(phoneNumber);
 
-    if (await canLaunchUrl(whatsappUrl)) {
-      await launchUrl(whatsappUrl, mode: LaunchMode.externalApplication);
+      // **Pastikan nomor dimulai dengan '62'**
+      if (!phoneNumber.startsWith("62")) {
+        phoneNumber = "62$phoneNumber";
+      }
+
+      final whatsappUrl = Uri.parse("https://wa.me/$phoneNumber");
+
+      if (await canLaunchUrl(whatsappUrl)) {
+        await launchUrl(whatsappUrl, mode: LaunchMode.externalApplication);
+      } else {
+        throw "Unable to open WhatsApp";
+      }
     } else {
-      throw "Unable to open WhatsApp";
+      print("WhatsApp number is not available");
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text("WhatsApp number is not available"),
+          backgroundColor: Colors.red,
+        ),
+      );
     }
   }
 
