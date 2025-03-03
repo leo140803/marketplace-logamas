@@ -42,7 +42,7 @@ class _StorePointsPageState extends State<StorePointsPage> {
   }
 
   Future<void> fetchStorePoints() async {
-    final apiUrl = 'http://127.0.0.1:3001/api/user-poin/${widget.storeId}';
+    final apiUrl = '$apiBaseUrl/user-poin/${widget.storeId}';
     final token = _accessToken;
 
     try {
@@ -65,7 +65,7 @@ class _StorePointsPageState extends State<StorePointsPage> {
   }
 
   Future<void> fetchHistory() async {
-    final apiUrl = 'http://127.0.0.1:3001/api/poin-history/${widget.storeId}';
+    final apiUrl = '$apiBaseUrl/poin-history/${widget.storeId}';
     final token = _accessToken;
 
     try {

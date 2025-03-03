@@ -649,7 +649,7 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                             final imageUrl = productCode != null &&
                                     productCode['image'] != null
                                 ? '$apiBaseUrlImage${productCode['image']}'
-                                : 'http://127.0.0.1:3000/uploads/${product['images'][index]}';
+                                : '$apiBaseUrlImage${product['images'][index]}';
 
                             return Padding(
                               padding:

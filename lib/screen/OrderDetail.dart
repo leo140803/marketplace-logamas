@@ -33,7 +33,7 @@ class _OrderDetailsPageState extends State<OrderDetailsPage> {
 
   Future<void> _fetchTransactionData() async {
     final url = Uri.parse(
-        'http://127.0.0.1:3001/api/transactions/${widget.transactionId}');
+        '$apiBaseUrl/transactions/${widget.transactionId}');
     final response = await http.get(url);
     print(json.decode(response.body));
     if (response.statusCode == 200) {

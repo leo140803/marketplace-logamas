@@ -46,7 +46,7 @@ class _LocationScreenState extends State<LocationScreen> {
   Future<void> _fetchTokoData() async {
     try {
       final response =
-          await http.get(Uri.parse('http://127.0.0.1:3001/api/store'));
+          await http.get(Uri.parse('$apiBaseUrl/store'));
       if (response.statusCode == 200) {
         final jsonResponse = json.decode(response.body);
         final List<dynamic> data = jsonResponse['data'];
