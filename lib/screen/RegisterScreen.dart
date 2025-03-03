@@ -257,7 +257,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   Center(
                     child: TextButton(
                       onPressed: () {
-                        Navigator.pushReplacementNamed(context, '/login');
+                        context.push('/login');
                       },
                       child: RichText(
                         text: TextSpan(
