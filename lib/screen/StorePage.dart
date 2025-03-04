@@ -934,11 +934,35 @@ class _StorePageState extends State<StorePage> {
                           children: [
                             Expanded(
                               child: TextFormField(
+                                autocorrect: false,
                                 controller: _textController,
                                 focusNode: _textFieldFocusNode,
+                                onFieldSubmitted: (value) {
+                                  setState(() {
+                                    if (value.isEmpty) {
+                                      // Jika kosong, kembalikan semua produk
+                                      filteredProducts =
+                                          List<Map<String, dynamic>>.from(
+                                              storeData!['products']);
+                                    } else {
+                                      // Pastikan konversi dilakukan dengan benar
+                                      filteredProducts =
+                                          List<Map<String, dynamic>>.from(
+                                        storeData!['products'].where((product) {
+                                          final productName =
+                                              (product['name'] ?? '')
+                                                  .toString()
+                                                  .toLowerCase();
+                                          return productName
+                                              .contains(value.toLowerCase());
+                                        }),
+                                      );
+                                    }
+                                  });
+                                },
                                 decoration: InputDecoration(
                                   isDense: true,
-                                  hintText: 'Cari...',
+                                  hintText: 'Cari Produk di Toko...',
                                   hintStyle: const TextStyle(
                                     fontSize: 14,
                                     color: Color(0xFFC58189),
