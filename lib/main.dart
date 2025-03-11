@@ -49,12 +49,15 @@ void main() async {
     print('Running on Web');
   }
 
-  runApp(MaterialApp.router(routerConfig: router));
+  runApp(MaterialApp.router(
+    routerConfig: router,
+    debugShowCheckedModeBanner: false,
+  ));
 }
 
 final router = GoRouter(
   // '/store/72574284-33f6-4ca8-a725-f00df1a62291',
-  initialLocation: '/landing',
+  initialLocation: '/login',
   navigatorKey: navigatorKey,
   debugLogDiagnostics: true,
   routes: [

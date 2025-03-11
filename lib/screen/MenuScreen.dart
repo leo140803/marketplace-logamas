@@ -205,9 +205,9 @@ class _MenuScreenState extends State<MenuScreen> {
                     onTap: () => context.push('/sell'),
                   ),
                   ListTile(
-                    leading: const Icon(Icons.build_circle,
+                    leading: const Icon(Icons.sync,
                         color: Colors.grey), // Icon Service
-                    title: const Text('Daftar Service'),
+                    title: const Text('Daftar Tukar Tambah'),
                     trailing:
                         Icon(Icons.chevron_right, color: Colors.grey.shade400),
                     onTap: () => context.push('/service'),

@@ -32,8 +32,7 @@ class _OrderDetailsPageState extends State<OrderDetailsPage> {
   }
 
   Future<void> _fetchTransactionData() async {
-    final url = Uri.parse(
-        '$apiBaseUrl/transactions/${widget.transactionId}');
+    final url = Uri.parse('$apiBaseUrl/transactions/${widget.transactionId}');
     final response = await http.get(url);
     print(json.decode(response.body));
     if (response.statusCode == 200) {
@@ -41,6 +40,7 @@ class _OrderDetailsPageState extends State<OrderDetailsPage> {
       if (data['success']) {
         setState(() {
           _transactionData = data['data']['data'];
+          print(_transactionData!['transaction_products'][1]);
           _isLoading = false;
           _setCountdown();
         });
@@ -240,7 +240,7 @@ class _OrderDetailsPageState extends State<OrderDetailsPage> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text('Expired At:',
+                    Text('Expired In:',
                         style: TextStyle(
                             fontSize: 18, fontWeight: FontWeight.bold)),
                     Text(
@@ -399,6 +399,196 @@ class _OrderDetailsPageState extends State<OrderDetailsPage> {
     );
   }
 
+  void _showEditReviewDialog(
+      String reviewId, String userId, int currentRating, String currentReview) {
+    double rating = currentRating.toDouble();
+    TextEditingController reviewController =
+        TextEditingController(text: currentReview);
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return Dialog(
+              backgroundColor: Color(0xFF31394E),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16.0),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    // 📝 Title
+                    Text(
+                      "Edit Review",
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    ),
+                    SizedBox(height: 10),
+                    Text(
+                      "Perbarui penilaian dan ulasanmu.",
+                      style: TextStyle(fontSize: 14, color: Colors.white70),
+                      textAlign: TextAlign.center,
+                    ),
+                    SizedBox(height: 15),
+
+                    // ⭐ Star Rating Selection
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: List.generate(5, (index) {
+                        return IconButton(
+                          icon: Icon(
+                            index < rating ? Icons.star : Icons.star_border,
+                            color: Colors.amber,
+                            size: 32,
+                          ),
+                          onPressed: () {
+                            setDialogState(() {
+                              rating = index + 1.0;
+                            });
+                          },
+                        );
+                      }),
+                    ),
+
+                    SizedBox(height: 10),
+
+                    // 📝 Review Input Field
+                    Container(
+                      decoration: BoxDecoration(
+                        color: Colors.white10,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: TextField(
+                        controller: reviewController,
+                        maxLines: 3,
+                        style: TextStyle(color: Colors.white),
+                        decoration: InputDecoration(
+                          hintText: "Edit ulasan kamu...",
+                          hintStyle: TextStyle(color: Colors.white54),
+                          border: InputBorder.none,
+                          contentPadding: EdgeInsets.symmetric(
+                              horizontal: 12, vertical: 10),
+                        ),
+                      ),
+                    ),
+
+                    SizedBox(height: 15),
+
+                    // 🔹 Submit Button with Gradient
+                    TextButton(
+                      onPressed: () {
+                        _submitEditReview(
+                          reviewId,
+                          userId,
+                          rating.toInt(),
+                          reviewController.text,
+                        );
+                        Navigator.pop(context);
+                      },
+                      style: TextButton.styleFrom(
+                        padding: EdgeInsets.zero,
+                      ),
+                      child: Container(
+                        width: 120,
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [
+                              Color(0xFFE8C4BD),
+                              Color(0xFFC58189),
+                            ],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
+                          borderRadius: BorderRadius.circular(30),
+                        ),
+                        padding: const EdgeInsets.symmetric(vertical: 15),
+                        alignment: Alignment.center,
+                        child: const Text(
+                          "Perbarui",
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ),
+
+                    SizedBox(height: 5),
+
+                    // 🔹 Cancel Button
+                    TextButton(
+                      onPressed: () =>
+                          Navigator.of(context, rootNavigator: true).pop(),
+                      style: TextButton.styleFrom(
+                        padding: EdgeInsets.zero,
+                      ),
+                      child: Container(
+                        width: 100,
+                        decoration: BoxDecoration(
+                          color: Colors.white10,
+                          borderRadius: BorderRadius.circular(30),
+                        ),
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        alignment: Alignment.center,
+                        child: const Text(
+                          "Batal",
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Future<void> _submitEditReview(
+      String reviewId, String userId, int rating, String review) async {
+    final String url = '$apiBaseUrl/review';
+    String token = await getAccessToken();
+
+    final response = await http.patch(
+      Uri.parse(url),
+      headers: {
+        'Authorization': 'Bearer $token',
+        'Content-Type': 'application/json',
+      },
+      body: jsonEncode({
+        "review_id": reviewId, // Ensure correct API field names
+        "user_id": userId, // Include user ID
+        "rating": rating,
+        "review": review,
+      }),
+    );
+
+    final Map<String, dynamic> responseData = json.decode(response.body);
+
+    if (response.statusCode == 200 && responseData['success']) {
+      print("Review updated successfully!");
+      setState(() {
+        _fetchTransactionData(); // Refresh transaction details after update
+      });
+    } else {
+      print("Error updating review: ${responseData['message']}");
+    }
+  }
+
   Widget _buildProductItem(Map<String, dynamic> product) {
     int paymentStatus = _transactionData!['status']; // Get transaction status
     var transactionReview =
@@ -406,7 +596,7 @@ class _OrderDetailsPageState extends State<OrderDetailsPage> {
 
     // 🕒 Perhitungan batas akhir review (updated_at + 7 hari)
     DateTime updatedAt = DateTime.parse(product['updated_at']);
-    DateTime reviewDeadline = updatedAt.add(Duration(days: 7));
+    DateTime reviewDeadline = updatedAt.add(Duration(days: 30));
     bool canReview = DateTime.now().isBefore(reviewDeadline);
 
     // Ambil Harga, Adjustment Price, dan Discount
@@ -601,6 +791,23 @@ class _OrderDetailsPageState extends State<OrderDetailsPage> {
                               ),
                             ),
                           ],
+                        ),
+                      ),
+                    if (transactionReview != null && canReview && transactionReview['reply_admin'] == null)
+                      Align(
+                        alignment: Alignment.centerRight,
+                        child: TextButton.icon(
+                          onPressed: () => _showEditReviewDialog(
+                              transactionReview['id'], // ✅ Pass reviewId
+                              _transactionData!['customer_id'], // ✅ Pass userId
+                              transactionReview['rating'],
+                              transactionReview['review']),
+                          icon: Icon(Icons.edit,
+                              size: 16, color: Colors.blueAccent),
+                          label: Text(
+                            "Edit Review",
+                            style: TextStyle(color: Colors.blueAccent),
+                          ),
                         ),
                       ),
                   ],

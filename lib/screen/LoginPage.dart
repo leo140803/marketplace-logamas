@@ -161,6 +161,12 @@ class _LoginPageState extends State<LoginPage> {
               mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
+                Image.asset(
+                  'assets/images/logo.png',
+                  height: 300,
+                  fit: BoxFit.contain,
+                ),
+                SizedBox(height: 20),
                 Field(
                   con: emailController,
                   isPassword: false,
