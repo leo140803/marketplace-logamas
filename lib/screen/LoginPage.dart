@@ -86,6 +86,7 @@ class _LoginPageState extends State<LoginPage> {
 
   Future<String> getDeviceToken() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
+    print(prefs);
     return prefs.get('fcm_token').toString();
   }
 
@@ -94,7 +95,7 @@ class _LoginPageState extends State<LoginPage> {
 
     try {
       final String deviceToken = await getDeviceToken();
-
+      print(deviceToken);
       if (deviceToken.isNotEmpty) {
         final response = await http.post(
           Uri.parse(addDeviceTokenApiUrl),

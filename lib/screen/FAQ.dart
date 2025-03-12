@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:http/http.dart' as http;
 import 'package:marketplace_logamas/function/Utils.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class FAQPage extends StatefulWidget {
   @override
@@ -13,11 +14,31 @@ class _FAQPageState extends State<FAQPage> {
   List<Map<String, dynamic>> faqList = [];
   bool isLoading = true;
   String errorMessage = '';
+  String _waNumber = '';
 
   @override
   void initState() {
     super.initState();
+    _fetchWANumber();
     _fetchFAQData();
+  }
+
+  Future<void> _fetchWANumber() async {
+    final url = Uri.parse('http://127.0.0.1:3020/api/config/key?key=wa_number');
+    try {
+      final response = await http.get(url);
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> data = json.decode(response.body);
+        if (data['success']) {
+          setState(() {
+            print(data['data']['value']);
+            _waNumber = data['data']['value'];
+          });
+        }
+      }
+    } catch (error) {
+      print("Failed to fetch WhatsApp number: $error");
+    }
   }
 
   Future<void> _fetchFAQData() async {
@@ -54,9 +75,50 @@ class _FAQPageState extends State<FAQPage> {
     }
   }
 
+  /// 🔹 **Fungsi untuk membuka WhatsApp**
+  Future<void> _openWhatsApp() async {
+    String phoneNumber = _waNumber.trim(); // Pastikan tidak ada spasi
+
+    if (!phoneNumber.startsWith("62")) {
+      phoneNumber =
+          "62$phoneNumber"; // Tambahkan kode negara Indonesia jika belum ada
+    }
+
+    final Uri whatsappUrl = Uri.parse("https://wa.me/$phoneNumber");
+
+    if (await canLaunchUrl(whatsappUrl)) {
+      await launchUrl(whatsappUrl, mode: LaunchMode.externalApplication);
+    } else {
+      _showErrorDialog(
+          "Gagal membuka WhatsApp. Periksa koneksi internet Anda.");
+    }
+  }
+
+  /// 🔹 **Menampilkan dialog error jika gagal membuka WhatsApp**
+  void _showErrorDialog(String message) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text("Error"),
+        content: Text(message),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: Text("OK"),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      floatingActionButton: FloatingActionButton(
+        onPressed: _openWhatsApp, // ✅ Pastikan fungsi dipanggil dengan benar
+        child: Icon(Icons.chat_bubble_outline, color: Colors.white),
+        backgroundColor: Color(0xFF31394E),
+      ),
       backgroundColor: Color(0xFFF4F4F4),
       appBar: AppBar(
         backgroundColor:
@@ -125,8 +187,7 @@ class _FAQPageState extends State<FAQPage> {
                                 faq['answer'],
                                 style: TextStyle(
                                     fontSize: 14, color: Colors.grey[700]),
-                                textAlign: TextAlign
-                                    .justify, // Gunakan justify untuk meratakan teks
+                                textAlign: TextAlign.justify,
                               ),
                             ),
                           ],

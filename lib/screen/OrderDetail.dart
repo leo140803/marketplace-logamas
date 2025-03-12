@@ -24,11 +24,31 @@ class _OrderDetailsPageState extends State<OrderDetailsPage> {
   Map<String, dynamic>? _transactionData;
   bool _isLoading = true;
   bool _isExpired = false;
+  int _reviewExpirationDays = 7;
 
   @override
   void initState() {
     super.initState();
+    _fetchReviewExpiration();
     _fetchTransactionData();
+  }
+
+  Future<void> _fetchReviewExpiration() async {
+    final url =
+        Uri.parse('http://127.0.0.1:3020/api/config/key?key=review_exp');
+    try {
+      final response = await http.get(url);
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> data = json.decode(response.body);
+        if (data['success']) {
+          setState(() {
+            _reviewExpirationDays = int.tryParse(data['data']['value']) ?? 7;
+          });
+        }
+      }
+    } catch (error) {
+      print("Failed to fetch review expiration: $error");
+    }
   }
 
   Future<void> _fetchTransactionData() async {
@@ -596,7 +616,7 @@ class _OrderDetailsPageState extends State<OrderDetailsPage> {
 
     // 🕒 Perhitungan batas akhir review (updated_at + 7 hari)
     DateTime updatedAt = DateTime.parse(product['updated_at']);
-    DateTime reviewDeadline = updatedAt.add(Duration(days: 30));
+    DateTime reviewDeadline = updatedAt.add(Duration(days: _reviewExpirationDays));
     bool canReview = DateTime.now().isBefore(reviewDeadline);
 
     // Ambil Harga, Adjustment Price, dan Discount
@@ -793,7 +813,9 @@ class _OrderDetailsPageState extends State<OrderDetailsPage> {
                           ],
                         ),
                       ),
-                    if (transactionReview != null && canReview && transactionReview['reply_admin'] == null)
+                    if (transactionReview != null &&
+                        canReview &&
+                        transactionReview['reply_admin'] == null)
                       Align(
                         alignment: Alignment.centerRight,
                         child: TextButton.icon(
