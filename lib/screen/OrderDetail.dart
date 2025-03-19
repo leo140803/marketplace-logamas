@@ -75,7 +75,7 @@ class _OrderDetailsPageState extends State<OrderDetailsPage> {
   Future<void> _downloadNota() async {
     final String transactionId = widget.transactionId;
     final String url =
-        'http://10.0.2.2:3000/nota/$transactionId'; // Ganti dengan URL API yang sesuai
+        '$apiBaseUrlNota/nota/$transactionId'; // Ganti dengan URL API yang sesuai
 
     try {
       // Mengirim request ke server untuk mendapatkan file PDF
