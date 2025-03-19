@@ -682,9 +682,15 @@ class _OrdersPageState extends State<OrdersPage>
                                 mainAxisAlignment:
                                     MainAxisAlignment.spaceBetween,
                                 children: [
-                                  Text(
-                                    '${product['product_code']['product']['name']} (${product['weight']}g)',
-                                    style: const TextStyle(fontSize: 14),
+                                  Expanded(
+                                    child: Text(
+                                      '${product['product_code']['product']['name']} (${product['weight']}g)',
+                                      style: const TextStyle(fontSize: 14),
+                                      overflow: TextOverflow
+                                          .ellipsis, // Handles overflow with ellipsis
+                                      maxLines:
+                                          1, // Ensures text doesn't wrap to a new line
+                                    ),
                                   ),
                                   Text(
                                     'Rp ${formatCurrency(totalPrice)}',

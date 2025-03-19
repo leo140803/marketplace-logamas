@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
@@ -8,6 +10,8 @@ import 'dart:convert';
 
 import 'package:marketplace_logamas/function/Utils.dart';
 import 'package:marketplace_logamas/screen/FullScreenImageView.dart';
+import 'package:marketplace_logamas/screen/PDFScreen.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class OrderDetailsPage extends StatefulWidget {
@@ -60,12 +64,64 @@ class _OrderDetailsPageState extends State<OrderDetailsPage> {
       if (data['success']) {
         setState(() {
           _transactionData = data['data']['data'];
-          print(_transactionData!['transaction_products'][1]);
           _isLoading = false;
           _setCountdown();
         });
       }
     }
+  }
+
+  // Fungsi untuk mendownload nota
+  Future<void> _downloadNota() async {
+    final String transactionId = widget.transactionId;
+    final String url =
+        'http://10.0.2.2:3000/nota/$transactionId'; // Ganti dengan URL API yang sesuai
+
+    try {
+      // Mengirim request ke server untuk mendapatkan file PDF
+      final response = await http.get(Uri.parse(url));
+
+      if (response.statusCode == 200) {
+        // Mendapatkan direktori untuk menyimpan file
+        final directory = await getApplicationDocumentsDirectory();
+        final filePath = '${directory.path}/nota_$transactionId.pdf';
+        final file = File(filePath);
+
+        // Menyimpan file PDF ke direktori aplikasi
+        await file.writeAsBytes(response.bodyBytes);
+
+        _openPdf(filePath);
+      } else {
+        // Menampilkan notifikasi error jika request gagal
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text("Gagal mengunduh nota!"),
+            duration: Duration(seconds: 2),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } catch (error) {
+      print("Error downloading nota: $error");
+
+      // Menampilkan notifikasi error jika terjadi masalah
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text("Terjadi kesalahan saat mengunduh nota."),
+          duration: Duration(seconds: 2),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  void _openPdf(String filePath) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => PDFScreen(filePath: filePath),
+      ),
+    );
   }
 
   void _copyToClipboard(String text) {
@@ -193,9 +249,7 @@ class _OrderDetailsPageState extends State<OrderDetailsPage> {
         ),
         actions: [
           IconButton(
-            onPressed: () {
-              // TODO: Tambahkan logika untuk melihat nota order
-            },
+            onPressed: _downloadNota,
             icon: const Icon(
               Icons.receipt_long,
               color: Colors.white,
@@ -616,7 +670,8 @@ class _OrderDetailsPageState extends State<OrderDetailsPage> {
 
     // 🕒 Perhitungan batas akhir review (updated_at + 7 hari)
     DateTime updatedAt = DateTime.parse(product['updated_at']);
-    DateTime reviewDeadline = updatedAt.add(Duration(days: _reviewExpirationDays));
+    DateTime reviewDeadline =
+        updatedAt.add(Duration(days: _reviewExpirationDays));
     bool canReview = DateTime.now().isBefore(reviewDeadline);
 
     // Ambil Harga, Adjustment Price, dan Discount
