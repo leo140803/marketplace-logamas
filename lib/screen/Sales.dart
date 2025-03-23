@@ -608,7 +608,7 @@ class _SalesPageState extends State<SalesPage>
           elevation: 3,
           child: InkWell(
             onTap: () {
-              context.push('/detail/${order['id']}');
+              context.push('/salesd/${order['id']}');
             },
             child: Column(
               children: [

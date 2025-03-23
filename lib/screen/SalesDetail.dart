@@ -14,45 +14,25 @@ import 'package:marketplace_logamas/screen/PDFScreen.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-class OrderDetailsPage extends StatefulWidget {
+class SalesDetailsPage extends StatefulWidget {
   final String transactionId;
 
-  OrderDetailsPage({required this.transactionId});
+  SalesDetailsPage({required this.transactionId});
   @override
-  _OrderDetailsPageState createState() => _OrderDetailsPageState();
+  _SalesDetailsPageState createState() => _SalesDetailsPageState();
 }
 
-class _OrderDetailsPageState extends State<OrderDetailsPage> {
+class _SalesDetailsPageState extends State<SalesDetailsPage> {
   Timer? _timer;
   Duration _timeLeft = Duration.zero;
   Map<String, dynamic>? _transactionData;
   bool _isLoading = true;
   bool _isExpired = false;
-  int _reviewExpirationDays = 7;
 
   @override
   void initState() {
     super.initState();
-    _fetchReviewExpiration();
     _fetchTransactionData();
-  }
-
-  Future<void> _fetchReviewExpiration() async {
-    final url =
-        Uri.parse('http://127.0.0.1:3020/api/config/key?key=review_exp');
-    try {
-      final response = await http.get(url);
-      if (response.statusCode == 200) {
-        final Map<String, dynamic> data = json.decode(response.body);
-        if (data['success']) {
-          setState(() {
-            _reviewExpirationDays = int.tryParse(data['data']['value']) ?? 7;
-          });
-        }
-      }
-    } catch (error) {
-      print("Failed to fetch review expiration: $error");
-    }
   }
 
   Future<void> _fetchTransactionData() async {
@@ -65,7 +45,6 @@ class _OrderDetailsPageState extends State<OrderDetailsPage> {
         setState(() {
           _transactionData = data['data']['data'];
           _isLoading = false;
-          _setCountdown();
         });
       }
     }
@@ -173,45 +152,6 @@ class _OrderDetailsPageState extends State<OrderDetailsPage> {
     return discount; // Hasil akhir diskon
   }
 
-  void _setCountdown() {
-    if (_transactionData != null && _transactionData!['status'] == 0) {
-      if (_transactionData!['expired_at'] == null) {
-        setState(() {
-          _isExpired = false;
-        });
-        return;
-      }
-      DateTime expiredAt = DateTime.parse(_transactionData!['expired_at']);
-      Duration difference = expiredAt.difference(DateTime.now());
-
-      if (difference.isNegative) {
-        setState(() {
-          _isExpired = true;
-        });
-        return;
-      }
-
-      setState(() {
-        _timeLeft = difference;
-        _isExpired = false;
-      });
-
-      _timer?.cancel();
-      _timer = Timer.periodic(Duration(seconds: 1), (timer) {
-        if (_timeLeft.inSeconds > 0) {
-          setState(() {
-            _timeLeft = _timeLeft - Duration(seconds: 1);
-          });
-        } else {
-          setState(() {
-            _isExpired = true;
-          });
-          timer.cancel();
-        }
-      });
-    }
-  }
-
   @override
   void dispose() {
     _timer?.cancel();
@@ -254,15 +194,15 @@ class _OrderDetailsPageState extends State<OrderDetailsPage> {
           ),
         ),
         actions: [
-          if(!_isLoading)
-          if (_transactionData!['status'] == 2)
-            IconButton(
-              onPressed: _downloadNota,
-              icon: const Icon(
-                Icons.receipt_long,
-                color: Colors.white,
+          if (!_isLoading)
+            if (_transactionData!['status'] == 2)
+              IconButton(
+                onPressed: _downloadNota,
+                icon: const Icon(
+                  Icons.receipt_long,
+                  color: Colors.white,
+                ),
               ),
-            ),
         ],
       ),
       body: _isLoading
@@ -316,8 +256,7 @@ class _OrderDetailsPageState extends State<OrderDetailsPage> {
               // 🔹 STATUS PEMBAYARAN
               if (paymentStatus == 1)
                 _buildStatusMessage('Siap Diambil', Colors.blue),
-              if (paymentStatus == 2)
-                _buildStatusMessage('Sudah Diambil (Done)', Colors.green),
+              if (paymentStatus == 2) _buildStatusMessage('Done', Colors.green),
               if (paymentStatus == 0) ...[
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -390,18 +329,7 @@ class _OrderDetailsPageState extends State<OrderDetailsPage> {
               Text('Rincian Pesanan',
                   style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
               SizedBox(height: 8),
-
-              _buildOrderDetailRow('Harga Sebelum Voucher',
-                  'Rp ${formatCurrency(double.tryParse(_transactionData!['sub_total_price'].toString()) ?? 0)}'),
-              _buildOrderDetailRow('Tax (${_getTaxPercentage()}%)',
-                  'Rp ${formatCurrency(double.tryParse(_transactionData!['tax_price'].toString()) ?? 0)}'),
-              _buildOrderDetailRow('Potongan Voucher',
-                  '-Rp ${formatCurrency(_getDiscountAmount())}'),
-              _buildOrderDetailRow(
-                  'Poin Earned', '${_transactionData!['poin_earned']} Poin'),
-
-              Divider(color: Colors.grey[400]),
-              _buildOrderDetailRow('Total Bayar',
+              _buildOrderDetailRow('Total Penjualan',
                   'Rp ${formatCurrency(double.tryParse(_transactionData!['total_price'].toString()) ?? 0)}',
                   isBold: true),
               SizedBox(height: 16),
@@ -676,12 +604,6 @@ class _OrderDetailsPageState extends State<OrderDetailsPage> {
     var transactionReview =
         product['TransactionReview']; // Ambil review jika ada
 
-    // 🕒 Perhitungan batas akhir review (updated_at + 7 hari)
-    DateTime updatedAt = DateTime.parse(product['updated_at']);
-    DateTime reviewDeadline =
-        updatedAt.add(Duration(days: _reviewExpirationDays));
-    bool canReview = DateTime.now().isBefore(reviewDeadline);
-
     // Ambil Harga, Adjustment Price, dan Discount
     double price = double.tryParse(product['price'].toString()) ?? 0;
     double adjPrice =
@@ -777,7 +699,7 @@ class _OrderDetailsPageState extends State<OrderDetailsPage> {
                       ),
 
                       // 🔹 Tampilkan Adjustment Price Jika > 0
-                      if (adjPrice > 0)
+                      if (adjPrice != 0)
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
@@ -785,7 +707,9 @@ class _OrderDetailsPageState extends State<OrderDetailsPage> {
                                 style: TextStyle(
                                     fontSize: 14, color: Colors.blue)),
                             Text(
-                              "+Rp ${formatCurrency(adjPrice)}",
+                              (adjPrice > 0
+                                  ? "+Rp ${formatCurrency(adjPrice)}"
+                                  : "Rp ${formatCurrency(adjPrice)}"),
                               style: const TextStyle(
                                   fontSize: 14, color: Colors.blue),
                             ),
@@ -876,61 +800,8 @@ class _OrderDetailsPageState extends State<OrderDetailsPage> {
                           ],
                         ),
                       ),
-                    if (transactionReview != null &&
-                        canReview &&
-                        transactionReview['reply_admin'] == null)
-                      Align(
-                        alignment: Alignment.centerRight,
-                        child: TextButton.icon(
-                          onPressed: () => _showEditReviewDialog(
-                              transactionReview['id'], // ✅ Pass reviewId
-                              _transactionData!['customer_id'], // ✅ Pass userId
-                              transactionReview['rating'],
-                              transactionReview['review']),
-                          icon: Icon(Icons.edit,
-                              size: 16, color: Colors.blueAccent),
-                          label: Text(
-                            "Edit Review",
-                            style: TextStyle(color: Colors.blueAccent),
-                          ),
-                        ),
-                      ),
                   ],
                 ),
-              ),
-
-            // 🎯 Tampilkan tombol "Beri Penilaian" jika review belum ada dan masih dalam batas waktu
-            if (paymentStatus == 2 && transactionReview == null && canReview)
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  // 🕒 Batas Akhir Review
-                  Text(
-                    "Beri review sebelum: ${DateFormat('dd MMM yyyy').format(reviewDeadline)}",
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.grey[600],
-                    ),
-                  ),
-
-                  // 📝 Tombol Beri Penilaian
-                  ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.blueAccent,
-                      padding:
-                          EdgeInsets.symmetric(horizontal: 15, vertical: 8),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                    ),
-                    onPressed: () => _showRatingDialog(product['id']),
-                    child: Text(
-                      "Beri Penilaian",
-                      style: TextStyle(fontSize: 14, color: Colors.white),
-                    ),
-                  ),
-                ],
               ),
           ],
         ),

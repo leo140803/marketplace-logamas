@@ -26,6 +26,7 @@ import 'package:marketplace_logamas/screen/ProductDetail.dart';
 import 'package:marketplace_logamas/screen/RegisterScreen.dart';
 import 'package:marketplace_logamas/screen/ResetPassword.dart';
 import 'package:marketplace_logamas/screen/Sales.dart';
+import 'package:marketplace_logamas/screen/SalesDetail.dart';
 import 'package:marketplace_logamas/screen/Search.dart';
 import 'package:marketplace_logamas/screen/SearchResult.dart';
 import 'package:marketplace_logamas/screen/StorePage.dart';
@@ -79,6 +80,13 @@ final router = GoRouter(
           builder: (context, state) {
             final transactionId = state.pathParameters['transactionId']!;
             return OrderDetailsPage(transactionId: transactionId);
+          },
+        ),
+         GoRoute(
+          path: 'salesd/:transactionId',
+          builder: (context, state) {
+            final transactionId = state.pathParameters['transactionId']!;
+            return SalesDetailsPage(transactionId: transactionId);
           },
         ),
 
