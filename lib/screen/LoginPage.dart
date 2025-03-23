@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:marketplace_logamas/function/Utils.dart';
+import 'package:marketplace_logamas/widget/CustomLoader.dart';
 import 'package:marketplace_logamas/widget/Dialog.dart';
 import 'package:marketplace_logamas/widget/Field.dart';
 import 'package:go_router/go_router.dart';
@@ -18,6 +19,7 @@ class LoginPage extends StatefulWidget {
 class _LoginPageState extends State<LoginPage> {
   final TextEditingController emailController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
+  bool _isPasswordVisible = true;
 
   void _login() async {
     String email = emailController.text;
@@ -25,18 +27,7 @@ class _LoginPageState extends State<LoginPage> {
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (ctx) => AlertDialog(
-        title: Text('Please wait...'),
-        content: Row(
-          children: [
-            CircularProgressIndicator(
-              valueColor: AlwaysStoppedAnimation<Color>(Color(0xFFE0B9B2)),
-            ),
-            SizedBox(width: 15),
-            Text('Mohon tunggu sebentar'),
-          ],
-        ),
-      ),
+      builder: (ctx) => CustomLoader(),
     );
     const String apiUrl = '$apiBaseUrl/user/login';
     try {
@@ -177,9 +168,22 @@ class _LoginPageState extends State<LoginPage> {
                 SizedBox(height: 20),
                 Field(
                   con: passwordController,
-                  isPassword: true,
+                  isPassword: _isPasswordVisible,
                   text: 'Password',
                   logo: Icons.lock,
+                  suffixIcon: IconButton(
+                    icon: Icon(
+                      _isPasswordVisible
+                          ? Icons.visibility
+                          : Icons.visibility_off,
+                      color: Color(0xFFC58189),
+                    ),
+                    onPressed: () {
+                      setState(() {
+                        _isPasswordVisible = !_isPasswordVisible;
+                      });
+                    },
+                  ),
                 ),
                 SizedBox(height: 10),
 

@@ -64,24 +64,14 @@ class _BarcodePageState extends State<BarcodePage> {
             : Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Text(
-                    'Your User ID:',
-                    style: TextStyle(fontSize: 16),
-                  ),
-                  SizedBox(height: 10),
-                  Text(
-                    userId!,
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                  ),
-                  SizedBox(height: 20),
                   QrImageView(
                     data: userId!,
                     version: QrVersions.auto,
-                    size: 200.0,
+                    size: 300.0,
                   ),
                   SizedBox(height: 20),
                   Text(
-                    'Scan this barcode to get your User ID',
+                    'Scan this barcode to get your Profile Data in Store',
                     style: TextStyle(fontSize: 14, color: Colors.grey),
                   ),
                 ],

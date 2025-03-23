@@ -5,12 +5,14 @@ class Field extends StatelessWidget {
   final bool isPassword;
   final String text;
   final IconData logo;
+  final Widget? suffixIcon;
   const Field({
     super.key,
     required this.con,
     required this.isPassword,
     required this.text,
     required this.logo,
+    this.suffixIcon
   });
 
   @override
@@ -40,6 +42,7 @@ class Field extends StatelessWidget {
             logo,
             color: Color(0xFFC58189),
           ),
+          suffixIcon: suffixIcon,
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(30.0),
             borderSide: BorderSide.none,

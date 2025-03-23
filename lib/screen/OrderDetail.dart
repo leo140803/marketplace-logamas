@@ -175,6 +175,12 @@ class _OrderDetailsPageState extends State<OrderDetailsPage> {
 
   void _setCountdown() {
     if (_transactionData != null && _transactionData!['status'] == 0) {
+      if (_transactionData!['expired_at'] == null) {
+        setState(() {
+          _isExpired = false;
+        });
+        return;
+      }
       DateTime expiredAt = DateTime.parse(_transactionData!['expired_at']);
       Duration difference = expiredAt.difference(DateTime.now());
 
@@ -248,13 +254,14 @@ class _OrderDetailsPageState extends State<OrderDetailsPage> {
           ),
         ),
         actions: [
-          IconButton(
-            onPressed: _downloadNota,
-            icon: const Icon(
-              Icons.receipt_long,
-              color: Colors.white,
+          if (_transactionData!['status'] == 2)
+            IconButton(
+              onPressed: _downloadNota,
+              icon: const Icon(
+                Icons.receipt_long,
+                color: Colors.white,
+              ),
             ),
-          ),
         ],
       ),
       body: _isLoading

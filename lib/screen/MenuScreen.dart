@@ -6,6 +6,7 @@ import 'package:marketplace_logamas/function/Utils.dart';
 import 'package:marketplace_logamas/widget/BottomNavigationBar.dart';
 
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:shimmer/shimmer.dart';
 
 class MenuScreen extends StatefulWidget {
   const MenuScreen({Key? key}) : super(key: key);
@@ -149,29 +150,35 @@ class _MenuScreenState extends State<MenuScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          _name,
-                          style: const TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
+                        _name == 'Loading...'
+                            ? shimmerEffect() // Shimmer for name
+                            : Text(
+                                _name,
+                                style: const TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
                         const SizedBox(height: 4),
-                        Text(
-                          _email,
-                          style: TextStyle(
-                            color: Colors.grey.shade700,
-                            fontSize: 14,
-                          ),
-                        ),
+                        _email == 'Loading...'
+                            ? shimmerEffect() // Shimmer for email
+                            : Text(
+                                _email,
+                                style: TextStyle(
+                                  color: Colors.grey.shade700,
+                                  fontSize: 14,
+                                ),
+                              ),
                         const SizedBox(height: 4),
-                        Text(
-                          _phone,
-                          style: TextStyle(
-                            color: Colors.grey.shade700,
-                            fontSize: 14,
-                          ),
-                        ),
+                        _phone == 'Loading...'
+                            ? shimmerEffect() // Shimmer for phone
+                            : Text(
+                                _phone,
+                                style: TextStyle(
+                                  color: Colors.grey.shade700,
+                                  fontSize: 14,
+                                ),
+                              ),
                       ],
                     ),
                   ),
@@ -283,6 +290,18 @@ class _MenuScreenState extends State<MenuScreen> {
       bottomNavigationBar: BottomNavBar(
         selectedIndex: _selectedIndex,
         onItemTapped: _onItemTapped,
+      ),
+    );
+  }
+
+  Widget shimmerEffect() {
+    return Shimmer.fromColors(
+      baseColor: Colors.grey.shade300,
+      highlightColor: Colors.grey.shade100,
+      child: Container(
+        height: 10,
+        width: double.infinity,
+        color: Colors.white,
       ),
     );
   }

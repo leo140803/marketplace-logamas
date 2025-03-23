@@ -316,22 +316,34 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
                         validationMessage: 'Please confirm your new password',
                       ),
                       const SizedBox(height: 24),
-                      ElevatedButton(
-                        style: ElevatedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(
-                              vertical: 14, horizontal: 80),
-                          shape: RoundedRectangleBorder(
+                      GestureDetector(
+                        onTap: _sendOtp,
+                        child: Container(
+                          width: 250,
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: [
+                                Color(0xFFE8C4BD),
+                                Color(0xFFC58189),
+                              ],
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                            ),
                             borderRadius: BorderRadius.circular(30),
                           ),
-                          backgroundColor: const Color(0xFFC58189),
+                          padding: const EdgeInsets.symmetric(
+                              vertical: 15, horizontal: 20),
+                          alignment: Alignment.center,
+                          child: const Text(
+                            "Change Password",
+                            style: TextStyle(
+                              fontSize: 18,
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
                         ),
-                        onPressed: _sendOtp,
-                        child: const Text(
-                          'Send OTP',
-                          style: TextStyle(
-                              fontSize: 16, fontWeight: FontWeight.bold),
-                        ),
-                      ),
+                      )
                     ],
                   ),
                 ),

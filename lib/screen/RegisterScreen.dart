@@ -21,6 +21,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final TextEditingController passwordConfirmController =
       TextEditingController();
   final TextEditingController phoneController = TextEditingController();
+  bool _isPasswordVisible = true;
 
   bool isLoading = false;
 
@@ -184,9 +185,22 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   ),
                   FieldSquare(
                     con: passwordController,
-                    isPassword: true,
+                    isPassword: _isPasswordVisible,
                     text: 'Password',
                     logo: Icons.lock,
+                    suffixIcon: IconButton(
+                      icon: Icon(
+                        _isPasswordVisible
+                            ? Icons.visibility
+                            : Icons.visibility_off,
+                          color: Color(0xFFC58189),
+                      ),
+                      onPressed: () {
+                        setState(() {
+                          _isPasswordVisible = !_isPasswordVisible;
+                        });
+                      },
+                    ),
                   ),
                   SizedBox(height: 10),
                   Text(
