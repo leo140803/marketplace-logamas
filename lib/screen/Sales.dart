@@ -673,6 +673,12 @@ class _SalesPageState extends State<SalesPage>
                                 product['total_price'].toString()) ??
                             0;
 
+                        // Check if product_code is null and show "OutSide Product"
+                        String productName = product['product_code'] != null
+                            ? product['product_code']['product']['name'] ??
+                                'Unknown Product'
+                            : 'OutSide Product';
+
                         return Padding(
                           padding: const EdgeInsets.only(bottom: 4.0),
                           child: Column(
@@ -684,7 +690,7 @@ class _SalesPageState extends State<SalesPage>
                                 children: [
                                   Expanded(
                                     child: Text(
-                                      '${product['product_code']['product']['name']} (${product['weight']}g)',
+                                      '$productName (${product['weight']}g)',
                                       style: const TextStyle(fontSize: 14),
                                       overflow: TextOverflow
                                           .ellipsis, // Handles overflow with ellipsis

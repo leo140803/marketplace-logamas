@@ -611,6 +611,19 @@ class _SalesDetailsPageState extends State<SalesDetailsPage> {
     double discount = double.tryParse(product['discount'].toString()) ?? 0;
     double totalPrice = double.tryParse(product['total_price'].toString()) ?? 0;
 
+    // Check if product_code is null and display "OutSide Product"
+    String productName = product['product_code'] != null
+        ? product['product_code']['product']['name'] ?? 'Unknown Product'
+        : 'OutSide Product';
+
+    // Check if product image is null and provide a placeholder
+    String? productImageUrl = product['product_code'] != null
+        ? product['product_code']['image']
+        : null;
+
+    // Fallback image URL if product image is null
+    String fallbackImageUrl = 'https://via.placeholder.com/70';
+
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8.0),
       child: Container(
@@ -639,7 +652,7 @@ class _SalesDetailsPageState extends State<SalesDetailsPage> {
                       MaterialPageRoute(
                         builder: (_) => FullScreenImageView(
                           imageUrl:
-                              '$apiBaseUrlImage${product['product_code']['image']}',
+                              '$apiBaseUrlImage${productImageUrl ?? fallbackImageUrl}',
                         ),
                       ),
                     );
@@ -654,7 +667,7 @@ class _SalesDetailsPageState extends State<SalesDetailsPage> {
                     child: ClipRRect(
                       borderRadius: BorderRadius.circular(10),
                       child: Image.network(
-                        '$apiBaseUrlImage${product['product_code']['image']}',
+                        '$apiBaseUrlImage${productImageUrl ?? fallbackImageUrl}', // Fallback to placeholder
                         fit: BoxFit.cover,
                         errorBuilder: (context, error, stackTrace) =>
                             const Icon(
@@ -675,7 +688,7 @@ class _SalesDetailsPageState extends State<SalesDetailsPage> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        product['product_code']['product']['name'],
+                        productName,
                         style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
