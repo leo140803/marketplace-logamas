@@ -288,6 +288,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
           "customerId": _userId, // Dynamically fetched customer ID
           "voucherOwnedId": selectedVoucherOwnedId,
           "taxAmount": taxAmount,
+          "tax_percent": storeProducts['store']['tax_percentage'],
           "poin_earned": _calculateTotalPoints(),
         }),
       );

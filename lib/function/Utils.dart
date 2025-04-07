@@ -5,8 +5,8 @@ import 'package:marketplace_logamas/widget/Dialog.dart';
 import 'package:marketplace_logamas/widget/UnauthorizedDialog.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-const String apiBaseUrl = 'http://127.0.0.1:3001/api';
-const String apiBaseUrlImage = 'http://127.0.0.1:3000/';
+const String apiBaseUrl = 'https://09e7-66-96-225-123.ngrok-free.app/api';
+const String apiBaseUrlImage = 'http://10.0.2.2:3000/';
 const String apiBaseUrlNota = 'http://127.0.0.1:3000';
 const String apiBaseUrlPlatform = 'http://127.0.0.1:3020';
 
@@ -18,8 +18,10 @@ void navigate(BuildContext context, int index) {
     context.go('/nearby');
     // Navigator.pushReplacementNamed(context, '/nearby');
   } else if (index == 2) {
-    context.go('/information');
+    context.go('/scan');
     // Navigator.pushReplacementNamed(context, '/nearby');
+  }else if(index == 3){
+    context.go('/information');
   }
 }
 

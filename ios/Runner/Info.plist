@@ -78,5 +78,7 @@
 	<string>This app needs access to your location even when running in the background.</string>
 	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
 	<string>This app requires access to your location to provide better services even in the background.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>Digunakan untuk memindai QR Code</string>
 </dict>
 </plist>

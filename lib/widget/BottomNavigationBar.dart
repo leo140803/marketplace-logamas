@@ -18,6 +18,7 @@ class BottomNavBar extends StatelessWidget {
       backgroundColor: Color(0xFF31394E),
       selectedItemColor: Color(0xFFC58189),
       unselectedItemColor: Colors.white,
+      type: BottomNavigationBarType.fixed,
       items: [
         BottomNavigationBarItem(
           icon: Icon(Icons.home),
@@ -26,6 +27,10 @@ class BottomNavBar extends StatelessWidget {
         BottomNavigationBarItem(
           icon: Icon(Icons.store),
           label: 'Nearby Store',
+        ),
+        BottomNavigationBarItem(
+          icon: Icon(Icons.qr_code_scanner_rounded),
+          label: 'Scan QR Code',
         ),
         BottomNavigationBarItem(
           icon: Icon(Icons.info),

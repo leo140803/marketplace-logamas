@@ -22,14 +22,18 @@ import 'package:marketplace_logamas/screen/NotFoundPage.dart';
 import 'package:marketplace_logamas/screen/Order.dart';
 import 'package:marketplace_logamas/screen/OrderDetail.dart';
 import 'package:marketplace_logamas/screen/PaymentSuccessScreen.dart';
+import 'package:marketplace_logamas/screen/ProductCodeDetail.dart';
 import 'package:marketplace_logamas/screen/ProductDetail.dart';
 import 'package:marketplace_logamas/screen/RegisterScreen.dart';
 import 'package:marketplace_logamas/screen/ResetPassword.dart';
 import 'package:marketplace_logamas/screen/Sales.dart';
 import 'package:marketplace_logamas/screen/SalesDetail.dart';
+import 'package:marketplace_logamas/screen/ScanQRPage.dart';
 import 'package:marketplace_logamas/screen/Search.dart';
 import 'package:marketplace_logamas/screen/SearchResult.dart';
 import 'package:marketplace_logamas/screen/StorePage.dart';
+import 'package:marketplace_logamas/screen/Trade.dart';
+import 'package:marketplace_logamas/screen/TradeDetail.dart';
 import 'package:marketplace_logamas/screen/UserPoinPage.dart';
 import 'package:marketplace_logamas/screen/UserStorePoinPage.dart';
 import 'package:marketplace_logamas/screen/Welcome.dart';
@@ -59,7 +63,7 @@ void main() async {
 
 final router = GoRouter(
   // '/store/72574284-33f6-4ca8-a725-f00df1a62291',
-  initialLocation: '/landing',
+  initialLocation: '/product-code-detail?barcode=SJT010010100010008',
   navigatorKey: navigatorKey,
   debugLogDiagnostics: true,
   routes: [
@@ -82,11 +86,22 @@ final router = GoRouter(
             return OrderDetailsPage(transactionId: transactionId);
           },
         ),
-         GoRoute(
+        GoRoute(
           path: 'salesd/:transactionId',
           builder: (context, state) {
             final transactionId = state.pathParameters['transactionId']!;
             return SalesDetailsPage(transactionId: transactionId);
+          },
+        ),
+        GoRoute(
+          path: '/scan',
+          builder: (context, state) => const ScanQRPage(),
+        ),
+        GoRoute(
+          path: 'traded/:transactionId',
+          builder: (context, state) {
+            final transactionId = state.pathParameters['transactionId']!;
+            return TradeDetailsPage(transactionId: transactionId);
           },
         ),
 
@@ -143,6 +158,11 @@ final router = GoRouter(
           path: 'sell',
           name: 'sell',
           builder: (context, state) => SalesPage(),
+        ),
+        GoRoute(
+          path: 'trade',
+          name: 'trade',
+          builder: (context, state) => TradePage(),
         ),
         GoRoute(
           path: 'myQR',
@@ -278,13 +298,23 @@ final router = GoRouter(
             return ConfirmationScreen(email: email);
           },
         ),
+        GoRoute(
+          path: '/product-code-detail',
+          builder: (context, state) {
+            final barcode = state.uri.queryParameters['barcode']!;
+            return ProductCodeDetailPage(barcode: barcode);
+          },
+        ),
       ],
     ),
   ],
 
   errorBuilder: (context, state) => NotFoundPage(),
   redirect: (context, state) {
-    print('Incoming URL: ${state.uri}');
+    final uri = state.uri;
+    final uriString = uri.toString();
+    print('Incoming URL: ${uri.path}');
+    if (uri.path == '/scan') return null;
 
     if (state.uri.path.startsWith('/deeplink-website')) {
       final newPath = state.uri.path.replaceFirst('/deeplink-website', '');
@@ -292,7 +322,7 @@ final router = GoRouter(
       return newPath;
     }
 
-    final uriString = state.uri.toString();
+    // final uriString = state.uri.toString();
     if (state.uri
         .toString()
         .startsWith('marketplace-logamas://reset-password')) {

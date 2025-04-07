@@ -16,7 +16,7 @@ class MenuScreen extends StatefulWidget {
 }
 
 class _MenuScreenState extends State<MenuScreen> {
-  int _selectedIndex = 2;
+  int _selectedIndex = 3;
   String? _accessToken;
   String _name = 'Loading...';
   String _email = 'Loading...';
@@ -217,7 +217,7 @@ class _MenuScreenState extends State<MenuScreen> {
                     title: const Text('Daftar Tukar Tambah'),
                     trailing:
                         Icon(Icons.chevron_right, color: Colors.grey.shade400),
-                    onTap: () => context.push('/service'),
+                    onTap: () => context.push('/trade'),
                   ),
                   ListTile(
                     leading:
