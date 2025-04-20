@@ -214,6 +214,9 @@ class _SalesDetailsPageState extends State<SalesDetailsPage> {
   Widget _buildOrderDetails() {
     int paymentStatus = _transactionData!['status']; // Status pembayaran
     final operations = _transactionData!['TransactionOperation'] ?? [];
+    final totalPrice =
+        double.tryParse(_transactionData!['total_price'].toString()) ?? 0;
+    final formattedPrice = formatCurrency(totalPrice.abs());
 
     return Container(
       color: Colors.grey[200],
@@ -330,7 +333,7 @@ class _SalesDetailsPageState extends State<SalesDetailsPage> {
                   style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
               SizedBox(height: 8),
               _buildOrderDetailRow('Total Penjualan',
-                  'Rp ${formatCurrency(double.tryParse(_transactionData!['total_price'].toString()) ?? 0)}',
+                  'Rp ${formattedPrice}',
                   isBold: true),
               SizedBox(height: 16),
 
@@ -696,7 +699,7 @@ class _SalesDetailsPageState extends State<SalesDetailsPage> {
                       ),
                       SizedBox(height: 4),
                       Text(
-                        'Subtotal: Rp ${formatCurrency(totalPrice)}',
+                        'Subtotal: Rp ${formatCurrency(totalPrice.abs())}',
                         style: TextStyle(
                           fontSize: 14,
                           color: Colors.grey[700],

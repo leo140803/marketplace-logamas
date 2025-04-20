@@ -5,10 +5,10 @@ import 'package:marketplace_logamas/widget/Dialog.dart';
 import 'package:marketplace_logamas/widget/UnauthorizedDialog.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-const String apiBaseUrl = 'https://09e7-66-96-225-123.ngrok-free.app/api';
+const String apiBaseUrl = 'http://10.0.2.2:3001/api';
 const String apiBaseUrlImage = 'http://10.0.2.2:3000/';
-const String apiBaseUrlNota = 'http://127.0.0.1:3000';
-const String apiBaseUrlPlatform = 'http://127.0.0.1:3020';
+const String apiBaseUrlNota = 'http://10.0.2.2:3000';
+const String apiBaseUrlPlatform = 'http://10.0.2.2:3020';
 
 void navigate(BuildContext context, int index) {
   if (index == 0) {

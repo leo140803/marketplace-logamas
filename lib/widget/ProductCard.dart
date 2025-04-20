@@ -1,16 +1,18 @@
 import 'dart:math';
-import 'package:marketplace_logamas/function/Utils.dart';
 import 'package:flutter/material.dart';
+import 'package:marketplace_logamas/function/Utils.dart';
+import 'package:cached_network_image/cached_network_image.dart'; // Add this package dependency
 
-Card ProductCard(Map<String, dynamic> product) {
-  // Ambil gambar dari product_codes index 0 jika tersedia
-  String productImage = product['product_codes'] != null &&
-          product['product_codes'].isNotEmpty &&
-          product['product_codes'][0]['image'] != null
-      ? '$apiBaseUrlImage${product['product_codes'][0]['image']}'
-      : (product['images'] != null && product['images'].isNotEmpty
-          ? '$apiBaseUrlImage${product['images'][0]}'
-          : 'https://picsum.photos/200/200?random=${Random().nextInt(1000)}');
+Widget ProductCard(Map<String, dynamic> product) {
+  // Extract product data with null safety
+  final String productName = product['name'] ?? "Unknown Product";
+  final double productPrice = (product['low_price'] ?? 0).toDouble();
+  final double avgRating = (product['average_rating'] ?? 0).toDouble();
+  final int totalSold = product['totalSold'] ?? 0;
+  final String storeName = product['store']?['store_name'] ?? 'Unknown Store';
+
+  // Image handling with better fallback strategy
+  String productImage = _getProductImage(product);
 
   return Card(
     color: Colors.white,
@@ -22,15 +24,32 @@ Card ProductCard(Map<String, dynamic> product) {
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Product Image
+        // Product Image with loading and error handling
         Expanded(
-          child: Container(
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.vertical(top: Radius.circular(8)),
-              image: DecorationImage(
-                image: NetworkImage(productImage),
-                fit: BoxFit.cover,
+          child: CachedNetworkImage(
+            imageUrl: productImage,
+            fit: BoxFit.cover,
+            width: double.infinity, // Tetapkan lebar yang konsisten
+            height: double.infinity, // Tetapkan tinggi yang konsisten
+            fadeInDuration: Duration.zero, // Hapus animasi fade in
+            placeholderFadeInDuration:
+                Duration.zero, // Hapus animasi placeholder
+            placeholder: (context, url) => Container(
+              width: double.infinity, // Pastikan placeholder punya ukuran sama
+              height: double.infinity,
+              color: Colors.grey[200],
+              child: Center(
+                child: CircularProgressIndicator(
+                  strokeWidth: 2.0,
+                  valueColor: AlwaysStoppedAnimation<Color>(Color(0xFFC58189)),
+                ),
               ),
+            ),
+            errorWidget: (context, url, error) => Container(
+              width: double.infinity, // Pastikan error widget punya ukuran sama
+              height: double.infinity,
+              color: Colors.grey[200],
+              child: Icon(Icons.image_not_supported, color: Colors.grey),
             ),
           ),
         ),
@@ -43,7 +62,7 @@ Card ProductCard(Map<String, dynamic> product) {
             children: [
               // Product Name
               Text(
-                product['name'] ?? "Unknown Product",
+                productName,
                 style: TextStyle(
                   fontWeight: FontWeight.bold,
                   fontSize: 14,
@@ -55,7 +74,7 @@ Card ProductCard(Map<String, dynamic> product) {
 
               // Product Price
               Text(
-                'Rp. ${formatCurrency(product['low_price'].toDouble())}',
+                'Rp. ${formatCurrency(productPrice)}',
                 style: TextStyle(
                   color: Color(0xFFC58189),
                   fontWeight: FontWeight.bold,
@@ -65,23 +84,7 @@ Card ProductCard(Map<String, dynamic> product) {
               SizedBox(height: 4),
 
               // Rating and Sold Info
-              Row(
-                children: [
-                  Icon(Icons.star, size: 14, color: Colors.orange),
-                  SizedBox(width: 4),
-                  Builder(builder: (context) {
-                    final avgRating = product['average_rating'] ?? 0;
-                    final totalSold = product['totalSold'] ?? 0;
-                    final displayText = (avgRating == 0 && totalSold == 0)
-                        ? 'No Rate | $totalSold Terjual'
-                        : '${avgRating.toStringAsFixed(1)} | $totalSold Terjual';
-                    return Text(
-                      displayText,
-                      style: TextStyle(fontSize: 12),
-                    );
-                  }),
-                ],
-              ),
+              _buildRatingAndSoldInfo(avgRating, totalSold),
               SizedBox(height: 4),
 
               // Location Info
@@ -89,9 +92,13 @@ Card ProductCard(Map<String, dynamic> product) {
                 children: [
                   Icon(Icons.store_sharp, size: 14, color: Colors.grey),
                   SizedBox(width: 4),
-                  Text(
-                    product['store']['store_name'] ?? 'Unknown Store',
-                    style: TextStyle(fontSize: 12, color: Colors.grey[700]),
+                  Expanded(
+                    child: Text(
+                      storeName,
+                      style: TextStyle(fontSize: 12, color: Colors.grey[700]),
+                      overflow: TextOverflow.ellipsis,
+                      maxLines: 1,
+                    ),
                   ),
                 ],
               ),
@@ -100,5 +107,44 @@ Card ProductCard(Map<String, dynamic> product) {
         ),
       ],
     ),
+  );
+}
+
+// Helper method to determine product image
+String _getProductImage(Map<String, dynamic> product) {
+  // Check product_codes first
+  if (product['product_codes'] != null &&
+      product['product_codes'] is List &&
+      product['product_codes'].isNotEmpty &&
+      product['product_codes'][0]['image'] != null) {
+    return '$apiBaseUrlImage${product['product_codes'][0]['image']}';
+  }
+
+  // Then check images array
+  if (product['images'] != null &&
+      product['images'] is List &&
+      product['images'].isNotEmpty) {
+    return '$apiBaseUrlImage${product['images'][0]}';
+  }
+
+  // Use a random placeholder as last resort
+  return 'https://picsum.photos/200/200?random=${Random().nextInt(1000)}';
+}
+
+// Helper method to build rating and sold information
+Widget _buildRatingAndSoldInfo(double avgRating, int totalSold) {
+  final String displayText = (avgRating <= 0)
+      ? (totalSold > 0 ? 'No Rating | $totalSold Terjual' : 'No Rating & Sales')
+      : '${avgRating.toStringAsFixed(1)} | $totalSold Terjual';
+
+  return Row(
+    children: [
+      Icon(Icons.star, size: 14, color: Colors.orange),
+      SizedBox(width: 4),
+      Text(
+        displayText,
+        style: TextStyle(fontSize: 12),
+      ),
+    ],
   );
 }

@@ -274,6 +274,10 @@ class _TradeDetailsPageState extends State<TradeDetailsPage> {
   Widget _buildOrderDetails() {
     int paymentStatus = _transactionData!['status']; // Status pembayaran
     final operations = _transactionData!['TransactionOperation'] ?? [];
+    final totalPrice =
+        double.tryParse(_transactionData!['total_price'].toString()) ?? 0;
+    final label = totalPrice <= 0 ? 'Total Uang Diterima' : 'Total Bayar';
+    final formattedPrice = formatCurrency(totalPrice.abs());
 
     return Container(
       color: Colors.grey[200],
@@ -437,9 +441,7 @@ class _TradeDetailsPageState extends State<TradeDetailsPage> {
                   'Rp ${formatCurrency(double.tryParse(_transactionData!['adjustment_price'].toString()) ?? 0)}'),
 
               Divider(color: Colors.grey[400]),
-              _buildOrderDetailRow('Total Bayar',
-                  'Rp ${formatCurrency(double.tryParse(_transactionData!['total_price'].toString()) ?? 0)}',
-                  isBold: true),
+              _buildOrderDetailRow(label, 'Rp $formattedPrice'),
               SizedBox(height: 16),
 
               if (paymentStatus == 0)
@@ -949,7 +951,10 @@ class _TradeDetailsPageState extends State<TradeDetailsPage> {
               ),
 
             // 🎯 Tampilkan tombol "Beri Penilaian" jika review belum ada dan masih dalam batas waktu
-            if (paymentStatus == 2 && transactionReview == null && canReview)
+            if (paymentStatus == 2 &&
+                transactionReview == null &&
+                canReview &&
+                product['transaction_type'] == 1)
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [

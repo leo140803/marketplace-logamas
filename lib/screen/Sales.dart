@@ -699,7 +699,7 @@ class _SalesPageState extends State<SalesPage>
                                     ),
                                   ),
                                   Text(
-                                    'Rp ${formatCurrency(totalPrice)}',
+                                    'Rp ${formatCurrency(totalPrice.abs())}',
                                     style: const TextStyle(fontSize: 14),
                                   ),
                                 ],
@@ -758,7 +758,7 @@ class _SalesPageState extends State<SalesPage>
                                 Text(
                                     "${operation['name']} (x${operation['unit']})"),
                                 Text(
-                                  "Rp ${formatCurrency(double.tryParse(operation['total_price'].toString()) ?? 0)}",
+                                  "Rp ${formatCurrency(double.tryParse(operation['total_price'].abs().toString()) ?? 0)}",
                                   style: const TextStyle(fontSize: 14),
                                 ),
                               ],
@@ -803,7 +803,7 @@ class _SalesPageState extends State<SalesPage>
                               style: TextStyle(
                                   fontSize: 16, fontWeight: FontWeight.bold)),
                           Text(
-                            'Rp ${formatCurrency(totalPrice)}',
+                            'Rp ${formatCurrency(totalPrice.abs())}',
                             style: const TextStyle(
                                 fontSize: 16, fontWeight: FontWeight.bold),
                           ),

@@ -592,6 +592,8 @@ class _TradePageState extends State<TradePage>
             double.tryParse(order['tax_percent'].toString()) ?? 0;
         double adjustmentPrice =
             double.tryParse(order['adjustment_price'].toString()) ?? 0;
+        final label = totalPrice <= 0 ? 'Total Uang Diterima' : 'Total Bayar';
+        final formattedPrice = formatCurrency(totalPrice.abs());
 
         String? formattedCreatedAt;
         if (order['created_at'] != null) {
@@ -774,11 +776,11 @@ class _TradePageState extends State<TradePage>
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          const Text('Total Bayar',
+                          Text(label,
                               style: TextStyle(
                                   fontSize: 16, fontWeight: FontWeight.bold)),
                           Text(
-                            'Rp ${formatCurrency(totalPrice)}',
+                            'Rp ${formattedPrice}',
                             style: const TextStyle(
                                 fontSize: 16, fontWeight: FontWeight.bold),
                           ),
