@@ -21,6 +21,7 @@ import 'package:marketplace_logamas/screen/NearbyStore.dart';
 import 'package:marketplace_logamas/screen/NotFoundPage.dart';
 import 'package:marketplace_logamas/screen/Order.dart';
 import 'package:marketplace_logamas/screen/OrderDetail.dart';
+import 'package:marketplace_logamas/screen/PaymentFailed.dart';
 import 'package:marketplace_logamas/screen/PaymentSuccessScreen.dart';
 import 'package:marketplace_logamas/screen/ProductCodeDetail.dart';
 import 'package:marketplace_logamas/screen/ProductDetail.dart';
@@ -270,6 +271,19 @@ final router = GoRouter(
               return const Center(child: Text("Order ID must be provided!"));
             }
             return PaymentSuccessScreen(orderId: orderId);
+          },
+        ),
+        GoRoute(
+          path: '/payment_failed',
+          builder: (context, state) {
+            final orderId = state.uri.queryParameters['order_id'] ?? '';
+            final status =
+                state.uri.queryParameters['status'] ?? 'Pembayaran Gagal';
+
+            return PaymentFailedPage(
+              orderId: orderId,
+              status: status,
+            );
           },
         ),
         GoRoute(

@@ -328,45 +328,59 @@ class _ProductDetailPageState extends State<ProductDetailPage>
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // Nama dan Rating
             Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
-                  children: [
-                    const CircleAvatar(
-                      backgroundColor: Color(0xFFC58189),
-                      child: Icon(Icons.person, color: Colors.white),
-                    ),
-                    const SizedBox(width: 10),
-                    Text(
-                      customerName,
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: Color(0xFF31394E),
-                      ),
-                    ),
-                  ],
+                const CircleAvatar(
+                  backgroundColor: Color(0xFFC58189),
+                  child: Icon(Icons.person, color: Colors.white),
                 ),
-                Row(
-                  children: List.generate(
-                    5,
-                    (index) => Icon(
-                      Icons.star,
-                      size: 18,
-                      color: index < rating
-                          ? const Color(0xFFF2C94C)
-                          : Colors.grey[300],
-                    ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        customerName,
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF31394E),
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                        maxLines: 1,
+                      ),
+                      const SizedBox(height: 4),
+                      Row(
+                        children: List.generate(
+                          5,
+                          (index) => Icon(
+                            Icons.star,
+                            size: 18,
+                            color: index < rating
+                                ? const Color(0xFFF2C94C)
+                                : Colors.grey[300],
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ],
             ),
+
             const Divider(height: 20),
+
+            // Review pelanggan
             Text(
               review,
               style: const TextStyle(fontSize: 14, color: Colors.black87),
+              maxLines: 6,
+              overflow: TextOverflow.ellipsis,
             ),
+
+            // Balasan dari admin
             if (replyAdmin != null && replyAdmin.isNotEmpty) ...[
               const SizedBox(height: 14),
               Row(
@@ -414,6 +428,8 @@ class _ProductDetailPageState extends State<ProductDetailPage>
                               fontSize: 14,
                               color: Colors.black87,
                             ),
+                            maxLines: 6,
+                            overflow: TextOverflow.ellipsis,
                           ),
                         ],
                       ),

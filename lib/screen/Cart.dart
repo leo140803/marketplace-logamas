@@ -557,7 +557,6 @@ class _CartPageState extends State<CartPage> {
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.all(8),
       decoration: BoxDecoration(
-        color: Colors.grey[50],
         borderRadius: BorderRadius.circular(8),
       ),
       child: Row(

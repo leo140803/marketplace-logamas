@@ -467,41 +467,28 @@ class _StorePageState extends State<StorePage> {
           future: fetchPoinHistory(storeId),
           builder: (context, AsyncSnapshot<List<dynamic>> snapshot) {
             if (snapshot.connectionState == ConnectionState.waiting) {
-              return Center(child: CircularProgressIndicator());
-            }
-
-            if (snapshot.hasError || snapshot.data == null) {
-              return FractionallySizedBox(
-                heightFactor: 0.65,
-                child: Padding(
-                  padding: const EdgeInsets.all(16.0),
+              return Container(
+                height: MediaQuery.of(context).size.height * 0.65,
+                child: Center(
                   child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
                     children: [
-                      Center(
-                        child: Container(
-                          width: 50,
-                          height: 6,
-                          margin: EdgeInsets.only(bottom: 10),
-                          decoration: BoxDecoration(
-                            color: Colors.grey[300],
-                            borderRadius: BorderRadius.circular(10),
-                          ),
+                      SizedBox(
+                        width: 40,
+                        height: 40,
+                        child: CircularProgressIndicator(
+                          valueColor:
+                              AlwaysStoppedAnimation<Color>(Color(0xFFC58189)),
+                          strokeWidth: 3,
                         ),
                       ),
+                      SizedBox(height: 16),
                       Text(
-                        'Poin History',
+                        'Loading point history...',
                         style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.black,
-                        ),
-                      ),
-                      SizedBox(height: 10),
-                      Center(
-                        child: Text(
-                          'Failed to load poin history',
-                          style: TextStyle(fontSize: 16, color: Colors.grey),
+                          fontSize: 16,
+                          color: Color(0xFF31394E),
+                          fontWeight: FontWeight.w500,
                         ),
                       ),
                     ],
@@ -510,78 +497,198 @@ class _StorePageState extends State<StorePage> {
               );
             }
 
-            final poinHistory = snapshot.data ?? [];
-
-            return FractionallySizedBox(
-              heightFactor: 0.65,
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
+            if (snapshot.hasError || snapshot.data == null) {
+              return FractionallySizedBox(
+                heightFactor: 0.65,
                 child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Center(
-                      child: Container(
-                        width: 50,
-                        height: 6,
-                        margin: EdgeInsets.only(bottom: 10),
-                        decoration: BoxDecoration(
-                          color: Colors.grey[300],
-                          borderRadius: BorderRadius.circular(10),
+                    _buildDrawerHeader(context, 'Point History'),
+                    Expanded(
+                      child: Center(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Container(
+                              padding: EdgeInsets.all(16),
+                              decoration: BoxDecoration(
+                                color: Colors.red.shade50,
+                                shape: BoxShape.circle,
+                              ),
+                              child: Icon(
+                                Icons.error_outline,
+                                size: 48,
+                                color: Colors.red.shade300,
+                              ),
+                            ),
+                            SizedBox(height: 16),
+                            Text(
+                              'Failed to load point history',
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                                color: Color(0xFF31394E),
+                              ),
+                            ),
+                            SizedBox(height: 8),
+                            Padding(
+                              padding:
+                                  const EdgeInsets.symmetric(horizontal: 40),
+                              child: Text(
+                                'Please check your connection and try again',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  color: Colors.grey.shade600,
+                                ),
+                              ),
+                            ),
+                            SizedBox(height: 24),
+                            ElevatedButton(
+                              onPressed: () {
+                                Navigator.pop(context);
+                                _showPoinHistoryDrawer(context, storeId);
+                              },
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Color(0xFF31394E),
+                                foregroundColor: Colors.white,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                padding: EdgeInsets.symmetric(
+                                    horizontal: 24, vertical: 12),
+                              ),
+                              child: Text('Try Again'),
+                            ),
+                          ],
                         ),
                       ),
                     ),
-                    Text(
-                      'Poin History',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.black,
-                      ),
-                    ),
-                    SizedBox(height: 10),
-                    Expanded(
-                      child: poinHistory.isEmpty
-                          ? Center(
-                              child: Column(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Icon(
-                                    Icons.history_toggle_off,
-                                    size: 80,
-                                    color: Colors.grey.shade400,
-                                  ),
-                                  const SizedBox(height: 10),
-                                  Text(
-                                    'Tidak ada riwayat poin',
-                                    style: TextStyle(
-                                      fontSize: 18,
-                                      fontWeight: FontWeight.bold,
-                                      color: Colors.grey.shade700,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 5),
-                                  Text(
-                                    'Mulailah berbelanja dan dapatkan poin!',
-                                    style: TextStyle(
-                                      fontSize: 14,
-                                      color: Colors.grey.shade500,
-                                    ),
-                                    textAlign: TextAlign.center,
-                                  ),
-                                ],
-                              ),
-                            )
-                          : ListView.builder(
-                              padding: const EdgeInsets.symmetric(vertical: 10),
-                              itemCount: poinHistory.length,
-                              itemBuilder: (context, index) {
-                                final history = poinHistory[index];
-                                return _buildPoinHistoryCard(history);
-                              },
-                            ),
-                    ),
                   ],
                 ),
+              );
+            }
+
+            final pointHistory = snapshot.data ?? [];
+            int totalPoints = 0;
+
+            // Calculate total points
+            if (pointHistory.isNotEmpty) {
+              for (var history in pointHistory) {
+                totalPoints += history['poin_used'] as int;
+              }
+            }
+
+            return FractionallySizedBox(
+              heightFactor: 0.65,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildDrawerHeader(context, 'Point History'),
+
+                  // Points summary section
+                  if (pointHistory.isNotEmpty)
+                    Container(
+                      margin: EdgeInsets.fromLTRB(16, 0, 16, 16),
+                      padding: EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [Color(0xFF31394E), Color(0xFF474F67)],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                        borderRadius: BorderRadius.circular(12),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.1),
+                            blurRadius: 8,
+                            offset: Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: Row(
+                        children: [
+                          Container(
+                            padding: EdgeInsets.all(10),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.2),
+                              shape: BoxShape.circle,
+                            ),
+                            child: Icon(
+                              Icons.equalizer,
+                              color: Colors.white,
+                              size: 24,
+                            ),
+                          ),
+                          SizedBox(width: 16),
+                          Container(
+                            padding: EdgeInsets.symmetric(
+                                horizontal: 12, vertical: 6),
+                            decoration: BoxDecoration(
+                              color: Color(0xFFC58189),
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                            child: Text(
+                              'Current: ${points} pts',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+
+                  // History list
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: Row(
+                      children: [
+                        Text(
+                          'Transaction History',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFF31394E),
+                          ),
+                        ),
+                        SizedBox(width: 8),
+                        Container(
+                          padding:
+                              EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: Colors.grey.shade200,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Text(
+                            '${pointHistory.length}',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                              color: Color(0xFF31394E),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  SizedBox(height: 8),
+
+                  Expanded(
+                    child: pointHistory.isEmpty
+                        ? _buildEmptyState()
+                        : ListView.builder(
+                            padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+                            itemCount: pointHistory.length,
+                            itemBuilder: (context, index) {
+                              final history = pointHistory[index];
+                              return _buildPoinHistoryCard(history);
+                            },
+                          ),
+                  ),
+                ],
               ),
             );
           },
@@ -590,42 +697,175 @@ class _StorePageState extends State<StorePage> {
     );
   }
 
+  Widget _buildEmptyState() {
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            padding: EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: Colors.grey.shade100,
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              Icons.history_toggle_off,
+              size: 64,
+              color: Colors.grey.shade400,
+            ),
+          ),
+          const SizedBox(height: 24),
+          Text(
+            'No Point History Yet',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: Color(0xFF31394E),
+            ),
+          ),
+          const SizedBox(height: 12),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 40),
+            child: Text(
+              'Start shopping and earn points with every purchase!',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 14,
+                color: Colors.grey.shade600,
+                height: 1.4,
+              ),
+            ),
+          ),
+          const SizedBox(height: 32),
+          OutlinedButton.icon(
+            onPressed: () {
+              // Navigate to products or close the drawer
+            },
+            icon: Icon(
+              Icons.shopping_bag_outlined,
+              size: 18,
+            ),
+            label: Text('Start Shopping'),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: Color(0xFFC58189),
+              side: BorderSide(color: Color(0xFFC58189)),
+              padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildPoinHistoryCard(Map<String, dynamic> history) {
     final createdAt = DateTime.parse(history['created_at']);
     final formattedDate =
-        "${createdAt.year}-${createdAt.month}-${createdAt.day}";
+        "${createdAt.day.toString().padLeft(2, '0')}-${createdAt.month.toString().padLeft(2, '0')}-${createdAt.year}";
+    final formattedTime =
+        "${createdAt.hour.toString().padLeft(2, '0')}:${createdAt.minute.toString().padLeft(2, '0')}";
 
-    // Tentukan warna berdasarkan poin
-    final cardColor =
-        history['poin_used'] < 0 ? Color(0xFFC58189) : Color(0xFF31394E);
+    // Get point value and determine if it's positive or negative
+    final pointValue = history['poin_used'] as int;
+    final isPositive = pointValue >= 0;
+    final pointText = isPositive ? "+$pointValue" : "$pointValue";
 
-    return Card(
-      margin: EdgeInsets.symmetric(vertical: 8),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-      color: cardColor,
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              history['purpose'] ?? 'Unknown Purpose',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-                color: Colors.white,
+    return Container(
+      margin: EdgeInsets.only(bottom: 12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 5,
+            offset: Offset(0, 2),
+          ),
+        ],
+      ),
+      child: InkWell(
+        onTap: () {
+          // Optional: Show more details if needed
+        },
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Point transaction icon
+              Container(
+                padding: EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: isPositive ? Color(0xFFE8F5E9) : Color(0xFFFBE9E7),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  isPositive
+                      ? Icons.add_circle_outline
+                      : Icons.remove_circle_outline,
+                  color: isPositive ? Colors.green.shade700 : Color(0xFFC58189),
+                  size: 20,
+                ),
               ),
-            ),
-            SizedBox(height: 5),
-            Text(
-              'Points: ${history['poin_used']}',
-              style: TextStyle(fontSize: 14, color: Colors.white70),
-            ),
-            Text(
-              'Date: $formattedDate',
-              style: TextStyle(fontSize: 14, color: Colors.white70),
-            ),
-          ],
+              SizedBox(width: 16),
+
+              // Transaction details
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      history['purpose'] ?? 'Transaction',
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF31394E),
+                      ),
+                    ),
+                    SizedBox(height: 6),
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.calendar_today_outlined,
+                          size: 12,
+                          color: Colors.grey.shade600,
+                        ),
+                        SizedBox(width: 4),
+                        Text(
+                          '$formattedDate at $formattedTime',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.grey.shade600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+
+              // Points value
+              Container(
+                padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  color: isPositive ? Colors.green.shade50 : Colors.red.shade50,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  '$pointText pts',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                    color:
+                        isPositive ? Colors.green.shade700 : Color(0xFFC58189),
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -637,24 +877,113 @@ class _StorePageState extends State<StorePage> {
       isScrollControlled: true,
       backgroundColor: Colors.white,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       builder: (context) {
         return FutureBuilder(
           future: Future.wait([
-            fetchOwnedVouchers(storeId), // Ambil owned vouchers
-            fetchActiveVouchers(storeId), // Ambil available vouchers
+            fetchOwnedVouchers(storeId),
+            fetchActiveVouchers(storeId),
           ]),
           builder: (context, AsyncSnapshot<List<dynamic>> snapshot) {
             if (snapshot.connectionState == ConnectionState.waiting) {
-              return Center(child: CircularProgressIndicator());
+              return Container(
+                height: MediaQuery.of(context).size.height * 0.65,
+                child: Center(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      SizedBox(
+                        width: 40,
+                        height: 40,
+                        child: CircularProgressIndicator(
+                          valueColor:
+                              AlwaysStoppedAnimation<Color>(Color(0xFFC58189)),
+                          strokeWidth: 3,
+                        ),
+                      ),
+                      SizedBox(height: 16),
+                      Text(
+                        'Loading vouchers...',
+                        style: TextStyle(
+                          fontSize: 16,
+                          color: Color(0xFF31394E),
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              );
             }
 
             if (snapshot.hasError) {
-              return Center(
-                child: Text(
-                  'Failed to load vouchers',
-                  style: TextStyle(fontSize: 16, color: Colors.grey),
+              return Container(
+                height: MediaQuery.of(context).size.height * 0.65,
+                child: Column(
+                  children: [
+                    _buildDrawerHeader(context, 'Store Vouchers'),
+                    Expanded(
+                      child: Center(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Container(
+                              padding: EdgeInsets.all(18),
+                              decoration: BoxDecoration(
+                                color: Colors.red.shade50,
+                                shape: BoxShape.circle,
+                              ),
+                              child: Icon(
+                                Icons.error_outline,
+                                size: 56,
+                                color: Colors.red.shade300,
+                              ),
+                            ),
+                            SizedBox(height: 24),
+                            Text(
+                              'Failed to load vouchers',
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                                color: Color(0xFF31394E),
+                              ),
+                            ),
+                            SizedBox(height: 12),
+                            Padding(
+                              padding:
+                                  const EdgeInsets.symmetric(horizontal: 40),
+                              child: Text(
+                                'Please check your connection and try again',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  color: Colors.grey.shade600,
+                                ),
+                              ),
+                            ),
+                            SizedBox(height: 24),
+                            ElevatedButton(
+                              onPressed: () {
+                                Navigator.pop(context);
+                                _showVoucherDrawer(context, storeId);
+                              },
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Color(0xFF31394E),
+                                foregroundColor: Colors.white,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                padding: EdgeInsets.symmetric(
+                                    horizontal: 24, vertical: 12),
+                              ),
+                              child: Text('Try Again'),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               );
             }
@@ -663,127 +992,151 @@ class _StorePageState extends State<StorePage> {
             final availableVouchers = snapshot.data![1];
 
             return FractionallySizedBox(
-              heightFactor: 0.65,
-              child: Padding(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 16.0, vertical: 5),
-                child: SingleChildScrollView(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Center(
-                        child: Container(
-                          width: 50,
-                          height: 6,
-                          margin: EdgeInsets.only(bottom: 2),
-                          decoration: BoxDecoration(
-                            color: Colors.grey[300],
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                        ),
+              heightFactor: 0.75,
+              child: Column(
+                children: [
+                  _buildDrawerHeader(context, 'Store Vouchers'),
+
+                  // Current points display
+                  Container(
+                    margin: EdgeInsets.fromLTRB(16, 4, 16, 20),
+                    padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    decoration: BoxDecoration(
+                      color: Color(0xFFFBE9E7),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: Color(0xFFC58189).withOpacity(0.3),
+                        width: 1,
                       ),
-                      if (ownedVouchers.isNotEmpty) ...[
-                        Text(
-                          'Owned Vouchers',
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.black,
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          padding: EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: Color(0xFFC58189).withOpacity(0.2),
+                            shape: BoxShape.circle,
+                          ),
+                          child: Icon(
+                            Icons.card_giftcard,
+                            color: Color(0xFFC58189),
+                            size: 20,
                           ),
                         ),
-                        SizedBox(height: 10),
-                        ListView.builder(
-                          shrinkWrap: true,
-                          physics: NeverScrollableScrollPhysics(),
-                          itemCount: ownedVouchers.length,
-                          itemBuilder: (context, index) {
-                            final voucher = ownedVouchers[index];
-                            return _buildVoucherCard(
-                              voucher['voucher_name'],
-                              'Discount: ${voucher['discount_amount']}%',
-                              'Points: ${voucher['poin_price']}',
-                              'Valid: ${voucher['start_date'].split('T')[0]} - ${voucher['end_date'].split('T')[0]}',
-                              double.parse(voucher['minimum_purchase']),
-                            );
-                          },
+                        SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Your Point Balance',
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  color: Color(0xFF31394E),
+                                ),
+                              ),
+                              SizedBox(height: 4),
+                              Text(
+                                '$points Points',
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                  color: Color(0xFFC58189),
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       ],
-                      if (ownedVouchers.isNotEmpty) SizedBox(height: 0),
-                      Text(
-                        'Available Vouchers',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.black,
-                        ),
-                      ),
-                      const SizedBox(height: 10),
-                      availableVouchers.isEmpty
-                          ? Center(
-                              child: Column(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Icon(
-                                    Icons
-                                        .local_offer_outlined, // Ikon voucher kosong
-                                    size: 80,
-                                    color: Colors.grey.shade400,
-                                  ),
-                                  const SizedBox(height: 10),
-                                  Text(
-                                    'Tidak ada voucher tersedia',
-                                    style: TextStyle(
-                                      fontSize: 18,
-                                      fontWeight: FontWeight.bold,
-                                      color: Colors.grey.shade700,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 5),
-                                  Text(
-                                    'Cek kembali nanti atau coba di toko lain.',
-                                    style: TextStyle(
-                                      fontSize: 14,
-                                      color: Colors.grey.shade500,
-                                    ),
-                                    textAlign: TextAlign.center,
-                                  ),
-                                ],
-                              ),
-                            )
-                          : ListView.builder(
+                    ),
+                  ),
+
+                  // Voucher content
+                  Expanded(
+                    child: SingleChildScrollView(
+                      physics: BouncingScrollPhysics(),
+                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 20),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          if (ownedVouchers.isNotEmpty) ...[
+                            _buildSectionHeader(
+                                'Your Vouchers', ownedVouchers.length),
+                            SizedBox(height: 12),
+                            ListView.builder(
                               shrinkWrap: true,
                               physics: NeverScrollableScrollPhysics(),
-                              itemCount: availableVouchers.length,
+                              itemCount: ownedVouchers.length,
                               itemBuilder: (context, index) {
-                                final voucher = availableVouchers[index];
+                                final voucher = ownedVouchers[index];
                                 return _buildVoucherCard(
-                                  voucher['voucher_name'],
-                                  'Discount: ${voucher['discount_amount']}%',
-                                  'Points: ${voucher['poin_price']}',
-                                  'Valid: ${voucher['start_date'].split('T')[0]} - ${voucher['end_date'].split('T')[0]}',
-                                  double.parse(voucher['minimum_purchase']),
-                                  onTap: () async {
-                                    // Ambil token dan store ID
-                                    String accessToken = await getAccessToken();
-                                    String storeId = widget.storeId;
-
-                                    // Tampilkan dialog konfirmasi
-                                    showPurchaseConfirmationDialog(
-                                      context,
-                                      voucher['voucher_name'],
-                                      voucher['poin_price'],
-                                      () async {
-                                        await buyVoucher(context, accessToken,
-                                            voucher['voucher_id'], storeId);
-                                      },
-                                    );
-                                  },
+                                  name: voucher['voucher_name'],
+                                  discount: '${voucher['discount_amount']}%',
+                                  points: voucher['poin_price'],
+                                  startDate:
+                                      voucher['start_date'].split('T')[0],
+                                  endDate: voucher['end_date'].split('T')[0],
+                                  minimumPurchase:
+                                      double.parse(voucher['minimum_purchase']),
+                                  maxDiscount:
+                                      double.parse(voucher['max_discount']),
+                                  isOwned: true,
                                 );
                               },
                             ),
-                    ],
+                            SizedBox(height: 24),
+                          ],
+                          _buildSectionHeader(
+                              'Available Vouchers', availableVouchers.length),
+                          SizedBox(height: 12),
+                          availableVouchers.isEmpty
+                              ? _buildEmptyVoucherState()
+                              : ListView.builder(
+                                  shrinkWrap: true,
+                                  physics: NeverScrollableScrollPhysics(),
+                                  itemCount: availableVouchers.length,
+                                  itemBuilder: (context, index) {
+                                    final voucher = availableVouchers[index];
+                                    return _buildVoucherCard(
+                                      name: voucher['voucher_name'],
+                                      discount:
+                                          '${voucher['discount_amount']}%',
+                                      points: voucher['poin_price'],
+                                      startDate:
+                                          voucher['start_date'].split('T')[0],
+                                      endDate:
+                                          voucher['end_date'].split('T')[0],
+                                      minimumPurchase: double.parse(
+                                          voucher['minimum_purchase']),
+                                      maxDiscount:
+                                          double.parse(voucher['max_discount']),
+                                      isOwned: false,
+                                      onTap: () async {
+                                        String accessToken =
+                                            await getAccessToken();
+                                        String storeId = widget.storeId;
+
+                                        showPurchaseConfirmationDialog(
+                                          context,
+                                          voucher['voucher_name'],
+                                          voucher['poin_price'],
+                                          () async {
+                                            await buyVoucher(
+                                                context,
+                                                accessToken,
+                                                voucher['voucher_id'],
+                                                storeId);
+                                          },
+                                        );
+                                      },
+                                    );
+                                  },
+                                ),
+                        ],
+                      ),
+                    ),
                   ),
-                ),
+                ],
               ),
             );
           },
@@ -792,52 +1145,426 @@ class _StorePageState extends State<StorePage> {
     );
   }
 
-  Widget _buildVoucherCard(String name, String discount, String points,
-      String validity, double minimumPurchase,
-      {VoidCallback? onTap}) {
-    return GestureDetector(
-      onTap: onTap, // Tambahkan onTap untuk aksi
-      child: Card(
-        color: Color(0xFF31394E),
-        margin: EdgeInsets.symmetric(vertical: 4),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(10),
-        ),
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+  Widget _buildDrawerHeader(BuildContext context, String title) {
+    return Container(
+      padding: EdgeInsets.fromLTRB(16, 16, 16, 12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            offset: Offset(0, 1),
+            blurRadius: 3,
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          // Drag handle
+          Center(
+            child: Container(
+              width: 40,
+              height: 5,
+              decoration: BoxDecoration(
+                color: Colors.grey.shade300,
+                borderRadius: BorderRadius.circular(10),
+              ),
+            ),
+          ),
+          SizedBox(height: 16),
+
+          // Header with title and close button
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                name,
+                title,
                 style: TextStyle(
-                  fontSize: 16,
+                  fontSize: 18,
                   fontWeight: FontWeight.bold,
-                  color: Colors.white,
+                  color: Color(0xFF31394E),
                 ),
               ),
-              SizedBox(height: 5),
-              Text(
-                discount,
-                style: TextStyle(fontSize: 14, color: Colors.white70),
-              ),
-              Text(
-                points,
-                style: TextStyle(fontSize: 14, color: Colors.white70),
-              ),
-              Text(
-                validity,
-                style: TextStyle(fontSize: 14, color: Colors.white70),
-              ),
-              Text(
-                'Min. Transaction: ${formatCurrency(minimumPurchase)}',
-                style: TextStyle(fontSize: 14, color: Colors.white70),
+              InkWell(
+                onTap: () => Navigator.of(context).pop(),
+                borderRadius: BorderRadius.circular(20),
+                child: Container(
+                  padding: EdgeInsets.all(6),
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade200,
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    Icons.close,
+                    size: 18,
+                    color: Color(0xFF31394E),
+                  ),
+                ),
               ),
             ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSectionHeader(String title, int count) {
+    return Row(
+      children: [
+        Text(
+          title,
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+            color: Color(0xFF31394E),
+          ),
+        ),
+        SizedBox(width: 8),
+        Container(
+          padding: EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+          decoration: BoxDecoration(
+            color: Colors.grey.shade200,
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Text(
+            count.toString(),
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.bold,
+              color: Color(0xFF31394E),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildEmptyVoucherState() {
+    return Container(
+      padding: EdgeInsets.symmetric(vertical: 40),
+      child: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              padding: EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: Colors.grey.shade100,
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                Icons.local_offer_outlined,
+                size: 56,
+                color: Colors.grey.shade400,
+              ),
+            ),
+            SizedBox(height: 24),
+            Text(
+              'No Vouchers Available',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: Color(0xFF31394E),
+              ),
+            ),
+            SizedBox(height: 12),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 40),
+              child: Text(
+                'Check back later or try another store',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 14,
+                  color: Colors.grey.shade600,
+                  height: 1.4,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildVoucherCard({
+    required String name,
+    required String discount,
+    required int points,
+    required String startDate,
+    required String endDate,
+    required double minimumPurchase,
+    required double maxDiscount,
+    required bool isOwned,
+    VoidCallback? onTap,
+  }) {
+    // Format dates for better readability
+    final formattedStartDate = _formatDate(startDate);
+    final formattedEndDate = _formatDate(endDate);
+
+    return Container(
+      margin: EdgeInsets.only(bottom: 12),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.06),
+            blurRadius: 6,
+            offset: Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(12),
+          child: Ink(
+            decoration: BoxDecoration(
+              color: isOwned ? Color(0xFFFBE9E7) : Color(0xFF31394E),
+              borderRadius: BorderRadius.circular(12),
+              border: isOwned
+                  ? Border.all(color: Color(0xFFC58189), width: 1.5)
+                  : null,
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Voucher header with discount badge
+                Container(
+                  padding: EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    border: Border(
+                      bottom: BorderSide(
+                        color: isOwned
+                            ? Color(0xFFC58189).withOpacity(0.2)
+                            : Colors.white.withOpacity(0.1),
+                        width: 1,
+                      ),
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Expanded(
+                        child: Row(
+                          children: [
+                            Container(
+                              padding: EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: isOwned
+                                    ? Color(0xFFC58189).withOpacity(0.2)
+                                    : Colors.white.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Icon(
+                                isOwned
+                                    ? Icons.confirmation_number_outlined
+                                    : Icons.local_offer_outlined,
+                                color:
+                                    isOwned ? Color(0xFFC58189) : Colors.white,
+                                size: 20,
+                              ),
+                            ),
+                            SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    name,
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.bold,
+                                      color: isOwned
+                                          ? Color(0xFF31394E)
+                                          : Colors.white,
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                  SizedBox(height: 4),
+                                  Text(
+                                    isOwned
+                                        ? 'Ready to use'
+                                        : '${points} points required',
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      color: isOwned
+                                          ? Color(0xFFC58189)
+                                          : Colors.white.withOpacity(0.7),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Container(
+                        padding:
+                            EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: isOwned
+                              ? Color(0xFFC58189)
+                              : Colors.white.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: Text(
+                          '$discount OFF',
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                            color: isOwned ? Colors.white : Color(0xFFC58189),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+                // Voucher details
+                Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Validity period
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.date_range_outlined,
+                            size: 16,
+                            color: isOwned
+                                ? Colors.grey.shade600
+                                : Colors.white.withOpacity(0.7),
+                          ),
+                          SizedBox(width: 8),
+                          Text(
+                            'Valid: $formattedStartDate - $formattedEndDate',
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: isOwned
+                                  ? Colors.grey.shade700
+                                  : Colors.white.withOpacity(0.7),
+                            ),
+                          ),
+                        ],
+                      ),
+                      SizedBox(height: 8),
+
+                      // Minimum purchase
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.shopping_bag_outlined,
+                            size: 16,
+                            color: isOwned
+                                ? Colors.grey.shade600
+                                : Colors.white.withOpacity(0.7),
+                          ),
+                          SizedBox(width: 8),
+                          Text(
+                            'Min. Transaction: ${formatCurrency(minimumPurchase)}',
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: isOwned
+                                  ? Colors.grey.shade700
+                                  : Colors.white.withOpacity(0.7),
+                            ),
+                          ),
+                        ],
+                      ),
+
+                      SizedBox(height: 8),
+
+                      // Maximum discount
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.price_check,
+                            size: 16,
+                            color: isOwned
+                                ? Colors.grey.shade600
+                                : Colors.white.withOpacity(0.7),
+                          ),
+                          SizedBox(width: 8),
+                          Text(
+                            'Max. Discount: ${formatCurrency(maxDiscount)}',
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: isOwned
+                                  ? Colors.grey.shade700
+                                  : Colors.white.withOpacity(0.7),
+                            ),
+                          ),
+                        ],
+                      ),
+
+                      // Button for action (if not owned)
+                      if (!isOwned) ...[
+                        SizedBox(height: 16),
+                        Align(
+                          alignment: Alignment.centerRight,
+                          child: Container(
+                            padding: EdgeInsets.symmetric(
+                                horizontal: 16, vertical: 8),
+                            decoration: BoxDecoration(
+                              color: Color(0xFFC58189),
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: Text(
+                              'Get Voucher',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),
     );
+  }
+
+  String _formatDate(String dateStr) {
+    try {
+      final parts = dateStr.split('-');
+      if (parts.length == 3) {
+        final year = parts[0];
+        final month = parts[1];
+        final day = parts[2];
+
+        // Map month number to abbreviated month name
+        final months = [
+          'Jan',
+          'Feb',
+          'Mar',
+          'Apr',
+          'May',
+          'Jun',
+          'Jul',
+          'Aug',
+          'Sep',
+          'Oct',
+          'Nov',
+          'Dec'
+        ];
+
+        final monthName = months[int.parse(month) - 1];
+        return '$day $monthName $year';
+      }
+      return dateStr;
+    } catch (e) {
+      return dateStr; // Return original if parsing fails
+    }
   }
 
   @override
@@ -1025,286 +1752,495 @@ class _StorePageState extends State<StorePage> {
                     ),
                     SliverToBoxAdapter(
                       child: Padding(
-                        padding: const EdgeInsets.fromLTRB(20, 8, 20, 12),
+                        padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
                         child: Container(
-                          margin: const EdgeInsets.only(bottom: 7),
-                          padding: const EdgeInsets.only(bottom: 20),
+                          margin: const EdgeInsets.only(bottom: 5),
                           decoration: BoxDecoration(
                             color: Colors.white,
-                            borderRadius: BorderRadius.circular(10),
+                            borderRadius: BorderRadius.circular(12),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.05),
+                                blurRadius: 8,
+                                offset: Offset(0, 2),
+                              ),
+                            ],
                           ),
-                          child: Padding(
-                            padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
-                            child: Column(
-                              children: [
-                                Row(
+                          child: Column(
+                            children: [
+                              // Store profile section
+                              Padding(
+                                padding: const EdgeInsets.all(16),
+                                child: Row(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    CircleAvatar(
-                                      radius: 30,
-                                      backgroundColor: Colors.white,
-                                      child: ClipOval(
-                                        child: Image.network(
-                                          '$apiBaseUrlImage${storeData!["logo"]}',
-                                          fit: BoxFit.cover,
-                                          width: 60,
-                                          height: 60,
-                                          errorBuilder:
-                                              (context, error, stackTrace) {
-                                            // Fallback ke inisial store_name jika gambar gagal dimuat
-                                            return Container(
-                                              width: 60,
-                                              height: 60,
-                                              alignment: Alignment.center,
-                                              color: Color(
-                                                  0xFF31394E), // Background untuk inisial
-                                              child: Text(
-                                                storeData!["store_name"]
-                                                    .substring(0, 1)
-                                                    .toUpperCase(), // Inisial
-                                                style: const TextStyle(
-                                                  fontSize: 20,
-                                                  fontWeight: FontWeight.bold,
-                                                  color: Colors.white,
+                                    // Store logo with elevation
+                                    Container(
+                                      decoration: BoxDecoration(
+                                        shape: BoxShape.circle,
+                                        boxShadow: [
+                                          BoxShadow(
+                                            color:
+                                                Colors.black.withOpacity(0.1),
+                                            blurRadius: 6,
+                                            offset: Offset(0, 2),
+                                          ),
+                                        ],
+                                      ),
+                                      child: CircleAvatar(
+                                        radius: 32,
+                                        backgroundColor: Colors.white,
+                                        child: ClipOval(
+                                          child: Image.network(
+                                            '$apiBaseUrlImage${storeData!["logo"]}',
+                                            fit: BoxFit.cover,
+                                            width: 64,
+                                            height: 64,
+                                            errorBuilder:
+                                                (context, error, stackTrace) {
+                                              return Container(
+                                                width: 64,
+                                                height: 64,
+                                                alignment: Alignment.center,
+                                                decoration: BoxDecoration(
+                                                  color: Color(0xFF31394E),
+                                                  gradient: LinearGradient(
+                                                    colors: [
+                                                      Color(0xFF31394E),
+                                                      Color(0xFF474F67)
+                                                    ],
+                                                    begin: Alignment.topLeft,
+                                                    end: Alignment.bottomRight,
+                                                  ),
                                                 ),
-                                              ),
-                                            );
-                                          },
+                                                child: Text(
+                                                  storeData!["store_name"]
+                                                      .substring(0, 1)
+                                                      .toUpperCase(),
+                                                  style: const TextStyle(
+                                                    fontSize: 22,
+                                                    fontWeight: FontWeight.bold,
+                                                    color: Colors.white,
+                                                  ),
+                                                ),
+                                              );
+                                            },
+                                          ),
                                         ),
                                       ),
                                     ),
-                                    const SizedBox(width: 15),
+                                    const SizedBox(width: 16),
+
+                                    // Store details
                                     Expanded(
                                       child: Column(
                                         crossAxisAlignment:
                                             CrossAxisAlignment.start,
                                         children: [
+                                          // Store name and info button
                                           Row(
                                             children: [
-                                              Text(
-                                                storeData!["store_name"],
-                                                style: TextStyle(
-                                                  fontSize: 16,
-                                                  fontWeight: FontWeight.bold,
+                                              Flexible(
+                                                child: Text(
+                                                  storeData!["store_name"],
+                                                  style: TextStyle(
+                                                    fontSize: 18,
+                                                    fontWeight: FontWeight.bold,
+                                                    color: Color(0xFF31394E),
+                                                  ),
+                                                  overflow:
+                                                      TextOverflow.ellipsis,
                                                 ),
                                               ),
-                                              SizedBox(width: 5),
+                                              SizedBox(width: 6),
                                               Tooltip(
                                                 message: storeData![
                                                         "information"] ??
                                                     "No additional information",
-                                                child: Icon(
-                                                  Icons.info_outline,
-                                                  color: Colors.grey,
-                                                  size: 18,
+                                                child: Container(
+                                                  padding: EdgeInsets.all(4),
+                                                  decoration: BoxDecoration(
+                                                    color: Color(0xFFF5F5F5),
+                                                    shape: BoxShape.circle,
+                                                  ),
+                                                  child: Icon(
+                                                    Icons.info_outline,
+                                                    color: Color(0xFF31394E),
+                                                    size: 16,
+                                                  ),
                                                 ),
                                               ),
                                             ],
                                           ),
 
-                                          SizedBox(height: 5),
-                                          Text(
-                                            storeData!["address"] ??
-                                                "No address available", // Tambahkan alamat
-                                            style: TextStyle(
-                                              fontSize: 14,
-                                              color: Colors.grey[600],
+                                          // Store address
+                                          Padding(
+                                            padding: const EdgeInsets.only(
+                                                top: 6, bottom: 8),
+                                            child: Row(
+                                              children: [
+                                                Icon(
+                                                  Icons.location_on_outlined,
+                                                  color: Colors.grey[600],
+                                                  size: 14,
+                                                ),
+                                                SizedBox(width: 4),
+                                                Expanded(
+                                                  child: Text(
+                                                    storeData!["address"] ??
+                                                        "No address available",
+                                                    style: TextStyle(
+                                                      fontSize: 13,
+                                                      color: Colors.grey[600],
+                                                    ),
+                                                    maxLines: 2,
+                                                    overflow:
+                                                        TextOverflow.ellipsis,
+                                                  ),
+                                                ),
+                                              ],
                                             ),
                                           ),
-                                          SizedBox(height: 5),
-                                          Row(
-                                            children: [
-                                              Icon(
-                                                Icons.star,
-                                                color: Colors.amber,
-                                                size: 16,
-                                              ),
-                                              SizedBox(width: 5),
-                                              Text(
-                                                storeData!['overall_rating'] !=
-                                                        null
-                                                    ? '${storeData!['overall_rating'].toString()}(${storeData!['total_reviews']})'
-                                                    : 'No review',
-                                                style: TextStyle(
-                                                  fontSize: 14,
-                                                  color: Colors.grey[700],
+
+                                          // Store statistics - rating and transactions
+                                          Container(
+                                            padding: EdgeInsets.symmetric(
+                                                horizontal: 8, vertical: 6),
+                                            decoration: BoxDecoration(
+                                              color: Colors.grey[100],
+                                              borderRadius:
+                                                  BorderRadius.circular(6),
+                                            ),
+                                            child: Row(
+                                              mainAxisSize: MainAxisSize.min,
+                                              children: [
+                                                // Rating
+                                                Icon(
+                                                  Icons.star,
+                                                  color: Colors.amber,
+                                                  size: 16,
                                                 ),
-                                              ),
-                                              SizedBox(width: 10),
-                                              Text(
-                                                "${storeData!['transaction_count'] ?? 0} transaksi",
-                                                style: TextStyle(
-                                                  fontSize: 14,
-                                                  color: Colors.grey[700],
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                          SizedBox(
-                                              height: 10), // Jarak antar elemen
-                                          Row(
-                                            children: [
-                                              Expanded(
-                                                child: ElevatedButton.icon(
-                                                  onPressed: () {
-                                                    _showPoinHistoryDrawer(
-                                                        context,
-                                                        widget.storeId);
-                                                  },
-                                                  style:
-                                                      ElevatedButton.styleFrom(
-                                                    elevation: 0,
-                                                    backgroundColor:
-                                                        Color(0xFFFBE9E7),
-                                                    shape:
-                                                        RoundedRectangleBorder(
-                                                      borderRadius:
-                                                          BorderRadius.circular(
-                                                              8),
-                                                    ),
-                                                    padding:
-                                                        EdgeInsets.symmetric(
-                                                            vertical: 8),
-                                                  ),
-                                                  icon: Icon(
-                                                    Icons.card_giftcard,
-                                                    color: Color(0xFFC58189),
-                                                    size: 18,
-                                                  ),
-                                                  label: Text(
-                                                    '${points} Poin',
-                                                    style: TextStyle(
-                                                      color: Color(0xFFC58189),
-                                                      fontWeight:
-                                                          FontWeight.bold,
-                                                      fontSize: 12,
-                                                    ),
+                                                SizedBox(width: 4),
+                                                Text(
+                                                  storeData!['overall_rating'] !=
+                                                          null
+                                                      ? '${storeData!['overall_rating'].toString()} (${storeData!['total_reviews']})'
+                                                      : 'No reviews',
+                                                  style: TextStyle(
+                                                    fontSize: 13,
+                                                    fontWeight: FontWeight.w500,
+                                                    color: Colors.grey[800],
                                                   ),
                                                 ),
-                                              ),
-                                              SizedBox(
-                                                  width:
-                                                      8), // Jarak antara tombol
-                                              Expanded(
-                                                child: ElevatedButton(
-                                                  onPressed: () =>
-                                                      _showVoucherDrawer(
-                                                          context,
-                                                          widget.storeId),
-                                                  style:
-                                                      ElevatedButton.styleFrom(
-                                                    backgroundColor:
-                                                        Color(0xFFC58189),
-                                                    shape:
-                                                        RoundedRectangleBorder(
-                                                      borderRadius:
-                                                          BorderRadius.circular(
-                                                              10),
-                                                    ),
-                                                  ),
-                                                  child: Text(
-                                                    'Buy Voucher',
-                                                    style: TextStyle(
-                                                        color: Colors.white,
-                                                        fontWeight:
-                                                            FontWeight.bold,
-                                                        fontSize: 12),
+
+                                                // Divider
+                                                Padding(
+                                                  padding: const EdgeInsets
+                                                      .symmetric(horizontal: 8),
+                                                  child: Container(
+                                                    height: 12,
+                                                    width: 1,
+                                                    color: Colors.grey[300],
                                                   ),
                                                 ),
-                                              ),
-                                            ],
+
+                                                // Transactions
+                                                Icon(
+                                                  Icons.shopping_bag_outlined,
+                                                  color: Color(0xFFC58189),
+                                                  size: 14,
+                                                ),
+                                                SizedBox(width: 4),
+                                                Text(
+                                                  "${storeData!['transaction_count'] ?? 0} transaksi",
+                                                  style: TextStyle(
+                                                    fontSize: 13,
+                                                    fontWeight: FontWeight.w500,
+                                                    color: Colors.grey[800],
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
                                           ),
                                         ],
                                       ),
                                     ),
                                   ],
                                 ),
-                                const SizedBox(height: 15),
-                                Row(
-                                  mainAxisAlignment:
-                                      MainAxisAlignment.spaceBetween,
+                              ),
+
+                              // Divider
+                              Padding(
+                                padding:
+                                    const EdgeInsets.symmetric(horizontal: 16),
+                                child:
+                                    Divider(height: 1, color: Colors.grey[200]),
+                              ),
+
+                              // Points and voucher section
+                              Padding(
+                                padding:
+                                    const EdgeInsets.fromLTRB(16, 12, 16, 16),
+                                child: Row(
                                   children: [
-                                    GestureDetector(
-                                      onTap: _openWhatsApp,
+                                    // Points button with animated background
+                                    Expanded(
                                       child: Container(
-                                        width:
-                                            MediaQuery.of(context).size.width *
-                                                0.4,
                                         decoration: BoxDecoration(
-                                          color: Colors.white,
-                                          border: Border.all(
-                                            width: 2,
-                                            color: const Color(0xFFC58189),
-                                          ),
                                           borderRadius:
-                                              BorderRadius.circular(8),
+                                              BorderRadius.circular(10),
+                                          gradient: LinearGradient(
+                                            colors: [
+                                              Color(0xFFFBE9E7),
+                                              Color(0xFFFFF3F1),
+                                            ],
+                                            begin: Alignment.topLeft,
+                                            end: Alignment.bottomRight,
+                                          ),
                                         ),
-                                        padding: const EdgeInsets.symmetric(
-                                            vertical: 8),
-                                        alignment: Alignment.center,
-                                        child: const Text(
-                                          'Chat',
-                                          style: TextStyle(
-                                            color: Color(0xFFC58189),
-                                            fontSize: 14,
-                                            fontWeight: FontWeight.bold,
+                                        child: Material(
+                                          color: Colors.transparent,
+                                          child: InkWell(
+                                            borderRadius:
+                                                BorderRadius.circular(10),
+                                            onTap: () {
+                                              _showPoinHistoryDrawer(
+                                                  context, widget.storeId);
+                                            },
+                                            child: Padding(
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                      vertical: 10,
+                                                      horizontal: 12),
+                                              child: Row(
+                                                mainAxisAlignment:
+                                                    MainAxisAlignment.center,
+                                                children: [
+                                                  Container(
+                                                    padding: EdgeInsets.all(6),
+                                                    decoration: BoxDecoration(
+                                                      color: Color(0xFFC58189)
+                                                          .withOpacity(0.2),
+                                                      shape: BoxShape.circle,
+                                                    ),
+                                                    child: Icon(
+                                                      Icons.card_giftcard,
+                                                      color: Color(0xFFC58189),
+                                                      size: 16,
+                                                    ),
+                                                  ),
+                                                  SizedBox(width: 8),
+                                                  Column(
+                                                    crossAxisAlignment:
+                                                        CrossAxisAlignment
+                                                            .start,
+                                                    children: [
+                                                      Text(
+                                                        '${points} Points',
+                                                        style: TextStyle(
+                                                          color:
+                                                              Color(0xFFC58189),
+                                                          fontWeight:
+                                                              FontWeight.bold,
+                                                          fontSize: 14,
+                                                        ),
+                                                      ),
+                                                      Text(
+                                                        'View History',
+                                                        style: TextStyle(
+                                                          color: Color(
+                                                                  0xFFC58189)
+                                                              .withOpacity(0.7),
+                                                          fontSize: 10,
+                                                        ),
+                                                      ),
+                                                    ],
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
                                           ),
                                         ),
                                       ),
                                     ),
-                                    GestureDetector(
-                                      onTap: () async {
-                                        if (isFollow) {
-                                          await unfollowStore();
-                                        } else {
-                                          await followStore();
-                                        }
-                                      },
-                                      child: Container(
-                                        width:
-                                            MediaQuery.of(context).size.width *
-                                                0.4,
-                                        decoration: BoxDecoration(
-                                          color: isFollow
-                                              ? Colors.white
-                                              : null, // Use Colors.white when isFollow is true
-                                          border: Border.all(
-                                            width: 2,
-                                            color: isFollow
-                                                ? const Color(0xFFC58189)
-                                                : Colors.transparent,
+
+                                    SizedBox(width: 10),
+
+                                    // Buy voucher button
+                                    Expanded(
+                                      child: ElevatedButton(
+                                        onPressed: () => _showVoucherDrawer(
+                                            context, widget.storeId),
+                                        style: ElevatedButton.styleFrom(
+                                          elevation: 0,
+                                          backgroundColor: Color(0xFFC58189),
+                                          foregroundColor: Colors.white,
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius:
+                                                BorderRadius.circular(10),
                                           ),
-                                          gradient: isFollow
-                                              ? null
-                                              : const LinearGradient(
-                                                  colors: [
-                                                    Color(0xFFE8C4BD),
-                                                    Color(0xFFC58189),
-                                                  ],
-                                                  begin: Alignment.topCenter,
-                                                  end: Alignment.bottomCenter,
-                                                ),
-                                          borderRadius:
-                                              BorderRadius.circular(8),
+                                          padding: EdgeInsets.symmetric(
+                                              vertical: 13),
                                         ),
-                                        padding: const EdgeInsets.symmetric(
-                                            vertical: 8),
-                                        alignment: Alignment.center,
-                                        child: Text(
-                                          isFollow ? 'Unfollow' : 'Follow',
-                                          style: TextStyle(
-                                            color: isFollow
-                                                ? const Color(0xFFC58189)
-                                                : Colors.white,
-                                            fontSize: 14,
-                                            fontWeight: FontWeight.bold,
+                                        child: Row(
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.center,
+                                          children: [
+                                            Icon(
+                                              Icons.local_offer_outlined,
+                                              size: 16,
+                                            ),
+                                            SizedBox(width: 8),
+                                            Text(
+                                              'Buy Voucher',
+                                              style: TextStyle(
+                                                fontWeight: FontWeight.bold,
+                                                fontSize: 14,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+
+                              // Action buttons (Chat and Follow)
+                              Padding(
+                                padding:
+                                    const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                                child: Row(
+                                  children: [
+                                    // Chat button
+                                    Expanded(
+                                      child: Material(
+                                        color: Colors.transparent,
+                                        child: InkWell(
+                                          onTap: _openWhatsApp,
+                                          borderRadius:
+                                              BorderRadius.circular(10),
+                                          child: Container(
+                                            padding: const EdgeInsets.symmetric(
+                                                vertical: 12),
+                                            decoration: BoxDecoration(
+                                              color: Colors.white,
+                                              border: Border.all(
+                                                width: 1.5,
+                                                color: const Color(0xFFC58189),
+                                              ),
+                                              borderRadius:
+                                                  BorderRadius.circular(10),
+                                            ),
+                                            alignment: Alignment.center,
+                                            child: Row(
+                                              mainAxisAlignment:
+                                                  MainAxisAlignment.center,
+                                              children: [
+                                                Icon(
+                                                  Icons.chat_bubble_outline,
+                                                  color: Color(0xFFC58189),
+                                                  size: 18,
+                                                ),
+                                                SizedBox(width: 8),
+                                                Text(
+                                                  'Chat',
+                                                  style: TextStyle(
+                                                    color: Color(0xFFC58189),
+                                                    fontSize: 14,
+                                                    fontWeight: FontWeight.bold,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+
+                                    SizedBox(width: 10),
+
+                                    // Follow/Unfollow button
+                                    Expanded(
+                                      child: Material(
+                                        color: Colors.transparent,
+                                        child: InkWell(
+                                          onTap: () async {
+                                            if (isFollow) {
+                                              await unfollowStore();
+                                            } else {
+                                              await followStore();
+                                            }
+                                          },
+                                          borderRadius:
+                                              BorderRadius.circular(10),
+                                          child: Container(
+                                            padding: const EdgeInsets.symmetric(
+                                                vertical: 12),
+                                            decoration: BoxDecoration(
+                                              color: isFollow
+                                                  ? Colors.white
+                                                  : null,
+                                              border: Border.all(
+                                                width: 1.5,
+                                                color: isFollow
+                                                    ? const Color(0xFFC58189)
+                                                    : Colors.transparent,
+                                              ),
+                                              gradient: isFollow
+                                                  ? null
+                                                  : const LinearGradient(
+                                                      colors: [
+                                                        Color(0xFFE8C4BD),
+                                                        Color(0xFFC58189),
+                                                      ],
+                                                      begin: Alignment.topLeft,
+                                                      end:
+                                                          Alignment.bottomRight,
+                                                    ),
+                                              borderRadius:
+                                                  BorderRadius.circular(10),
+                                            ),
+                                            alignment: Alignment.center,
+                                            child: Row(
+                                              mainAxisAlignment:
+                                                  MainAxisAlignment.center,
+                                              children: [
+                                                Icon(
+                                                  isFollow
+                                                      ? Icons
+                                                          .person_remove_outlined
+                                                      : Icons
+                                                          .person_add_outlined,
+                                                  color: isFollow
+                                                      ? const Color(0xFFC58189)
+                                                      : Colors.white,
+                                                  size: 18,
+                                                ),
+                                                SizedBox(width: 8),
+                                                Text(
+                                                  isFollow
+                                                      ? 'Unfollow'
+                                                      : 'Follow',
+                                                  style: TextStyle(
+                                                    color: isFollow
+                                                        ? const Color(
+                                                            0xFFC58189)
+                                                        : Colors.white,
+                                                    fontSize: 14,
+                                                    fontWeight: FontWeight.bold,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
                                           ),
                                         ),
                                       ),
                                     ),
                                   ],
                                 ),
-                              ],
-                            ),
+                              ),
+                            ],
                           ),
                         ),
                       ),
@@ -1384,6 +2320,15 @@ class _StorePageState extends State<StorePage> {
   void _showFilterDrawer(BuildContext context) {
     final filters = extractFiltersFromStoreData(storeData!);
 
+    // Count active filters for the badge
+    int activeFilterCount = selectedTypes.length +
+        selectedPurities.length +
+        selectedMetalTypes.length +
+        (lowPriceController.text.isNotEmpty ? 1 : 0) +
+        (highPriceController.text.isNotEmpty ? 1 : 0) +
+        (lowWeightController.text.isNotEmpty ? 1 : 0) +
+        (highWeightController.text.isNotEmpty ? 1 : 0);
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -1394,399 +2339,663 @@ class _StorePageState extends State<StorePage> {
       builder: (context) {
         return StatefulBuilder(
           builder: (BuildContext context, StateSetter setState) {
+            // Function to update active filter count
+            void updateFilterCount() {
+              activeFilterCount = selectedTypes.length +
+                  selectedPurities.length +
+                  selectedMetalTypes.length +
+                  (lowPriceController.text.isNotEmpty ? 1 : 0) +
+                  (highPriceController.text.isNotEmpty ? 1 : 0) +
+                  (lowWeightController.text.isNotEmpty ? 1 : 0) +
+                  (highWeightController.text.isNotEmpty ? 1 : 0);
+            }
+
+            // Function to clear all filters
+            void clearAllFilters() {
+              setState(() {
+                selectedTypes.clear();
+                selectedPurities.clear();
+                selectedMetalTypes.clear();
+                lowPriceController.clear();
+                highPriceController.clear();
+                lowWeightController.clear();
+                highWeightController.clear();
+                updateFilterCount();
+              });
+            }
+
             return FractionallySizedBox(
-              heightFactor: 0.8,
+              heightFactor: 0.85,
               child: Padding(
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 16.0, vertical: 16.0),
-                child: SingleChildScrollView(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Header Drawer
-                      Center(
-                        child: Container(
-                          width: 50,
-                          height: 6,
-                          margin: EdgeInsets.only(bottom: 20),
-                          decoration: BoxDecoration(
-                            color: Colors.grey[300],
-                            borderRadius: BorderRadius.circular(10),
+                padding: const EdgeInsets.only(bottom: 16.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Header with drag handle and title
+                    Container(
+                      padding: EdgeInsets.fromLTRB(20, 16, 20, 16),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius:
+                            BorderRadius.vertical(top: Radius.circular(20)),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.grey.withOpacity(0.1),
+                            spreadRadius: 1,
+                            blurRadius: 4,
+                            offset: Offset(0, 1),
                           ),
+                        ],
+                      ),
+                      child: Column(
+                        children: [
+                          // Drag handle
+                          Center(
+                            child: Container(
+                              width: 50,
+                              height: 5,
+                              decoration: BoxDecoration(
+                                color: Colors.grey[300],
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                            ),
+                          ),
+                          SizedBox(height: 16),
+                          // Header with title and clear button
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Row(
+                                children: [
+                                  Text(
+                                    'Filter',
+                                    style: TextStyle(
+                                      fontSize: 20,
+                                      fontWeight: FontWeight.bold,
+                                      color: Color(0xFF31394E),
+                                    ),
+                                  ),
+                                  if (activeFilterCount > 0)
+                                    Container(
+                                      margin: EdgeInsets.only(left: 8),
+                                      padding: EdgeInsets.symmetric(
+                                          horizontal: 8, vertical: 4),
+                                      decoration: BoxDecoration(
+                                        color: Color(0xFFC58189),
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                      child: Text(
+                                        activeFilterCount.toString(),
+                                        style: TextStyle(
+                                          color: Colors.white,
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 12,
+                                        ),
+                                      ),
+                                    ),
+                                ],
+                              ),
+                              if (activeFilterCount > 0)
+                                TextButton(
+                                  onPressed: clearAllFilters,
+                                  child: Text(
+                                    'Clear All',
+                                    style: TextStyle(
+                                      color: Color(0xFFC58189),
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    // Filter options in scrollable area
+                    Expanded(
+                      child: SingleChildScrollView(
+                        physics: BouncingScrollPhysics(),
+                        padding: const EdgeInsets.symmetric(horizontal: 20.0),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            SizedBox(height: 20),
+
+                            // Category Filter Section
+                            Row(
+                              children: [
+                                Icon(Icons.category_outlined,
+                                    color: Color(0xFF31394E), size: 20),
+                                SizedBox(width: 10),
+                                Text(
+                                  'Category',
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold,
+                                    color: Color(0xFF31394E),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            SizedBox(height: 12),
+                            Wrap(
+                              spacing: 10.0,
+                              runSpacing: 10.0,
+                              children: filters
+                                  .map((filter) => filter['name'])
+                                  .toSet()
+                                  .map((name) {
+                                final isSelected = selectedTypes.contains(name);
+
+                                return GestureDetector(
+                                  onTap: () {
+                                    setState(() {
+                                      if (isSelected) {
+                                        selectedTypes.remove(name);
+                                      } else {
+                                        selectedTypes.add(name);
+                                      }
+                                      updateFilterCount();
+                                    });
+                                  },
+                                  child: Container(
+                                    padding: EdgeInsets.symmetric(
+                                        horizontal: 14.0, vertical: 10.0),
+                                    decoration: BoxDecoration(
+                                      color: isSelected
+                                          ? Color(0xFFFBE9E7)
+                                          : Colors.grey[100],
+                                      borderRadius: BorderRadius.circular(8.0),
+                                      border: Border.all(
+                                        color: isSelected
+                                            ? Color(0xFFC58189)
+                                            : Colors.grey.shade300,
+                                        width: 1.5,
+                                      ),
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Text(
+                                          name,
+                                          style: TextStyle(
+                                            color: isSelected
+                                                ? Color(0xFFC58189)
+                                                : Colors.black87,
+                                            fontWeight: isSelected
+                                                ? FontWeight.bold
+                                                : FontWeight.normal,
+                                          ),
+                                        ),
+                                        if (isSelected) ...[
+                                          SizedBox(width: 6),
+                                          Icon(
+                                            Icons.check_circle,
+                                            color: Color(0xFFC58189),
+                                            size: 16,
+                                          ),
+                                        ],
+                                      ],
+                                    ),
+                                  ),
+                                );
+                              }).toList(),
+                            ),
+
+                            SizedBox(height: 24),
+
+                            // Purity Filter Section
+                            Row(
+                              children: [
+                                Icon(Icons.diamond_outlined,
+                                    color: Color(0xFF31394E), size: 20),
+                                SizedBox(width: 10),
+                                Text(
+                                  'Purity',
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold,
+                                    color: Color(0xFF31394E),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            SizedBox(height: 12),
+                            Wrap(
+                              spacing: 10.0,
+                              runSpacing: 10.0,
+                              children: filters
+                                  .map((filter) => filter['purity'])
+                                  .toSet()
+                                  .map((purity) {
+                                final isSelected =
+                                    selectedPurities.contains(purity);
+
+                                return GestureDetector(
+                                  onTap: () {
+                                    setState(() {
+                                      if (isSelected) {
+                                        selectedPurities.remove(purity);
+                                      } else {
+                                        selectedPurities.add(purity);
+                                      }
+                                      updateFilterCount();
+                                    });
+                                  },
+                                  child: Container(
+                                    padding: EdgeInsets.symmetric(
+                                        horizontal: 14.0, vertical: 10.0),
+                                    decoration: BoxDecoration(
+                                      color: isSelected
+                                          ? Color(0xFFFBE9E7)
+                                          : Colors.grey[100],
+                                      borderRadius: BorderRadius.circular(8.0),
+                                      border: Border.all(
+                                        color: isSelected
+                                            ? Color(0xFFC58189)
+                                            : Colors.grey.shade300,
+                                        width: 1.5,
+                                      ),
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Text(
+                                          purity,
+                                          style: TextStyle(
+                                            color: isSelected
+                                                ? Color(0xFFC58189)
+                                                : Colors.black87,
+                                            fontWeight: isSelected
+                                                ? FontWeight.bold
+                                                : FontWeight.normal,
+                                          ),
+                                        ),
+                                        if (isSelected) ...[
+                                          SizedBox(width: 6),
+                                          Icon(
+                                            Icons.check_circle,
+                                            color: Color(0xFFC58189),
+                                            size: 16,
+                                          ),
+                                        ],
+                                      ],
+                                    ),
+                                  ),
+                                );
+                              }).toList(),
+                            ),
+
+                            SizedBox(height: 24),
+
+                            // Metal Type Filter Section
+                            Row(
+                              children: [
+                                Icon(Icons.design_services_outlined,
+                                    color: Color(0xFF31394E), size: 20),
+                                SizedBox(width: 10),
+                                Text(
+                                  'Metal Type',
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold,
+                                    color: Color(0xFF31394E),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            SizedBox(height: 12),
+                            Wrap(
+                              spacing: 10.0,
+                              runSpacing: 10.0,
+                              children: filters
+                                  .map((filter) => _getMetalTypeName(
+                                      filter['metal_type'] as int))
+                                  .toSet()
+                                  .map((metalType) {
+                                final isSelected =
+                                    selectedMetalTypes.contains(metalType);
+
+                                return GestureDetector(
+                                  onTap: () {
+                                    setState(() {
+                                      if (isSelected) {
+                                        selectedMetalTypes.remove(metalType);
+                                      } else {
+                                        selectedMetalTypes.add(metalType);
+                                      }
+                                      updateFilterCount();
+                                    });
+                                  },
+                                  child: Container(
+                                    padding: EdgeInsets.symmetric(
+                                        horizontal: 14.0, vertical: 10.0),
+                                    decoration: BoxDecoration(
+                                      color: isSelected
+                                          ? Color(0xFFFBE9E7)
+                                          : Colors.grey[100],
+                                      borderRadius: BorderRadius.circular(8.0),
+                                      border: Border.all(
+                                        color: isSelected
+                                            ? Color(0xFFC58189)
+                                            : Colors.grey.shade300,
+                                        width: 1.5,
+                                      ),
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Text(
+                                          metalType,
+                                          style: TextStyle(
+                                            color: isSelected
+                                                ? Color(0xFFC58189)
+                                                : Colors.black87,
+                                            fontWeight: isSelected
+                                                ? FontWeight.bold
+                                                : FontWeight.normal,
+                                          ),
+                                        ),
+                                        if (isSelected) ...[
+                                          SizedBox(width: 6),
+                                          Icon(
+                                            Icons.check_circle,
+                                            color: Color(0xFFC58189),
+                                            size: 16,
+                                          ),
+                                        ],
+                                      ],
+                                    ),
+                                  ),
+                                );
+                              }).toList(),
+                            ),
+
+                            SizedBox(height: 24),
+
+                            // Price Range Filter Section
+                            Row(
+                              children: [
+                                Icon(Icons.price_change_outlined,
+                                    color: Color(0xFF31394E), size: 20),
+                                SizedBox(width: 10),
+                                Text(
+                                  'Price Range',
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold,
+                                    color: Color(0xFF31394E),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            SizedBox(height: 12),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: Container(
+                                    decoration: BoxDecoration(
+                                      borderRadius: BorderRadius.circular(8),
+                                      color: Colors.grey[100],
+                                      border: Border.all(
+                                        color: Colors.grey[300]!,
+                                        width: 1,
+                                      ),
+                                    ),
+                                    child: TextField(
+                                      controller: lowPriceController,
+                                      keyboardType: TextInputType.number,
+                                      onChanged: (_) =>
+                                          setState(() => updateFilterCount()),
+                                      inputFormatters: [
+                                        FilteringTextInputFormatter.allow(
+                                            RegExp(r'^[1-9][0-9]*|0$')),
+                                      ],
+                                      decoration: InputDecoration(
+                                        labelText: 'Min',
+                                        labelStyle: TextStyle(
+                                            color: Color(0xFF31394E),
+                                            fontSize: 14),
+                                        prefixIcon: Icon(Icons.remove,
+                                            color: Color(0xFFC58189), size: 18),
+                                        border: InputBorder.none,
+                                        contentPadding: EdgeInsets.symmetric(
+                                            vertical: 12, horizontal: 12),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 8.0),
+                                  child: Text('to',
+                                      style:
+                                          TextStyle(color: Colors.grey[600])),
+                                ),
+                                Expanded(
+                                  child: Container(
+                                    decoration: BoxDecoration(
+                                      borderRadius: BorderRadius.circular(8),
+                                      color: Colors.grey[100],
+                                      border: Border.all(
+                                        color: Colors.grey[300]!,
+                                        width: 1,
+                                      ),
+                                    ),
+                                    child: TextField(
+                                      controller: highPriceController,
+                                      keyboardType: TextInputType.number,
+                                      onChanged: (_) =>
+                                          setState(() => updateFilterCount()),
+                                      inputFormatters: [
+                                        FilteringTextInputFormatter.allow(
+                                            RegExp(r'^[1-9][0-9]*|0$')),
+                                      ],
+                                      decoration: InputDecoration(
+                                        labelText: 'Max',
+                                        labelStyle: TextStyle(
+                                            color: Color(0xFF31394E),
+                                            fontSize: 14),
+                                        prefixIcon: Icon(Icons.add,
+                                            color: Color(0xFFC58189), size: 18),
+                                        border: InputBorder.none,
+                                        contentPadding: EdgeInsets.symmetric(
+                                            vertical: 12, horizontal: 12),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+
+                            SizedBox(height: 24),
+
+                            // Weight Range Filter Section
+                            Row(
+                              children: [
+                                Icon(Icons.scale_outlined,
+                                    color: Color(0xFF31394E), size: 20),
+                                SizedBox(width: 10),
+                                Text(
+                                  'Weight Range (grams)',
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold,
+                                    color: Color(0xFF31394E),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            SizedBox(height: 12),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: Container(
+                                    decoration: BoxDecoration(
+                                      borderRadius: BorderRadius.circular(8),
+                                      color: Colors.grey[100],
+                                      border: Border.all(
+                                        color: Colors.grey[300]!,
+                                        width: 1,
+                                      ),
+                                    ),
+                                    child: TextField(
+                                      controller: lowWeightController,
+                                      keyboardType: TextInputType.number,
+                                      onChanged: (_) =>
+                                          setState(() => updateFilterCount()),
+                                      inputFormatters: [
+                                        FilteringTextInputFormatter.allow(
+                                            RegExp(r'^\d+(\.\d{0,2})?$')),
+                                      ],
+                                      decoration: InputDecoration(
+                                        labelText: 'Min',
+                                        labelStyle: TextStyle(
+                                            color: Color(0xFF31394E),
+                                            fontSize: 14),
+                                        prefixIcon: Icon(Icons.remove,
+                                            color: Color(0xFFC58189), size: 18),
+                                        border: InputBorder.none,
+                                        contentPadding: EdgeInsets.symmetric(
+                                            vertical: 12, horizontal: 12),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 8.0),
+                                  child: Text('to',
+                                      style:
+                                          TextStyle(color: Colors.grey[600])),
+                                ),
+                                Expanded(
+                                  child: Container(
+                                    decoration: BoxDecoration(
+                                      borderRadius: BorderRadius.circular(8),
+                                      color: Colors.grey[100],
+                                      border: Border.all(
+                                        color: Colors.grey[300]!,
+                                        width: 1,
+                                      ),
+                                    ),
+                                    child: TextField(
+                                      controller: highWeightController,
+                                      keyboardType: TextInputType.number,
+                                      onChanged: (_) =>
+                                          setState(() => updateFilterCount()),
+                                      inputFormatters: [
+                                        FilteringTextInputFormatter.allow(
+                                            RegExp(r'^\d+(\.\d{0,2})?$')),
+                                      ],
+                                      decoration: InputDecoration(
+                                        labelText: 'Max',
+                                        labelStyle: TextStyle(
+                                            color: Color(0xFF31394E),
+                                            fontSize: 14),
+                                        prefixIcon: Icon(Icons.add,
+                                            color: Color(0xFFC58189), size: 18),
+                                        border: InputBorder.none,
+                                        contentPadding: EdgeInsets.symmetric(
+                                            vertical: 12, horizontal: 12),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
                         ),
                       ),
+                    ),
 
-                      // Filter by Category Name
-                      Text(
-                        'Select Category Name',
-                        style: TextStyle(
-                            fontSize: 18, fontWeight: FontWeight.bold),
+                    // Apply button in fixed position at bottom
+                    Container(
+                      padding: EdgeInsets.fromLTRB(20, 16, 20, 0),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.grey.withOpacity(0.1),
+                            spreadRadius: 1,
+                            blurRadius: 4,
+                            offset: Offset(0, -1),
+                          ),
+                        ],
                       ),
-                      SizedBox(height: 10),
-                      Wrap(
-                        spacing: 12.0,
-                        runSpacing: 12.0,
-                        children: filters
-                            .map((filter) => filter['name'])
-                            .toSet()
-                            .map((name) {
-                          final isSelected = selectedTypes.contains(name);
-
-                          return GestureDetector(
-                            onTap: () {
-                              setState(() {
-                                if (isSelected) {
-                                  selectedTypes.remove(name);
-                                } else {
-                                  selectedTypes.add(name);
-                                }
-                              });
-                            },
-                            child: Container(
-                              padding: EdgeInsets.symmetric(
-                                  horizontal: 16.0, vertical: 12.0),
-                              decoration: BoxDecoration(
-                                color: isSelected
-                                    ? Color(0xFFC58189)
-                                    : Colors.grey[200],
-                                borderRadius: BorderRadius.circular(10.0),
-                                border: Border.all(
-                                  color: isSelected
-                                      ? Color(0xFFC58189)
-                                      : Colors.grey.shade300,
-                                  width: 1.5,
-                                ),
-                              ),
-                              child: Text(
-                                name,
-                                style: TextStyle(
-                                  color:
-                                      isSelected ? Colors.white : Colors.black,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                                textAlign: TextAlign.center,
-                              ),
-                            ),
-                          );
-                        }).toList(),
-                      ),
-
-                      SizedBox(height: 20),
-
-                      // Filter by Purity
-                      Text(
-                        'Select Purity',
-                        style: TextStyle(
-                            fontSize: 18, fontWeight: FontWeight.bold),
-                      ),
-                      SizedBox(height: 10),
-                      Wrap(
-                        spacing: 12.0,
-                        runSpacing: 12.0,
-                        children: filters
-                            .map((filter) => filter['purity'])
-                            .toSet()
-                            .map((purity) {
-                          final isSelected = selectedPurities.contains(purity);
-
-                          return GestureDetector(
-                            onTap: () {
-                              setState(() {
-                                if (isSelected) {
-                                  selectedPurities.remove(purity);
-                                } else {
-                                  selectedPurities.add(purity);
-                                }
-                              });
-                            },
-                            child: Container(
-                              padding: EdgeInsets.symmetric(
-                                  horizontal: 16.0, vertical: 12.0),
-                              decoration: BoxDecoration(
-                                color: isSelected
-                                    ? Color(0xFFC58189)
-                                    : Colors.grey[200],
-                                borderRadius: BorderRadius.circular(10.0),
-                                border: Border.all(
-                                  color: isSelected
-                                      ? Color(0xFFC58189)
-                                      : Colors.grey.shade300,
-                                  width: 1.5,
-                                ),
-                              ),
-                              child: Text(
-                                purity,
-                                style: TextStyle(
-                                  color:
-                                      isSelected ? Colors.white : Colors.black,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                                textAlign: TextAlign.center,
-                              ),
-                            ),
-                          );
-                        }).toList(),
-                      ),
-
-                      SizedBox(height: 20),
-
-                      // Filter by Metal Type
-                      Text(
-                        'Select Metal Type',
-                        style: TextStyle(
-                            fontSize: 18, fontWeight: FontWeight.bold),
-                      ),
-                      SizedBox(height: 10),
-                      Wrap(
-                        spacing: 12.0,
-                        runSpacing: 12.0,
-                        children: filters
-                            .map((filter) =>
-                                _getMetalTypeName(filter['metal_type'] as int))
-                            .toSet()
-                            .map((metalType) {
-                          final isSelected =
-                              selectedMetalTypes.contains(metalType);
-
-                          return GestureDetector(
-                            onTap: () {
-                              setState(() {
-                                if (isSelected) {
-                                  selectedMetalTypes.remove(metalType);
-                                } else {
-                                  selectedMetalTypes.add(metalType);
-                                }
-                              });
-                            },
-                            child: Container(
-                              padding: EdgeInsets.symmetric(
-                                  horizontal: 16.0, vertical: 12.0),
-                              decoration: BoxDecoration(
-                                color: isSelected
-                                    ? Color(0xFFC58189)
-                                    : Colors.grey[200],
-                                borderRadius: BorderRadius.circular(10.0),
-                                border: Border.all(
-                                  color: isSelected
-                                      ? Color(0xFFC58189)
-                                      : Colors.grey.shade300,
-                                  width: 1.5,
-                                ),
-                              ),
-                              child: Text(
-                                metalType,
-                                style: TextStyle(
-                                  color:
-                                      isSelected ? Colors.white : Colors.black,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                                textAlign: TextAlign.center,
-                              ),
-                            ),
-                          );
-                        }).toList(),
-                      ),
-
-                      SizedBox(height: 20),
-
-                      // Filter by Price Range
-                      Text(
-                        'Set Price Range',
-                        style: TextStyle(
-                            fontSize: 18, fontWeight: FontWeight.bold),
-                      ),
-                      SizedBox(height: 10),
-                      Row(
+                      child: Row(
                         children: [
                           Expanded(
-                            child: TextField(
-                              controller: lowPriceController,
-                              keyboardType: TextInputType.number,
-                              inputFormatters: [
-                                FilteringTextInputFormatter.allow(
-                                    RegExp(r'^[1-9][0-9]*|0$')),
-                              ],
-                              decoration: InputDecoration(
-                                labelText: 'Low Price',
-                                labelStyle: TextStyle(
-                                    color: Color(0xFF31394E),
-                                    fontWeight: FontWeight.bold),
-                                prefixIcon: Icon(Icons.price_change_outlined,
-                                    color: Color(0xFFC58189)),
-                                filled: true,
-                                fillColor: Colors.grey[100],
-                                enabledBorder: OutlineInputBorder(
+                            child: ElevatedButton(
+                              onPressed: () {
+                                final double? lowPrice =
+                                    double.tryParse(lowPriceController.text);
+                                final double? highPrice =
+                                    double.tryParse(highPriceController.text);
+                                final double? lowWeight =
+                                    double.tryParse(lowWeightController.text);
+                                final double? highWeight =
+                                    double.tryParse(highWeightController.text);
+
+                                applyFilter(
+                                  selectedTypes,
+                                  selectedPurities,
+                                  selectedMetalTypes,
+                                  lowPrice: lowPrice,
+                                  highPrice: highPrice,
+                                  lowWeight: lowWeight,
+                                  highWeight: highWeight,
+                                );
+
+                                Navigator.pop(context);
+                              },
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Color(0xFF31394E),
+                                foregroundColor: Colors.white,
+                                shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(10),
-                                  borderSide: BorderSide(
-                                      color: Colors.grey.shade300, width: 1.5),
                                 ),
-                                focusedBorder: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(10),
-                                  borderSide: BorderSide(
-                                      color: Color(0xFFC58189), width: 2),
-                                ),
-                                contentPadding: EdgeInsets.symmetric(
-                                    vertical: 16, horizontal: 16),
+                                padding: EdgeInsets.symmetric(vertical: 16),
+                                elevation: 0,
                               ),
-                            ),
-                          ),
-                          SizedBox(width: 10),
-                          Expanded(
-                            child: TextField(
-                              controller: highPriceController,
-                              keyboardType: TextInputType.number,
-                              inputFormatters: [
-                                FilteringTextInputFormatter.allow(
-                                    RegExp(r'^[1-9][0-9]*|0$')),
-                              ],
-                              decoration: InputDecoration(
-                                labelText: 'High Price',
-                                labelStyle: TextStyle(
-                                    color: Color(0xFF31394E),
-                                    fontWeight: FontWeight.bold),
-                                prefixIcon: Icon(Icons.price_check_outlined,
-                                    color: Color(0xFFC58189)),
-                                filled: true,
-                                fillColor: Colors.grey[100],
-                                enabledBorder: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(10),
-                                  borderSide: BorderSide(
-                                      color: Colors.grey.shade300, width: 1.5),
-                                ),
-                                focusedBorder: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(10),
-                                  borderSide: BorderSide(
-                                      color: Color(0xFFC58189), width: 2),
-                                ),
-                                contentPadding: EdgeInsets.symmetric(
-                                    vertical: 16, horizontal: 16),
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Text(
+                                    'Apply Filters',
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                  if (activeFilterCount > 0) ...[
+                                    SizedBox(width: 8),
+                                    Container(
+                                      padding: EdgeInsets.symmetric(
+                                          horizontal: 8, vertical: 2),
+                                      decoration: BoxDecoration(
+                                        color: Colors.white,
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                      child: Text(
+                                        activeFilterCount.toString(),
+                                        style: TextStyle(
+                                          color: Color(0xFF31394E),
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 12,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ],
                               ),
                             ),
                           ),
                         ],
                       ),
-                      SizedBox(height: 20),
-                      // Filter by Weight Range
-                      Text(
-                        'Set Weight Range (grams)',
-                        style: TextStyle(
-                            fontSize: 18, fontWeight: FontWeight.bold),
-                      ),
-                      SizedBox(height: 10),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: TextField(
-                              controller: lowWeightController,
-                              keyboardType: TextInputType.number,
-                              inputFormatters: [
-                                FilteringTextInputFormatter.allow(
-                                    RegExp(r'^\d+(\.\d{0,2})?$')),
-                              ],
-                              decoration: InputDecoration(
-                                labelText: 'Min Weight',
-                                labelStyle: TextStyle(
-                                    color: Color(0xFF31394E),
-                                    fontWeight: FontWeight.bold),
-                                prefixIcon: Icon(Icons.balance,
-                                    color: Color(0xFFC58189)),
-                                filled: true,
-                                fillColor: Colors.grey[100],
-                                enabledBorder: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(10),
-                                  borderSide: BorderSide(
-                                      color: Colors.grey.shade300, width: 1.5),
-                                ),
-                                focusedBorder: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(10),
-                                  borderSide: BorderSide(
-                                      color: Color(0xFFC58189), width: 2),
-                                ),
-                                contentPadding: EdgeInsets.symmetric(
-                                    vertical: 16, horizontal: 16),
-                              ),
-                            ),
-                          ),
-                          SizedBox(width: 10),
-                          Expanded(
-                            child: TextField(
-                              controller: highWeightController,
-                              keyboardType: TextInputType.number,
-                              inputFormatters: [
-                                FilteringTextInputFormatter.allow(
-                                    RegExp(r'^\d+(\.\d{0,2})?$')),
-                              ],
-                              decoration: InputDecoration(
-                                labelText: 'Max Weight',
-                                labelStyle: TextStyle(
-                                    color: Color(0xFF31394E),
-                                    fontWeight: FontWeight.bold),
-                                prefixIcon:
-                                    Icon(Icons.scale, color: Color(0xFFC58189)),
-                                filled: true,
-                                fillColor: Colors.grey[100],
-                                enabledBorder: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(10),
-                                  borderSide: BorderSide(
-                                      color: Colors.grey.shade300, width: 1.5),
-                                ),
-                                focusedBorder: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(10),
-                                  borderSide: BorderSide(
-                                      color: Color(0xFFC58189), width: 2),
-                                ),
-                                contentPadding: EdgeInsets.symmetric(
-                                    vertical: 16, horizontal: 16),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-
-                      SizedBox(height: 24),
-
-                      // Apply Button
-                      ElevatedButton(
-                        onPressed: () {
-                          final double? lowPrice =
-                              double.tryParse(lowPriceController.text);
-                          final double? highPrice =
-                              double.tryParse(highPriceController.text);
-                          final double? lowWeight =
-                              double.tryParse(lowWeightController.text);
-                          final double? highWeight =
-                              double.tryParse(highWeightController.text);
-
-                          applyFilter(
-                            selectedTypes,
-                            selectedPurities,
-                            selectedMetalTypes,
-                            lowPrice: lowPrice,
-                            highPrice: highPrice,
-                            lowWeight: lowWeight,
-                            highWeight: highWeight,
-                          );
-
-                          Navigator.pop(context);
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Color(0xFF31394E),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          minimumSize: Size(double.infinity, 50),
-                        ),
-                        child: Text(
-                          'Apply',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
               ),
             );

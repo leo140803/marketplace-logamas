@@ -1,23 +1,65 @@
 import 'dart:io';
+import 'dart:async';
+import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
-import 'dart:async';
 import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
-import 'dart:convert';
-
 import 'package:marketplace_logamas/function/Utils.dart';
 import 'package:marketplace_logamas/screen/FullScreenImageView.dart';
 import 'package:marketplace_logamas/screen/PDFScreen.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:shimmer/shimmer.dart';
+import 'package:cached_network_image/cached_network_image.dart';
+import 'package:flutter_spinkit/flutter_spinkit.dart';
+
+// Theme constants
+class AppTheme {
+  static const primaryColor = Color(0xFF31394E);
+  static const accentColor = Color(0xFFC58189);
+  static const cardBgColor = Colors.white;
+  static const backgroundColor = Color(0xFFF5F5F5);
+  static const successColor = Color(0xFF4CAF50);
+  static const warningColor = Color(0xFFFFC107);
+  static const errorColor = Color(0xFFF44336);
+  static const infoColor = Color(0xFF2196F3);
+  static const tradeColor = Color(0xFFFF9800); // Warna khusus untuk trade
+
+  static const TextStyle headingStyle = TextStyle(
+    fontSize: 18,
+    fontWeight: FontWeight.bold,
+    color: primaryColor,
+  );
+
+  static const TextStyle subheadingStyle = TextStyle(
+    fontSize: 16,
+    fontWeight: FontWeight.w600,
+    color: primaryColor,
+  );
+
+  static const TextStyle bodyStyle = TextStyle(
+    fontSize: 14,
+    color: Color(0xFF555555),
+  );
+
+  static const TextStyle accentTextStyle = TextStyle(
+    fontSize: 14,
+    fontWeight: FontWeight.w500,
+    color: accentColor,
+  );
+}
 
 class TradeDetailsPage extends StatefulWidget {
   final String transactionId;
 
-  TradeDetailsPage({required this.transactionId});
+  const TradeDetailsPage({
+    Key? key,
+    required this.transactionId,
+  }) : super(key: key);
+
   @override
   _TradeDetailsPageState createState() => _TradeDetailsPageState();
 }
@@ -35,11 +77,33 @@ class _TradeDetailsPageState extends State<TradeDetailsPage> {
     super.initState();
     _fetchReviewExpiration();
     _fetchTransactionData();
+
+    // Add haptic feedback for page load
+    HapticFeedback.lightImpact();
+  }
+
+  // Show error with retry option
+  void _showErrorSnackBar(String message, {Function? onRetry}) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: AppTheme.errorColor,
+        action: onRetry != null
+            ? SnackBarAction(
+                label: 'Retry',
+                textColor: Colors.white,
+                onPressed: () => onRetry(),
+              )
+            : null,
+        behavior: SnackBarBehavior.floating,
+        margin: EdgeInsets.all(8),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+      ),
+    );
   }
 
   Future<void> _fetchReviewExpiration() async {
-    final url =
-        Uri.parse('http://127.0.0.1:3020/api/config/key?key=review_exp');
+    final url = Uri.parse('$apiBaseUrlPlatform/api/config/key?key=review_exp');
     try {
       final response = await http.get(url);
       if (response.statusCode == 200) {
@@ -51,67 +115,99 @@ class _TradeDetailsPageState extends State<TradeDetailsPage> {
         }
       }
     } catch (error) {
-      print("Failed to fetch review expiration: $error");
+      _showErrorSnackBar("Failed to fetch review expiration settings");
     }
   }
 
   Future<void> _fetchTransactionData() async {
-    final url = Uri.parse('$apiBaseUrl/transactions/${widget.transactionId}');
-    final response = await http.get(url);
-    print(json.decode(response.body));
-    if (response.statusCode == 200) {
-      final Map<String, dynamic> data = json.decode(response.body);
-      if (data['success']) {
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      final url = Uri.parse('$apiBaseUrl/transactions/${widget.transactionId}');
+      final response = await http.get(url);
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> data = json.decode(response.body);
+        if (data['success']) {
+          setState(() {
+            _transactionData = data['data']['data'];
+            _isLoading = false;
+            _setCountdown();
+          });
+        } else {
+          _showErrorSnackBar("Failed to load trade details",
+              onRetry: _fetchTransactionData);
+          setState(() {
+            _isLoading = false;
+          });
+        }
+      } else {
+        _showErrorSnackBar("Server error. Please try again later",
+            onRetry: _fetchTransactionData);
         setState(() {
-          _transactionData = data['data']['data'];
           _isLoading = false;
-          _setCountdown();
         });
       }
+    } catch (error) {
+      _showErrorSnackBar("Network error. Please check your connection",
+          onRetry: _fetchTransactionData);
+      setState(() {
+        _isLoading = false;
+      });
     }
   }
 
-  // Fungsi untuk mendownload nota
+  // Improved PDF download with progress indicator
   Future<void> _downloadNota() async {
     final String transactionId = widget.transactionId;
-    final String url =
-        '$apiBaseUrlNota/nota/$transactionId'; // Ganti dengan URL API yang sesuai
+    final String url = '$apiBaseUrlNota/nota/$transactionId';
+
+    // Show download progress dialog
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: const [
+              SpinKitRing(
+                color: AppTheme.primaryColor,
+                size: 40.0,
+              ),
+              SizedBox(height: 16),
+              Text("Downloading receipt..."),
+            ],
+          ),
+        );
+      },
+    );
 
     try {
-      // Mengirim request ke server untuk mendapatkan file PDF
       final response = await http.get(Uri.parse(url));
 
+      // Close the progress dialog
+      Navigator.pop(context);
+
       if (response.statusCode == 200) {
-        // Mendapatkan direktori untuk menyimpan file
         final directory = await getApplicationDocumentsDirectory();
         final filePath = '${directory.path}/nota_$transactionId.pdf';
         final file = File(filePath);
 
-        // Menyimpan file PDF ke direktori aplikasi
         await file.writeAsBytes(response.bodyBytes);
-
         _openPdf(filePath);
+
+        // Success feedback
+        HapticFeedback.mediumImpact();
       } else {
-        // Menampilkan notifikasi error jika request gagal
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text("Gagal mengunduh nota!"),
-            duration: Duration(seconds: 2),
-            backgroundColor: Colors.red,
-          ),
-        );
+        _showErrorSnackBar("Failed to download receipt");
       }
     } catch (error) {
-      print("Error downloading nota: $error");
-
-      // Menampilkan notifikasi error jika terjadi masalah
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text("Terjadi kesalahan saat mengunduh nota."),
-          duration: Duration(seconds: 2),
-          backgroundColor: Colors.red,
-        ),
-      );
+      // Close the progress dialog
+      Navigator.pop(context);
+      _showErrorSnackBar("Error downloading receipt");
     }
   }
 
@@ -126,11 +222,24 @@ class _TradeDetailsPageState extends State<TradeDetailsPage> {
 
   void _copyToClipboard(String text) {
     Clipboard.setData(ClipboardData(text: text));
+
+    // Provide haptic feedback
+    HapticFeedback.selectionClick();
+
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text("Kode transaksi disalin ke clipboard!"),
+        content: Row(
+          children: [
+            Icon(Icons.check_circle, color: Colors.white),
+            SizedBox(width: 8),
+            Text("Transaction code copied!"),
+          ],
+        ),
+        behavior: SnackBarBehavior.floating,
+        backgroundColor: AppTheme.successColor,
         duration: Duration(seconds: 2),
-        backgroundColor: Color(0xFF31394E),
+        margin: EdgeInsets.all(8),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
       ),
     );
   }
@@ -139,8 +248,7 @@ class _TradeDetailsPageState extends State<TradeDetailsPage> {
     DateTime parsedDate = DateTime.parse(dateTime)
         .toUtc()
         .add(Duration(hours: 7)); // Convert UTC to WIB
-
-    return DateFormat("dd-MM-yyyy HH:mm").format(parsedDate); // Format properly
+    return DateFormat("dd MMM yyyy • HH:mm").format(parsedDate);
   }
 
   double _getTaxPercentage() {
@@ -150,7 +258,7 @@ class _TradeDetailsPageState extends State<TradeDetailsPage> {
         double.tryParse(_transactionData!['tax_price'].toString()) ?? 0;
 
     if (subTotal == 0) {
-      return 0; // Avoid division by zero
+      return 0;
     }
 
     return ((taxPrice / subTotal) * 100).roundToDouble();
@@ -159,7 +267,6 @@ class _TradeDetailsPageState extends State<TradeDetailsPage> {
   double _getDiscountAmount() {
     if (_transactionData == null) return 0;
 
-    // Ambil nilai dari response API
     double totalPrice =
         double.tryParse(_transactionData!['total_price'].toString()) ?? 0;
     double subTotal =
@@ -167,10 +274,8 @@ class _TradeDetailsPageState extends State<TradeDetailsPage> {
     double taxPrice =
         double.tryParse(_transactionData!['tax_price'].toString()) ?? 0;
 
-    // Hitung diskon berdasarkan rumus
-    double discount = totalPrice - (subTotal + taxPrice);
-
-    return discount; // Hasil akhir diskon
+    double discount = subTotal + taxPrice - totalPrice;
+    return discount.abs(); // Return absolute value to handle edge cases
   }
 
   void _setCountdown() {
@@ -181,7 +286,10 @@ class _TradeDetailsPageState extends State<TradeDetailsPage> {
         });
         return;
       }
-      DateTime expiredAt = DateTime.parse(_transactionData!['expired_at']);
+
+      DateTime expiredAt = DateTime.parse(_transactionData!['expired_at'])
+          .subtract(Duration(hours: 7));
+
       Duration difference = expiredAt.difference(DateTime.now());
 
       if (difference.isNegative) {
@@ -221,252 +329,591 @@ class _TradeDetailsPageState extends State<TradeDetailsPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.grey[200],
-      appBar: AppBar(
-        backgroundColor:
-            Colors.transparent, // Buat transparan agar gambar terlihat
-        elevation: 0,
-        flexibleSpace: Stack(
-          fit: StackFit.expand,
-          children: [
-            Image.asset(
-              'assets/images/appbar.png', // Ganti dengan path gambar yang sesuai
-              fit: BoxFit.cover, // Pastikan gambar memenuhi seluruh AppBar
-            ),
-            Container(
-              color: Colors.black
-                  .withOpacity(0.2), // Overlay agar teks tetap terbaca
-            ),
-          ],
-        ),
-        title: const Text(
-          'Rincian Pemesanan',
-          style: TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        leading: IconButton(
-          onPressed: () => context.pop(),
-          icon: const Icon(
-            Icons.arrow_back,
-            color: Colors.white,
-          ),
-        ),
-        actions: [
-          if (!_isLoading)
-            if (_transactionData!['status'] == 2)
-              IconButton(
-                onPressed: _downloadNota,
-                icon: const Icon(
-                  Icons.receipt_long,
-                  color: Colors.white,
-                ),
-              ),
-        ],
-      ),
-      body: _isLoading
-          ? Center(child: CircularProgressIndicator())
-          : _buildOrderDetails(),
+      backgroundColor: AppTheme.backgroundColor,
+      appBar: _buildAppBar(),
+      body: _isLoading ? _buildLoadingState() : _buildOrderDetails(),
+      bottomNavigationBar: _buildBottomNavigationBar(),
     );
   }
 
-  Widget _buildOrderDetails() {
-    int paymentStatus = _transactionData!['status']; // Status pembayaran
-    final operations = _transactionData!['TransactionOperation'] ?? [];
-    final totalPrice =
-        double.tryParse(_transactionData!['total_price'].toString()) ?? 0;
-    final label = totalPrice <= 0 ? 'Total Uang Diterima' : 'Total Bayar';
-    final formattedPrice = formatCurrency(totalPrice.abs());
+  // Extracted app bar widget
+  PreferredSizeWidget _buildAppBar() {
+    return AppBar(
+      backgroundColor: Colors.transparent,
+      elevation: 0,
+      flexibleSpace: Stack(
+        fit: StackFit.expand,
+        children: [
+          Image.asset(
+            'assets/images/appbar.png',
+            fit: BoxFit.cover,
+          ),
+          Container(
+            color: Colors.black.withOpacity(0.2),
+          ),
+        ],
+      ),
+      title: const Text(
+        'Trade Details',
+        style: TextStyle(
+          color: Colors.white,
+          fontWeight: FontWeight.bold,
+        ),
+      ),
+      leading: IconButton(
+        onPressed: () => context.pop(),
+        icon: const Icon(
+          Icons.arrow_back,
+          color: Colors.white,
+        ),
+      ),
+      actions: [
+        if (!_isLoading &&
+            _transactionData != null &&
+            _transactionData!['status'] == 2)
+          IconButton(
+            onPressed: _downloadNota,
+            tooltip: 'Download Receipt',
+            icon: const Icon(
+              Icons.receipt_long,
+              color: Colors.white,
+            ),
+          ),
+      ],
+    );
+  }
 
-    return Container(
-      color: Colors.grey[200],
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
+  // Shimmer loading effect
+  Widget _buildLoadingState() {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16.0),
+      physics: const BouncingScrollPhysics(),
+      child: Shimmer.fromColors(
+        baseColor: Colors.grey[300]!,
+        highlightColor: Colors.grey[100]!,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Transaction details
+            Container(
+              height: 20,
+              width: MediaQuery.of(context).size.width * 0.7,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
+            SizedBox(height: 8),
+            Container(
+              height: 18,
+              width: MediaQuery.of(context).size.width * 0.5,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
+            SizedBox(height: 24),
+
+            // Status container
+            Container(
+              height: 60,
+              width: double.infinity,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+            SizedBox(height: 24),
+
+            // Store name
+            Container(
+              height: 24,
+              width: MediaQuery.of(context).size.width * 0.6,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
+            SizedBox(height: 24),
+
+            // Product items (3 placeholders)
+            for (int i = 0; i < 3; i++) ...[
+              Container(
+                height: 120,
+                width: double.infinity,
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              SizedBox(height: 16),
+            ],
+
+            // Order details
+            for (int i = 0; i < 4; i++) ...[
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Expanded(
-                    child: Text(
-                      'Kode Transaksi: ${_transactionData!['code']}',
+                  Container(
+                    height: 18,
+                    width: MediaQuery.of(context).size.width * 0.4,
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                  Container(
+                    height: 18,
+                    width: MediaQuery.of(context).size.width * 0.3,
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                ],
+              ),
+              SizedBox(height: 12),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  // Bottom navigation bar that shows payment button if applicable
+  Widget? _buildBottomNavigationBar() {
+    if (_isLoading || _transactionData == null) return null;
+
+    // Only show for unpaid transactions
+    if (_transactionData!['status'] == 0 && !_isExpired) {
+      final double totalPrice =
+          double.tryParse(_transactionData!['total_price'].toString()) ?? 0;
+
+      return Container(
+        padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.05),
+              blurRadius: 10,
+              offset: Offset(0, -5),
+            ),
+          ],
+        ),
+        child: SafeArea(
+          child: ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              padding: EdgeInsets.symmetric(vertical: 16),
+              backgroundColor: totalPrice <= 0
+                  ? AppTheme.successColor
+                  : AppTheme.primaryColor,
+              foregroundColor: Colors.white,
+              elevation: 0,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+            onPressed: _openPaymentLink,
+            child: Text(
+              totalPrice <= 0 ? 'Complete Trade' : 'Pay Now',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+    return null;
+  }
+
+  Widget _buildOrderDetails() {
+    int paymentStatus = _transactionData!['status'];
+    final operations = _transactionData!['TransactionOperation'] ?? [];
+    final totalPrice =
+        double.tryParse(_transactionData!['total_price'].toString()) ?? 0;
+
+    return RefreshIndicator(
+      onRefresh: _fetchTransactionData,
+      color: AppTheme.primaryColor,
+      child: SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildTransactionHeader(),
+            SizedBox(height: 16),
+
+            _buildStatusSection(paymentStatus),
+            SizedBox(height: 16),
+
+            _buildStoreInfo(),
+            SizedBox(height: 16),
+
+            // Produk
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // 🔻 Produk Dibeli oleh Customer
+                if (_transactionData!['transaction_products']
+                    .any((p) => p['transaction_type'] == 1)) ...[
+                  _buildSectionHeader(
+                    title: 'Produk yang dibeli',
+                    icon: Icons.shopping_cart_outlined,
+                    color: AppTheme.infoColor,
+                  ),
+                  SizedBox(height: 8),
+                  ..._transactionData!['transaction_products']
+                      .where((product) => product['transaction_type'] == 1)
+                      .map<Widget>((product) => _buildProductItem(product))
+                      .toList(),
+                ],
+
+                SizedBox(height: 16),
+
+                // 🔺 Produk Dijual oleh Customer
+                if (_transactionData!['transaction_products']
+                    .any((p) => p['transaction_type'] == 2)) ...[
+                  _buildSectionHeader(
+                    title: 'Produk yang dijual',
+                    icon: Icons.sell_outlined,
+                    color: AppTheme.successColor,
+                  ),
+                  SizedBox(height: 8),
+                  ..._transactionData!['transaction_products']
+                      .where((product) => product['transaction_type'] == 2)
+                      .map<Widget>((product) => _buildProductItem(product))
+                      .toList(),
+                ],
+              ],
+            ),
+
+            if (operations.isNotEmpty) ...[
+              SizedBox(height: 16),
+              _buildOperationsSection(operations),
+            ],
+
+            SizedBox(height: 16),
+            _buildOrderSummary(totalPrice),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSectionHeader(
+      {required String title, required IconData icon, required Color color}) {
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            icon,
+            color: color,
+            size: 18,
+          ),
+          SizedBox(width: 10),
+          Text(
+            title,
+            style: TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.bold,
+              color: color,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTransactionHeader() {
+    return Card(
+      elevation: 0,
+      color: Colors.white,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Expanded(
+                  child: Text(
+                    'Transaction ID: ${_transactionData!['code']}',
+                    style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.bold,
+                      color: AppTheme.primaryColor,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                InkWell(
+                  onTap: () => _copyToClipboard(_transactionData!['code']),
+                  borderRadius: BorderRadius.circular(20),
+                  child: Padding(
+                    padding: const EdgeInsets.all(6.0),
+                    child: Icon(
+                      Icons.copy,
+                      color: AppTheme.primaryColor,
+                      size: 18,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            SizedBox(height: 8),
+            Text(
+              'Trade Date: ${_formatDateTime(_transactionData!['created_at'])}',
+              style: TextStyle(
+                fontSize: 14,
+                color: Colors.grey[700],
+              ),
+            ),
+            SizedBox(height: 4),
+            // Special label for Trade
+            Container(
+              margin: EdgeInsets.only(top: 8),
+              padding: EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              decoration: BoxDecoration(
+                color: AppTheme.tradeColor.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: AppTheme.tradeColor.withOpacity(0.3),
+                  width: 1,
+                ),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    Icons.swap_horiz,
+                    size: 14,
+                    color: AppTheme.tradeColor,
+                  ),
+                  SizedBox(width: 4),
+                  Text(
+                    'Trade Transaction',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                      color: AppTheme.tradeColor,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildStatusSection(int paymentStatus) {
+    return paymentStatus == 0 && !_isExpired
+        ? _buildCountdownWidget()
+        : _buildStatusMessage(paymentStatus);
+  }
+
+  Widget _buildCountdownWidget() {
+    return Card(
+      elevation: 0,
+      color: Colors.white,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 16.0, horizontal: 16.0),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Row(
+              children: [
+                Icon(
+                  Icons.timer,
+                  color: AppTheme.warningColor,
+                  size: 24,
+                ),
+                SizedBox(width: 8),
+                Text(
+                  'Payment Deadline:',
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.grey[800],
+                  ),
+                ),
+              ],
+            ),
+            Container(
+              padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                color: AppTheme.warningColor.withOpacity(0.2),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Text(
+                '${_timeLeft.inHours}:${(_timeLeft.inMinutes % 60).toString().padLeft(2, '0')}:${(_timeLeft.inSeconds % 60).toString().padLeft(2, '0')}',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: AppTheme.warningColor,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildStatusMessage(int status) {
+    String message;
+    Color color;
+    IconData icon;
+
+    if (_isExpired) {
+      message = 'Payment Expired';
+      color = AppTheme.errorColor;
+      icon = Icons.error_outline;
+    } else if (status == 1) {
+      message = 'Ready for Pickup';
+      color = AppTheme.infoColor;
+      icon = Icons.inventory;
+    } else if (status == 2) {
+      message = 'Trade Completed';
+      color = AppTheme.successColor;
+      icon = Icons.check_circle_outline;
+    } else {
+      message = 'Awaiting Payment';
+      color = AppTheme.warningColor;
+      icon = Icons.payment;
+    }
+
+    return Card(
+      elevation: 0,
+      color: color.withOpacity(0.1),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Row(
+          children: [
+            Icon(
+              icon,
+              color: color,
+              size: 24,
+            ),
+            SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                message,
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: color,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildStoreInfo() {
+    return Card(
+      elevation: 0,
+      color: Colors.white,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: InkWell(
+        onTap: () {
+          // Navigate to store page
+          context.push('/store/${_transactionData!['store']['store_id']}');
+        },
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Row(
+            children: [
+              Container(
+                width: 50,
+                height: 50,
+                decoration: BoxDecoration(
+                  color: AppTheme.primaryColor.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: _transactionData!['store']['logo'] != null
+                      ? CachedNetworkImage(
+                          imageUrl:
+                              '$apiBaseUrlImage${_transactionData!['store']['logo']}',
+                          fit: BoxFit.cover,
+                          placeholder: (context, url) => Center(
+                            child: CircularProgressIndicator(
+                              color: AppTheme.accentColor,
+                              strokeWidth: 2,
+                            ),
+                          ),
+                          errorWidget: (context, url, error) => Icon(
+                            Icons.image_not_supported_outlined,
+                            color: AppTheme.primaryColor,
+                            size: 28,
+                          ),
+                        )
+                      : Icon(
+                          Icons.store,
+                          color: AppTheme.primaryColor,
+                          size: 28,
+                        ),
+                ),
+              ),
+              SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      _transactionData!['store']['store_name'],
                       style: TextStyle(
-                        fontSize: 14,
+                        fontSize: 18,
                         fontWeight: FontWeight.bold,
-                        color: Colors.black87,
+                        color: AppTheme.primaryColor,
                       ),
                       overflow: TextOverflow.ellipsis,
                     ),
-                  ),
-                  IconButton(
-                    icon: Icon(Icons.copy, color: Colors.grey[700], size: 14),
-                    padding: EdgeInsets.zero,
-                    constraints: BoxConstraints(),
-                    onPressed: () {
-                      _copyToClipboard(_transactionData!['code']);
-                    },
-                  ),
-                ],
-              ),
-              Text(
-                'Tanggal Transaksi: ${_formatDateTime(_transactionData!['created_at'])}',
-                style: TextStyle(fontSize: 14, color: Colors.black54),
-              ),
-              Divider(color: Colors.grey[400]),
-
-              // 🔹 STATUS PEMBAYARAN
-              if (paymentStatus == 1)
-                _buildStatusMessage('Siap Diambil', Colors.blue),
-              if (paymentStatus == 2)
-                _buildStatusMessage('Sudah Diambil (Done)', Colors.green),
-              if (paymentStatus == 0) ...[
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text('Expired In:',
+                    if (_transactionData!['store']['address'] != null)
+                      Text(
+                        _transactionData!['store']['address'],
                         style: TextStyle(
-                            fontSize: 18, fontWeight: FontWeight.bold)),
-                    Text(
-                      _isExpired
-                          ? 'Expired'
-                          : '${_timeLeft.inHours}:${(_timeLeft.inMinutes % 60).toString().padLeft(2, '0')}:${(_timeLeft.inSeconds % 60).toString().padLeft(2, '0')}',
-                      style: TextStyle(
-                          fontSize: 18,
-                          color: _isExpired ? Colors.red : Colors.redAccent,
-                          fontWeight: FontWeight.bold),
-                    ),
+                          fontSize: 14,
+                          color: Colors.grey[600],
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                        maxLines: 1,
+                      ),
                   ],
                 ),
-                SizedBox(height: 16),
-              ],
-
-              // 🔹 INFORMASI TOKO
-              Text(
-                _transactionData!['store']['store_name'],
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
               ),
-              SizedBox(height: 16),
-
-              // 🔹 LIST PRODUK
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // 🔻 Produk Dibeli oleh Customer
-                  if (_transactionData!['transaction_products']
-                      .any((p) => p['transaction_type'] == 1)) ...[
-                    const Padding(
-                      padding: EdgeInsets.only(top: 8.0, bottom: 4.0),
-                      child: Text(
-                        'Produk yang dibeli',
-                        style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.black87),
-                      ),
-                    ),
-                    ..._transactionData!['transaction_products']
-                        .where((product) => product['transaction_type'] == 1)
-                        .map<Widget>((product) => _buildProductItem(product))
-                        .toList(),
-                  ],
-
-                  // 🔺 Produk Dijual oleh Customer
-                  if (_transactionData!['transaction_products']
-                      .any((p) => p['transaction_type'] == 2)) ...[
-                    const Padding(
-                      padding: EdgeInsets.only(top: 12.0, bottom: 4.0),
-                      child: Text(
-                        'Produk yang dijual',
-                        style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.black87),
-                      ),
-                    ),
-                    ..._transactionData!['transaction_products']
-                        .where((product) => product['transaction_type'] == 2)
-                        .map<Widget>((product) => _buildProductItem(product))
-                        .toList(),
-                  ],
-                ],
+              Icon(
+                Icons.arrow_forward_ios,
+                size: 16,
+                color: AppTheme.primaryColor,
               ),
-
-              // 🔹 LIST TRANSACTION OPERATIONS (JIKA ADA)
-              if (operations.isNotEmpty) ...[
-                SizedBox(height: 16),
-                Text(
-                  "Additional Service",
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                ),
-                Divider(color: Colors.grey[400]),
-                Column(
-                  children: operations.map<Widget>((operation) {
-                    return Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 4.0),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                            "${operation['name']} (x${operation['unit']})",
-                            style: TextStyle(fontSize: 16),
-                          ),
-                          Text(
-                            "Rp ${formatCurrency(double.tryParse(operation['total_price'].toString()) ?? 0)}",
-                            style: TextStyle(fontSize: 16),
-                          ),
-                        ],
-                      ),
-                    );
-                  }).toList(),
-                ),
-                SizedBox(height: 16),
-              ],
-
-              Divider(color: Colors.grey[400]),
-
-              // 🔹 RINCIAN PESANAN
-              Text('Rincian Pesanan',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-              SizedBox(height: 8),
-
-              _buildOrderDetailRow('Sub Total',
-                  'Rp ${formatCurrency(double.tryParse(_transactionData!['sub_total_price'].toString()) ?? 0)}'),
-              _buildOrderDetailRow(
-                  'Tax (${double.tryParse(_transactionData!['tax_percent'].toString()) ?? 0}%)',
-                  'Rp ${formatCurrency(double.tryParse(_transactionData!['tax_price'].toString()) ?? 0)}'),
-              _buildOrderDetailRow('Trade in Fee',
-                  'Rp ${formatCurrency(double.tryParse(_transactionData!['adjustment_price'].toString()) ?? 0)}'),
-
-              Divider(color: Colors.grey[400]),
-              _buildOrderDetailRow(label, 'Rp $formattedPrice'),
-              SizedBox(height: 16),
-
-              if (paymentStatus == 0)
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      padding: EdgeInsets.symmetric(vertical: 15),
-                      backgroundColor: Color(0xFF31394E),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(30),
-                      ),
-                    ),
-                    onPressed: () {
-                      _openPaymentLink();
-                    },
-                    child: Text(
-                      'Bayar Sekarang',
-                      style: TextStyle(
-                          fontSize: 18,
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold),
-                    ),
-                  ),
-                ),
             ],
           ),
         ),
@@ -474,48 +921,779 @@ class _TradeDetailsPageState extends State<TradeDetailsPage> {
     );
   }
 
-// 🔹 FUNCTION MEMBANGUN ROW DETAIL ORDER
-  Widget _buildOrderDetailRow(String label, String value,
-      {bool isBold = false}) {
+  Widget _buildOperationsSection(List operations) {
+    return Card(
+      elevation: 0,
+      color: Colors.white,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              "Additional Services",
+              style: AppTheme.headingStyle,
+            ),
+            SizedBox(height: 12),
+            ...operations.map<Widget>((operation) {
+              final double basePrice =
+                  double.tryParse(operation['price']?.toString() ?? '0') ?? 0;
+              final double units =
+                  double.tryParse(operation['unit']?.toString() ?? '1') ?? 1;
+              final double adjustmentPrice = double.tryParse(
+                      operation['adjustment_price']?.toString() ?? '0') ??
+                  0;
+              final double totalPrice = double.tryParse(
+                      operation['total_price']?.toString() ?? '0') ??
+                  0;
+
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 8.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Row(
+                          children: [
+                            Icon(
+                              Icons.handyman,
+                              size: 18,
+                              color: AppTheme.accentColor,
+                            ),
+                            SizedBox(width: 8),
+                            Text(
+                              "${operation['name']} (x${operation['unit']})",
+                              style: AppTheme.bodyStyle,
+                            ),
+                          ],
+                        ),
+                        Text(
+                          "Rp ${formatCurrency(basePrice * units)}",
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                    // Only show adjustment if it's not zero
+                    if (adjustmentPrice != 0)
+                      Padding(
+                        padding: const EdgeInsets.only(left: 26.0, top: 4.0),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              "Adjustment",
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontStyle: FontStyle.italic,
+                                color: Colors.grey[600],
+                              ),
+                            ),
+                            Text(
+                              adjustmentPrice >= 0
+                                  ? "+ Rp ${formatCurrency(adjustmentPrice)}"
+                                  : "- Rp ${formatCurrency(adjustmentPrice.abs())}",
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontStyle: FontStyle.italic,
+                                color: adjustmentPrice >= 0
+                                    ? Colors.green
+                                    : Colors.red,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    // Show total price if there's an adjustment
+                    if (adjustmentPrice != 0)
+                      Padding(
+                        padding: const EdgeInsets.only(left: 26.0, top: 2.0),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              "Total",
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            Text(
+                              "Rp ${formatCurrency(totalPrice)}",
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    SizedBox(height: 4),
+                  ],
+                ),
+              );
+            }).toList(),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildOrderSummary(double totalPrice) {
+    return Card(
+      elevation: 0,
+      color: Colors.white,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Trade Summary',
+              style: AppTheme.headingStyle,
+            ),
+            SizedBox(height: 16),
+            _buildSummaryRow(
+              'Subtotal',
+              'Rp ${formatCurrency(double.tryParse(_transactionData!['sub_total_price'].toString()) ?? 0)}',
+            ),
+            _buildSummaryRow(
+              'Tax (${_getTaxPercentage()}%)',
+              'Rp ${formatCurrency(double.tryParse(_transactionData!['tax_price'].toString()) ?? 0)}',
+            ),
+            _buildSummaryRow(
+              'Trade-in Fee',
+              'Rp ${formatCurrency(double.tryParse(_transactionData!['adjustment_price'].toString()) ?? 0)}',
+              valueColor: AppTheme.tradeColor,
+            ),
+            Divider(height: 24, thickness: 1),
+            _buildSummaryRow(
+              totalPrice >= 0 ? 'Total Payment' : 'Total Money Received',
+              'Rp ${formatCurrency(totalPrice.abs())}',
+              isBold: true,
+              labelColor: AppTheme.primaryColor,
+              valueColor: totalPrice >= 0
+                  ? AppTheme.accentColor
+                  : AppTheme.successColor,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // Function to display summary rows
+  Widget _buildSummaryRow(
+    String label,
+    String value, {
+    bool isBold = false,
+    Color? labelColor,
+    Color? valueColor,
+  }) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4.0),
+      padding: const EdgeInsets.only(bottom: 8.0),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Text(
             label,
             style: TextStyle(
-                fontSize: 16,
-                fontWeight: isBold ? FontWeight.bold : FontWeight.normal,
-                color: Color(0xFF31394E)),
+              fontSize: isBold ? 16 : 14,
+              fontWeight: isBold ? FontWeight.bold : FontWeight.normal,
+              color: labelColor ?? Colors.grey[700],
+            ),
           ),
           Text(
             value,
             style: TextStyle(
-                fontSize: 16,
-                fontWeight: isBold ? FontWeight.bold : FontWeight.normal,
-                color: isBold ? Colors.redAccent : Colors.grey[700]),
+              fontSize: isBold ? 16 : 14,
+              fontWeight: isBold ? FontWeight.bold : FontWeight.w500,
+              color: valueColor ??
+                  (isBold ? AppTheme.primaryColor : Colors.grey[800]),
+            ),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildStatusMessage(String text, Color color) {
+  Widget _buildProductItem(Map<String, dynamic> product) {
+    int paymentStatus = _transactionData!['status'];
+    var transactionReview = product['TransactionReview'];
+    int transactionType = product['transaction_type'] ?? 1;
+    bool isProductBought = transactionType == 1;
+
+    // Calculate review deadline
+    DateTime updatedAt = DateTime.parse(product['updated_at']);
+    DateTime reviewDeadline =
+        updatedAt.add(Duration(days: _reviewExpirationDays));
+    bool canReview = DateTime.now().isBefore(reviewDeadline);
+
+    // Extract product details
+    double price = double.tryParse(product['price'].toString()) ?? 0;
+    double adjPrice =
+        double.tryParse(product['adjustment_price'].toString()) ?? 0;
+    double discount = double.tryParse(product['discount'].toString()) ?? 0;
+    double totalPrice = double.tryParse(product['total_price'].toString()) ?? 0;
+
+    // Check if product_code is null and display "External Product"
+    String productName = product['product_code'] != null
+        ? product['product_code']['product']['name'] ?? 'Unknown Product'
+        : 'External Product';
+
+    // Check if product image is null and provide a placeholder
+    String? productImageUrl = product['product_code'] != null
+        ? product['product_code']['image']
+        : null;
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16.0),
+      child: Card(
+        elevation: 0,
+        color: Colors.white,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Product Image
+                  GestureDetector(
+                    onTap: () {
+                      if (productImageUrl != null) {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => FullScreenImageView(
+                              imageUrl: '$apiBaseUrlImage$productImageUrl',
+                            ),
+                          ),
+                        );
+                      }
+                    },
+                    child: Container(
+                      width: 80,
+                      height: 80,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(8),
+                        color: Colors.grey[200],
+                      ),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(8),
+                        child: productImageUrl != null
+                            ? CachedNetworkImage(
+                                imageUrl: '$apiBaseUrlImage$productImageUrl',
+                                fit: BoxFit.cover,
+                                placeholder: (context, url) => Center(
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    valueColor: AlwaysStoppedAnimation<Color>(
+                                        AppTheme.primaryColor),
+                                  ),
+                                ),
+                                errorWidget: (context, url, error) => Icon(
+                                  Icons.image_not_supported,
+                                  size: 30,
+                                  color: Colors.grey[400],
+                                ),
+                              )
+                            : Icon(
+                                isProductBought
+                                    ? Icons.shopping_bag_outlined
+                                    : Icons.sell_outlined,
+                                size: 30,
+                                color: isProductBought
+                                    ? AppTheme.primaryColor
+                                    : AppTheme.successColor,
+                              ),
+                      ),
+                    ),
+                  ),
+                  SizedBox(width: 16),
+
+                  // Product Details
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          productName,
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: isProductBought
+                                ? AppTheme.primaryColor
+                                : AppTheme.successColor,
+                          ),
+                        ),
+                        SizedBox(height: 4),
+                        Text(
+                          'Weight: ${product['weight']}g',
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: Colors.grey[600],
+                          ),
+                        ),
+                        SizedBox(height: 8),
+
+                        // Price breakdown
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              'Price:',
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: Colors.grey[700],
+                              ),
+                            ),
+                            Text(
+                              'Rp ${formatCurrency(price)}',
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w500,
+                                color: Colors.grey[800],
+                              ),
+                            ),
+                          ],
+                        ),
+
+                        // Show adjustment price if applicable
+                        if (adjPrice != 0)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 4.0),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(
+                                  'Adjustment:',
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    color: adjPrice > 0
+                                        ? AppTheme.infoColor
+                                        : AppTheme.successColor,
+                                  ),
+                                ),
+                                Text(
+                                  adjPrice > 0
+                                      ? '+Rp ${formatCurrency(adjPrice)}'
+                                      : '-Rp ${formatCurrency(adjPrice.abs())}',
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w500,
+                                    color: adjPrice > 0
+                                        ? AppTheme.infoColor
+                                        : AppTheme.successColor,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+
+                        // Show discount if applicable
+                        if (discount > 0)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 4.0),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(
+                                  'Discount:',
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    color: AppTheme.successColor,
+                                  ),
+                                ),
+                                Text(
+                                  '-Rp ${formatCurrency(discount)}',
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w500,
+                                    color: AppTheme.successColor,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+
+                        // Total price
+                        Padding(
+                          padding: const EdgeInsets.only(top: 8.0),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                'Subtotal:',
+                                style: TextStyle(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.bold,
+                                  color: isProductBought
+                                      ? AppTheme.primaryColor
+                                      : AppTheme.successColor,
+                                ),
+                              ),
+                              Text(
+                                'Rp ${formatCurrency(totalPrice)}',
+                                style: TextStyle(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.bold,
+                                  color: isProductBought
+                                      ? AppTheme.accentColor
+                                      : AppTheme.successColor,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+
+              // Review section
+              if (transactionReview != null)
+                _buildReviewSection(transactionReview, canReview),
+
+              // Show "Rate Product" button if applicable
+              if (paymentStatus == 2 &&
+                  transactionReview == null &&
+                  canReview &&
+                  isProductBought)
+                _buildRateProductButton(reviewDeadline, product['id']),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildReviewSection(Map<String, dynamic> review, bool canReview) {
     return Container(
-      width: double.infinity,
+      margin: EdgeInsets.only(top: 16),
       padding: EdgeInsets.all(12),
-      margin: EdgeInsets.only(bottom: 16),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.2),
+        color: AppTheme.accentColor.withOpacity(0.1),
         borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: AppTheme.accentColor.withOpacity(0.3)),
       ),
-      child: Text(
-        text,
-        textAlign: TextAlign.center,
-        style:
-            TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: color),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              // Star rating display
+              Row(
+                children: List.generate(5, (index) {
+                  return Icon(
+                    index < (review['rating'] ?? 0)
+                        ? Icons.star
+                        : Icons.star_border,
+                    color: Colors.amber,
+                    size: 18,
+                  );
+                }),
+              ),
+              SizedBox(width: 8),
+              Text(
+                "${review['rating']} / 5",
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.grey[800],
+                ),
+              ),
+
+              // Date display
+              if (review['updated_at'] != null)
+                Expanded(
+                  child: Text(
+                    DateFormat("dd MMM yyyy")
+                        .format(DateTime.parse(review['updated_at'])),
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.grey[500],
+                    ),
+                    textAlign: TextAlign.right,
+                  ),
+                ),
+            ],
+          ),
+          SizedBox(height: 8),
+
+          // Review text
+          Text(
+            '"${review['review']}"',
+            style: TextStyle(
+              fontSize: 14,
+              fontStyle: FontStyle.italic,
+              color: Colors.grey[800],
+            ),
+          ),
+
+          // Admin reply if available
+          if (review['reply_admin'] != null)
+            Container(
+              margin: EdgeInsets.only(top: 12),
+              padding: EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: AppTheme.primaryColor.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Icon(Icons.support_agent,
+                          color: AppTheme.primaryColor, size: 16),
+                      SizedBox(width: 6),
+                      Text(
+                        "Admin Response",
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.bold,
+                          color: AppTheme.primaryColor,
+                        ),
+                      ),
+                    ],
+                  ),
+                  SizedBox(height: 6),
+                  Text(
+                    '"${review['reply_admin']}"',
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: AppTheme.primaryColor,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+          // Edit review button (only if admin hasn't replied and within time limit)
+          if (canReview && review['reply_admin'] == null)
+            Align(
+              alignment: Alignment.centerRight,
+              child: TextButton.icon(
+                onPressed: () {
+                  _showEditReviewDialog(
+                    review['id'],
+                    _transactionData!['customer_id'],
+                    review['rating'],
+                    review['review'],
+                  );
+                },
+                icon: Icon(Icons.edit, size: 16, color: AppTheme.accentColor),
+                label: Text(
+                  "Edit Review",
+                  style: TextStyle(color: AppTheme.accentColor),
+                ),
+              ),
+            ),
+        ],
       ),
+    );
+  }
+
+  Widget _buildRateProductButton(DateTime reviewDeadline, String productId) {
+    return Container(
+      margin: EdgeInsets.only(top: 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                "Deadline: ${DateFormat('dd MMM yyyy').format(reviewDeadline)}",
+                style: TextStyle(
+                  fontSize: 12,
+                  color: Colors.grey[600],
+                ),
+              ),
+              ElevatedButton.icon(
+                onPressed: () => _showRatingDialog(productId),
+                icon: Icon(Icons.star_border, size: 16),
+                label: Text("Rate Product"),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppTheme.accentColor,
+                  foregroundColor: Colors.white,
+                  padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showRatingDialog(String productId) {
+    double rating = 0;
+    TextEditingController reviewController = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return Dialog(
+              backgroundColor: AppTheme.primaryColor,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16.0),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(20.0),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    Text(
+                      "Rate This Product",
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    ),
+                    SizedBox(height: 12),
+                    Text(
+                      "Share your experience with this product",
+                      style: TextStyle(fontSize: 14, color: Colors.white70),
+                      textAlign: TextAlign.center,
+                    ),
+                    SizedBox(height: 20),
+
+                    // Star Rating Selection
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: List.generate(5, (index) {
+                        return GestureDetector(
+                          onTap: () {
+                            setDialogState(() {
+                              rating = index + 1.0;
+                              // Add a subtle haptic feedback
+                              HapticFeedback.selectionClick();
+                            });
+                          },
+                          child: Padding(
+                            padding:
+                                const EdgeInsets.symmetric(horizontal: 5.0),
+                            child: Icon(
+                              index < rating ? Icons.star : Icons.star_border,
+                              color: Colors.amber,
+                              size: 36,
+                            ),
+                          ),
+                        );
+                      }),
+                    ),
+                    SizedBox(height: 20),
+
+                    // Review Text Input
+                    Container(
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: TextField(
+                        controller: reviewController,
+                        maxLines: 3,
+                        style: TextStyle(color: Colors.white),
+                        decoration: InputDecoration(
+                          hintText: "Write your review here...",
+                          hintStyle: TextStyle(color: Colors.white54),
+                          border: InputBorder.none,
+                          contentPadding: EdgeInsets.all(16),
+                        ),
+                      ),
+                    ),
+                    SizedBox(height: 24),
+
+                    // Submit and Cancel Buttons
+                    Row(
+                      children: [
+                        Expanded(
+                          child: TextButton(
+                            onPressed: () => Navigator.pop(context),
+                            style: TextButton.styleFrom(
+                              padding: EdgeInsets.symmetric(vertical: 12),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                side: BorderSide(color: Colors.white24),
+                              ),
+                            ),
+                            child: Text(
+                              "Cancel",
+                              style: TextStyle(
+                                color: Colors.white70,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ),
+                        ),
+                        SizedBox(width: 12),
+                        Expanded(
+                          child: ElevatedButton(
+                            onPressed: () {
+                              if (rating > 0) {
+                                _submitRating(
+                                    productId, rating, reviewController.text);
+                                Navigator.pop(context);
+                              } else {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content:
+                                        Text("Please select a rating first"),
+                                    backgroundColor: AppTheme.warningColor,
+                                    behavior: SnackBarBehavior.floating,
+                                  ),
+                                );
+                              }
+                            },
+                            style: ElevatedButton.styleFrom(
+                              padding: EdgeInsets.symmetric(vertical: 12),
+                              backgroundColor: AppTheme.accentColor,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
+                            child: Text(
+                              "Submit",
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
     );
   }
 
@@ -531,609 +1709,129 @@ class _TradeDetailsPageState extends State<TradeDetailsPage> {
         return StatefulBuilder(
           builder: (context, setDialogState) {
             return Dialog(
-              backgroundColor: Color(0xFF31394E),
+              backgroundColor: AppTheme.primaryColor,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(16.0),
               ),
               child: Padding(
-                padding: const EdgeInsets.all(16.0),
+                padding: const EdgeInsets.all(20.0),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
-                    // 📝 Title
                     Text(
-                      "Edit Review",
+                      "Edit Your Review",
                       style: TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
                         color: Colors.white,
                       ),
                     ),
-                    SizedBox(height: 10),
+                    SizedBox(height: 12),
                     Text(
-                      "Perbarui penilaian dan ulasanmu.",
+                      "Update your rating and review",
                       style: TextStyle(fontSize: 14, color: Colors.white70),
                       textAlign: TextAlign.center,
                     ),
-                    SizedBox(height: 15),
+                    SizedBox(height: 20),
 
-                    // ⭐ Star Rating Selection
+                    // Star Rating Selection
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: List.generate(5, (index) {
-                        return IconButton(
-                          icon: Icon(
-                            index < rating ? Icons.star : Icons.star_border,
-                            color: Colors.amber,
-                            size: 32,
-                          ),
-                          onPressed: () {
+                        return GestureDetector(
+                          onTap: () {
                             setDialogState(() {
                               rating = index + 1.0;
+                              HapticFeedback.selectionClick();
                             });
                           },
+                          child: Padding(
+                            padding:
+                                const EdgeInsets.symmetric(horizontal: 5.0),
+                            child: Icon(
+                              index < rating ? Icons.star : Icons.star_border,
+                              color: Colors.amber,
+                              size: 36,
+                            ),
+                          ),
                         );
                       }),
                     ),
+                    SizedBox(height: 20),
 
-                    SizedBox(height: 10),
-
-                    // 📝 Review Input Field
+                    // Review Text Input
                     Container(
                       decoration: BoxDecoration(
-                        color: Colors.white10,
-                        borderRadius: BorderRadius.circular(8),
+                        color: Colors.white.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(12),
                       ),
                       child: TextField(
                         controller: reviewController,
                         maxLines: 3,
                         style: TextStyle(color: Colors.white),
                         decoration: InputDecoration(
-                          hintText: "Edit ulasan kamu...",
+                          hintText: "Update your review...",
                           hintStyle: TextStyle(color: Colors.white54),
                           border: InputBorder.none,
-                          contentPadding: EdgeInsets.symmetric(
-                              horizontal: 12, vertical: 10),
+                          contentPadding: EdgeInsets.all(16),
                         ),
                       ),
                     ),
+                    SizedBox(height: 24),
 
-                    SizedBox(height: 15),
-
-                    // 🔹 Submit Button with Gradient
-                    TextButton(
-                      onPressed: () {
-                        _submitEditReview(
-                          reviewId,
-                          userId,
-                          rating.toInt(),
-                          reviewController.text,
-                        );
-                        Navigator.pop(context);
-                      },
-                      style: TextButton.styleFrom(
-                        padding: EdgeInsets.zero,
-                      ),
-                      child: Container(
-                        width: 120,
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            colors: [
-                              Color(0xFFE8C4BD),
-                              Color(0xFFC58189),
-                            ],
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                          ),
-                          borderRadius: BorderRadius.circular(30),
-                        ),
-                        padding: const EdgeInsets.symmetric(vertical: 15),
-                        alignment: Alignment.center,
-                        child: const Text(
-                          "Perbarui",
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                    ),
-
-                    SizedBox(height: 5),
-
-                    // 🔹 Cancel Button
-                    TextButton(
-                      onPressed: () =>
-                          Navigator.of(context, rootNavigator: true).pop(),
-                      style: TextButton.styleFrom(
-                        padding: EdgeInsets.zero,
-                      ),
-                      child: Container(
-                        width: 100,
-                        decoration: BoxDecoration(
-                          color: Colors.white10,
-                          borderRadius: BorderRadius.circular(30),
-                        ),
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                        alignment: Alignment.center,
-                        child: const Text(
-                          "Batal",
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            );
-          },
-        );
-      },
-    );
-  }
-
-  Future<void> _submitEditReview(
-      String reviewId, String userId, int rating, String review) async {
-    final String url = '$apiBaseUrl/review';
-    String token = await getAccessToken();
-
-    final response = await http.patch(
-      Uri.parse(url),
-      headers: {
-        'Authorization': 'Bearer $token',
-        'Content-Type': 'application/json',
-      },
-      body: jsonEncode({
-        "review_id": reviewId, // Ensure correct API field names
-        "user_id": userId, // Include user ID
-        "rating": rating,
-        "review": review,
-      }),
-    );
-
-    final Map<String, dynamic> responseData = json.decode(response.body);
-
-    if (response.statusCode == 200 && responseData['success']) {
-      print("Review updated successfully!");
-      setState(() {
-        _fetchTransactionData(); // Refresh transaction details after update
-      });
-    } else {
-      print("Error updating review: ${responseData['message']}");
-    }
-  }
-
-  Widget _buildProductItem(Map<String, dynamic> product) {
-    int paymentStatus = _transactionData!['status']; // Get transaction status
-    var transactionReview =
-        product['TransactionReview']; // Ambil review jika ada
-
-    // 🕒 Perhitungan batas akhir review (updated_at + 7 hari)
-    DateTime updatedAt = DateTime.parse(product['updated_at']);
-    DateTime reviewDeadline =
-        updatedAt.add(Duration(days: _reviewExpirationDays));
-    bool canReview = DateTime.now().isBefore(reviewDeadline);
-
-    // Ambil Harga, Adjustment Price, dan Discount
-    double price = double.tryParse(product['price'].toString()) ?? 0;
-    double adjPrice =
-        double.tryParse(product['adjustment_price'].toString()) ?? 0;
-    double discount = double.tryParse(product['discount'].toString()) ?? 0;
-    double totalPrice = double.tryParse(product['total_price'].toString()) ?? 0;
-
-    // Check if product_code is null and display "OutSide Product"
-    String productName = product['product_code'] != null
-        ? product['product_code']['product']['name'] ?? 'Unknown Product'
-        : 'OutSide Product';
-
-    String? productImageUrl = product['product_code'] != null
-        ? product['product_code']['image']
-        : null;
-
-    String fallbackImageUrl = 'https://via.placeholder.com/70';
-
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8.0),
-      child: Container(
-        padding: EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(12),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.grey.withOpacity(0.2),
-              blurRadius: 6,
-              offset: Offset(0, 4),
-            ),
-          ],
-        ),
-        child: Column(
-          children: [
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Product Image
-                GestureDetector(
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => FullScreenImageView(
-                          imageUrl:
-                              '$apiBaseUrlImage${productImageUrl ?? fallbackImageUrl}',
-                        ),
-                      ),
-                    );
-                  },
-                  child: Container(
-                    width: 70,
-                    height: 70,
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(10),
-                      color: Colors.grey[300],
-                    ),
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(10),
-                      child: Image.network(
-                        '$apiBaseUrlImage${productImageUrl ?? fallbackImageUrl}', // Fallback to placeholder
-                        fit: BoxFit.cover,
-                        errorBuilder: (context, error, stackTrace) =>
-                            const Icon(
-                          Icons.image_not_supported,
-                          size: 40,
-                          color: Colors.grey,
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-
-                SizedBox(width: 16),
-
-                // Product Details
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        productName,
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      SizedBox(height: 4),
-                      Text(
-                        'Subtotal: Rp ${formatCurrency(totalPrice)}',
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: Colors.grey[700],
-                        ),
-                      ),
-                      SizedBox(height: 4),
-                      Text(
-                        'Weight: ${product['weight']}gr',
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: Colors.grey[700],
-                        ),
-                      ),
-
-                      // 🔹 Tampilkan Adjustment Price Jika > 0
-                      if (adjPrice != 0)
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            const Text("Adjustment Price",
-                                style: TextStyle(
-                                    fontSize: 14, color: Colors.blue)),
-                            Text(
-                              (adjPrice > 0
-                                  ? "+Rp ${formatCurrency(adjPrice)}"
-                                  : "Rp ${formatCurrency(adjPrice)}"),
-                              style: const TextStyle(
-                                  fontSize: 14, color: Colors.blue),
-                            ),
-                          ],
-                        ),
-
-                      // 🔹 Tampilkan Discount Jika > 0
-                      if (discount > 0)
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            const Text("Discount",
-                                style: TextStyle(
-                                    fontSize: 14, color: Colors.green)),
-                            Text("-Rp ${formatCurrency(discount)}",
-                                style: const TextStyle(
-                                    fontSize: 14, color: Colors.green)),
-                          ],
-                        ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-
-            SizedBox(height: 10),
-
-            // ⭐ Tampilkan Review jika ada
-            if (transactionReview != null)
-              Container(
-                margin: EdgeInsets.only(top: 8),
-                padding: EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: Color(0xFFC58189).withOpacity(0.3),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
+                    // Submit and Cancel Buttons
                     Row(
                       children: [
-                        Icon(Icons.star, color: Colors.amber, size: 18),
-                        SizedBox(width: 4),
-                        Text(
-                          "${transactionReview['rating']} / 5",
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.black87,
+                        Expanded(
+                          child: TextButton(
+                            onPressed: () => Navigator.pop(context),
+                            style: TextButton.styleFrom(
+                              padding: EdgeInsets.symmetric(vertical: 12),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                side: BorderSide(color: Colors.white24),
+                              ),
+                            ),
+                            child: Text(
+                              "Cancel",
+                              style: TextStyle(
+                                color: Colors.white70,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ),
+                        ),
+                        SizedBox(width: 12),
+                        Expanded(
+                          child: ElevatedButton(
+                            onPressed: () {
+                              _submitEditReview(
+                                reviewId,
+                                userId,
+                                rating.toInt(),
+                                reviewController.text,
+                              );
+                              Navigator.pop(context);
+                            },
+                            style: ElevatedButton.styleFrom(
+                              padding: EdgeInsets.symmetric(vertical: 12),
+                              backgroundColor: AppTheme.accentColor,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
+                            child: Text(
+                              "Update",
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
                           ),
                         ),
                       ],
                     ),
-                    SizedBox(height: 6),
-                    Text(
-                      '"${transactionReview['review']}"',
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontStyle: FontStyle.italic,
-                        color: Colors.black87,
-                      ),
-                    ),
-                    SizedBox(height: 6),
-                    if (transactionReview['reply_admin'] != null)
-                      Container(
-                        margin: EdgeInsets.only(top: 6),
-                        padding: EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: Color(0xFF31394E),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Icon(Icons.admin_panel_settings_rounded,
-                                color: Colors.white, size: 16),
-                            SizedBox(width: 6),
-                            Expanded(
-                              child: Text(
-                                '"${transactionReview['reply_admin']}"',
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w500,
-                                  color: Colors.white,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    if (transactionReview != null &&
-                        canReview &&
-                        transactionReview['reply_admin'] == null)
-                      Align(
-                        alignment: Alignment.centerRight,
-                        child: TextButton.icon(
-                          onPressed: () => _showEditReviewDialog(
-                              transactionReview['id'], // ✅ Pass reviewId
-                              _transactionData!['customer_id'], // ✅ Pass userId
-                              transactionReview['rating'],
-                              transactionReview['review']),
-                          icon: Icon(Icons.edit,
-                              size: 16, color: Colors.blueAccent),
-                          label: Text(
-                            "Edit Review",
-                            style: TextStyle(color: Colors.blueAccent),
-                          ),
-                        ),
-                      ),
-                  ],
-                ),
-              ),
-
-            // 🎯 Tampilkan tombol "Beri Penilaian" jika review belum ada dan masih dalam batas waktu
-            if (paymentStatus == 2 &&
-                transactionReview == null &&
-                canReview &&
-                product['transaction_type'] == 1)
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  // 🕒 Batas Akhir Review
-                  Text(
-                    "Beri review sebelum: ${DateFormat('dd MMM yyyy').format(reviewDeadline)}",
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.grey[600],
-                    ),
-                  ),
-
-                  // 📝 Tombol Beri Penilaian
-                  ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.blueAccent,
-                      padding:
-                          EdgeInsets.symmetric(horizontal: 15, vertical: 8),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                    ),
-                    onPressed: () => _showRatingDialog(product['id']),
-                    child: Text(
-                      "Beri Penilaian",
-                      style: TextStyle(fontSize: 14, color: Colors.white),
-                    ),
-                  ),
-                ],
-              ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  void _showRatingDialog(String productId) {
-    double rating = 0; // Default rating
-    TextEditingController reviewController = TextEditingController();
-
-    showDialog(
-      context: context,
-      builder: (context) {
-        return StatefulBuilder(
-          builder: (context, setDialogState) {
-            return Dialog(
-              backgroundColor: Color(0xFF31394E),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16.0),
-              ),
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    Text(
-                      "Beri Penilaian",
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                      ),
-                    ),
-                    SizedBox(height: 10),
-                    Text(
-                      "Bagaimana kualitas produk ini?",
-                      style: TextStyle(fontSize: 14, color: Colors.white70),
-                      textAlign: TextAlign.center,
-                    ),
-                    SizedBox(height: 15),
-
-                    // ⭐ Star Rating Selection
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: List.generate(5, (index) {
-                        return IconButton(
-                          icon: Icon(
-                            index < rating ? Icons.star : Icons.star_border,
-                            color: Colors.amber,
-                            size: 32,
-                          ),
-                          onPressed: () {
-                            setDialogState(() {
-                              rating = index + 1.0;
-                            });
-                          },
-                        );
-                      }),
-                    ),
-
-                    SizedBox(height: 10),
-
-                    // 📝 Review Text Input
-                    Container(
-                      decoration: BoxDecoration(
-                        color: Colors.white10,
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: TextField(
-                        autocorrect: false,
-                        controller: reviewController,
-                        maxLines: 3,
-                        style: TextStyle(color: Colors.white),
-                        decoration: InputDecoration(
-                          hintText: "Tulis ulasanmu...",
-                          hintStyle: TextStyle(color: Colors.white54),
-                          border: InputBorder.none,
-                          contentPadding: EdgeInsets.symmetric(
-                              horizontal: 12, vertical: 10),
-                        ),
-                      ),
-                    ),
-
-                    SizedBox(height: 15),
-
-                    // Submit Button
-                    TextButton(
-                      onPressed: () {
-                        _submitRating(productId, rating, reviewController.text);
-                        Navigator.pop(context);
-                      },
-                      style: TextButton.styleFrom(
-                        padding: EdgeInsets.zero,
-                      ),
-                      child: Container(
-                        width: 120,
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            colors: [
-                              Color(0xFFE8C4BD),
-                              Color(0xFFC58189),
-                            ],
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                          ),
-                          borderRadius: BorderRadius.circular(30),
-                        ),
-                        padding: const EdgeInsets.symmetric(vertical: 15),
-                        alignment: Alignment.center,
-                        child: const Text(
-                          "Kirim",
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                    ),
-
-                    SizedBox(height: 5),
-
-                    // Cancel Button
-                    TextButton(
-                      onPressed: () =>
-                          Navigator.of(context, rootNavigator: true).pop(),
-                      style: TextButton.styleFrom(
-                        padding: EdgeInsets.zero,
-                      ),
-                      child: Container(
-                        width: 100,
-                        decoration: BoxDecoration(
-                          color: Colors.white10,
-                          borderRadius: BorderRadius.circular(30),
-                        ),
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                        alignment: Alignment.center,
-                        child: const Text(
-                          "Batal",
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                    ),
                   ],
                 ),
               ),
@@ -1144,65 +1842,219 @@ class _TradeDetailsPageState extends State<TradeDetailsPage> {
     );
   }
 
+  // Function to submit rating
   Future<void> _submitRating(
       String productId, double rating, String review) async {
-    final String url = '$apiBaseUrl/review'; // API Gateway
-    String token = await getAccessToken();
-
-    final response = await http.post(
-      Uri.parse(url),
-      headers: {
-        'Authorization': 'Bearer $token',
-        'Content-Type': 'application/json',
+    // Show loading indicator
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: const [
+              SpinKitRing(
+                color: AppTheme.primaryColor,
+                size: 40.0,
+              ),
+              SizedBox(height: 16),
+              Text("Submitting your review..."),
+            ],
+          ),
+        );
       },
-      body: jsonEncode({
-        "transaction_product_id": productId,
-        "rating": rating.toInt(),
-        "review": review,
-      }),
     );
 
-    final Map<String, dynamic> responseData = json.decode(response.body);
+    try {
+      final String url = '$apiBaseUrl/review';
+      String token = await getAccessToken();
 
-    if (response.statusCode == 201) {
-      print("Review submitted successfully!");
-      setState(() {
-        _fetchTransactionData(); // Refresh the page to show the review
-      });
-    } else {
-      print("Error: ${responseData['message']}");
-    }
-  }
+      final response = await http.post(
+        Uri.parse(url),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode({
+          "transaction_product_id": productId,
+          "rating": rating.toInt(),
+          "review": review,
+        }),
+      );
 
-  void _openPaymentLink() async {
-    if (_transactionData != null && _transactionData!['payment_link'] != null) {
-      final String paymentUrl = _transactionData!['payment_link'];
-      final Uri url = Uri.parse(paymentUrl); // Format URL dengan benar
+      // Close loading dialog
+      Navigator.pop(context);
 
-      if (await canLaunchUrl(url)) {
-        await launchUrl(url,
-            mode: LaunchMode.externalApplication); // Gunakan mode yang tepat
+      final Map<String, dynamic> responseData = json.decode(response.body);
+
+      if (response.statusCode == 201 && responseData['success']) {
+        // Provide success feedback
+        HapticFeedback.mediumImpact();
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text("Review submitted successfully!"),
+            backgroundColor: AppTheme.successColor,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+
+        setState(() {
+          _fetchTransactionData();
+        });
       } else {
-        _showErrorDialog("Gagal membuka link pembayaran.");
+        _showErrorDialog("Failed to submit review: ${responseData['message']}");
       }
-    } else {
-      _showErrorDialog("Link pembayaran tidak tersedia.");
+    } catch (error) {
+      // Close loading dialog
+      Navigator.pop(context);
+      _showErrorDialog("Error submitting review: $error");
     }
   }
 
+  // Function to edit an existing review
+  Future<void> _submitEditReview(
+      String reviewId, String userId, int rating, String review) async {
+    // Show loading indicator
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: const [
+              SpinKitRing(
+                color: AppTheme.primaryColor,
+                size: 40.0,
+              ),
+              SizedBox(height: 16),
+              Text("Updating your review..."),
+            ],
+          ),
+        );
+      },
+    );
+
+    try {
+      final String url = '$apiBaseUrl/review';
+      String token = await getAccessToken();
+
+      final response = await http.patch(
+        Uri.parse(url),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode({
+          "review_id": reviewId,
+          "user_id": userId,
+          "rating": rating,
+          "review": review,
+        }),
+      );
+
+      // Close loading dialog
+      Navigator.pop(context);
+
+      final Map<String, dynamic> responseData = json.decode(response.body);
+
+      if (response.statusCode == 200 && responseData['success']) {
+        // Provide success feedback
+        HapticFeedback.mediumImpact();
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text("Review updated successfully!"),
+            backgroundColor: AppTheme.successColor,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+
+        setState(() {
+          _fetchTransactionData();
+        });
+      } else {
+        _showErrorDialog("Failed to update review: ${responseData['message']}");
+      }
+    } catch (error) {
+      // Close loading dialog
+      Navigator.pop(context);
+      _showErrorDialog("Error updating review: $error");
+    }
+  }
+
+  // Show error dialog with custom styling
   void _showErrorDialog(String message) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text("Error"),
+        title: Row(
+          children: [
+            Icon(Icons.error_outline, color: AppTheme.errorColor),
+            SizedBox(width: 8),
+            Text("Error", style: TextStyle(color: AppTheme.errorColor)),
+          ],
+        ),
         content: Text(message),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
-            child: Text("OK"),
+            child: Text("OK", style: TextStyle(color: AppTheme.primaryColor)),
           ),
         ],
       ),
     );
+  }
+
+  // Payment link handling with progress indicator
+  Future<void> _openPaymentLink() async {
+    if (_transactionData != null && _transactionData!['payment_link'] != null) {
+      final Uri url = Uri.parse(_transactionData!['payment_link']);
+
+      // Show a loading indicator
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (BuildContext context) {
+          return AlertDialog(
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                SpinKitRing(
+                  color: AppTheme.primaryColor,
+                  size: 40.0,
+                ),
+                SizedBox(height: 16),
+                Text("Opening payment gateway..."),
+              ],
+            ),
+          );
+        },
+      );
+
+      try {
+        if (await canLaunchUrl(url)) {
+          // Close the dialog
+          Navigator.pop(context);
+          await launchUrl(url, mode: LaunchMode.externalApplication);
+
+          // Provide haptic feedback
+          HapticFeedback.mediumImpact();
+        } else {
+          // Close the dialog
+          Navigator.pop(context);
+          _showErrorDialog("Unable to open the payment link.");
+        }
+      } catch (e) {
+        // Close the dialog
+        Navigator.pop(context);
+        _showErrorDialog("Error opening payment link: ${e.toString()}");
+      }
+    } else {
+      _showErrorDialog("Payment link is not available.");
+    }
   }
 }

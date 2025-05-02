@@ -607,9 +607,6 @@ class _HomePageWidgetState extends State<HomePageWidget>
         ),
       );
     } catch (e) {
-      // Dismiss loading dialog
-      Navigator.of(context).pop();
-
       dialog(context, 'Chart Error',
           'We couldn\'t load the historical gold price data. Please try again later.');
     }
@@ -868,20 +865,27 @@ class _HomePageWidgetState extends State<HomePageWidget>
                                   child: Row(
                                     mainAxisAlignment: MainAxisAlignment.center,
                                     children: List.generate(
-                                      bannerImages.length,
-                                      (index) => Container(
-                                        width: 8,
-                                        height: 8,
-                                        margin:
-                                            EdgeInsets.symmetric(horizontal: 4),
-                                        decoration: BoxDecoration(
-                                          shape: BoxShape.circle,
-                                          color: _currentBannerIndex == index
-                                              ? Color(0xFFC58189)
-                                              : Colors.grey[300],
-                                        ),
-                                      ),
-                                    ),
+                                        bannerImages.length,
+                                        (index) => AnimatedContainer(
+                                              duration: const Duration(
+                                                  milliseconds: 300),
+                                              width:
+                                                  _currentBannerIndex == index
+                                                      ? 20
+                                                      : 8,
+                                              height: 8,
+                                              margin:
+                                                  const EdgeInsets.symmetric(
+                                                      horizontal: 4),
+                                              decoration: BoxDecoration(
+                                                color: _currentBannerIndex ==
+                                                        index
+                                                    ? const Color(0xFFC58189)
+                                                    : Colors.grey[300],
+                                                borderRadius:
+                                                    BorderRadius.circular(5),
+                                              ),
+                                            )),
                                   ),
                                 ),
                             ],
@@ -965,7 +969,7 @@ class _HomePageWidgetState extends State<HomePageWidget>
                                 TextButton(
                                   onPressed: () {
                                     // Navigate to discover stores page
-                                    context.push('/stores');
+                                    context.push('/nearby');
                                   },
                                   child: Text(
                                     'Discover Stores',
@@ -1323,7 +1327,7 @@ class _HomePageWidgetState extends State<HomePageWidget>
                                                       BorderRadius.circular(4),
                                                 ),
                                                 child: Icon(
-                                                  Icons.arrow_downward_rounded,
+                                                  Icons.shopping_bag,
                                                   color: Colors.blue,
                                                   size: 14,
                                                 ),
@@ -1384,7 +1388,7 @@ class _HomePageWidgetState extends State<HomePageWidget>
                                                       BorderRadius.circular(4),
                                                 ),
                                                 child: Icon(
-                                                  Icons.arrow_upward_rounded,
+                                                  Icons.sell_rounded,
                                                   color: Colors.red,
                                                   size: 14,
                                                 ),

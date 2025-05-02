@@ -203,7 +203,7 @@ class _LocationScreenState extends State<LocationScreen>
   }
 
   double _haversine(double lat1, double lon1, double lat2, double lon2) {
-    const R = 6371; // Radius of the Earth in km
+    const R = 6371;
     final dLat = _degToRad(lat2 - lat1);
     final dLon = _degToRad(lon2 - lon1);
 
@@ -762,24 +762,6 @@ class _LocationScreenState extends State<LocationScreen>
                               ),
                             ),
                             const SizedBox(width: 8),
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 8,
-                                vertical: 2,
-                              ),
-                              decoration: BoxDecoration(
-                                color: primaryColor.withOpacity(0.1),
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                              child: Text(
-                                '${_tokoDalamRadius.length}',
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.bold,
-                                  color: primaryColor,
-                                ),
-                              ),
-                            ),
                             const Spacer(),
                             TextButton.icon(
                               onPressed: () {
@@ -825,8 +807,8 @@ class _LocationScreenState extends State<LocationScreen>
                             : ListView.builder(
                                 padding:
                                     const EdgeInsets.symmetric(horizontal: 16),
-                                itemCount: _tokoDalamRadius.length > 5
-                                    ? 5
+                                itemCount: _tokoDalamRadius.length > 10
+                                    ? 10
                                     : _tokoDalamRadius.length,
                                 itemBuilder: (context, index) {
                                   final store = _tokoDalamRadius[index];

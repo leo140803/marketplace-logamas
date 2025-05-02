@@ -17,23 +17,28 @@ class BottomNavBar extends StatelessWidget {
         color: const Color(0xFF31394E),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.2),
-            blurRadius: 8,
-            offset: const Offset(0, -2),
+            color: Colors.black.withOpacity(0.3),
+            blurRadius: 10,
+            offset: const Offset(0, -3),
           ),
         ],
+        borderRadius: const BorderRadius.only(
+          topLeft: Radius.circular(20),
+          topRight: Radius.circular(20),
+        ),
       ),
       child: SafeArea(
         child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 0),
+          padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 10),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
-              _buildNavItem(0, Icons.home_outlined, Icons.home, 'Home'),
-              _buildNavItem(1, Icons.store_outlined, Icons.store, 'Nearby'),
-              _buildNavItem(2, Icons.qr_code_scanner_outlined,
-                  Icons.qr_code_scanner, 'Scan QR'),
-              _buildNavItem(3, Icons.info_outline, Icons.info, 'Info'),
+              _buildNavItem(0, Icons.home_outlined, Icons.home_rounded, 'Home'),
+              _buildNavItem(
+                  1, Icons.store_outlined, Icons.store_rounded, 'Store'),
+              _buildSpecialNavItem(),
+              _buildNavItem(3, Icons.help_outline, Icons.help_rounded, 'FAQ'),
+              _buildNavItem(4, Icons.info_outline, Icons.info_rounded, 'Info'),
             ],
           ),
         ),
@@ -47,27 +52,39 @@ class BottomNavBar extends StatelessWidget {
 
     return InkWell(
       onTap: () => onItemTapped(index),
+      borderRadius: BorderRadius.circular(16),
+      splashColor: Colors.white.withOpacity(0.1),
+      highlightColor: Colors.transparent,
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeInOut,
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
         decoration: BoxDecoration(
           color:
-              isSelected ? Colors.white.withOpacity(0.1) : Colors.transparent,
+              isSelected ? Colors.white.withOpacity(0.15) : Colors.transparent,
           borderRadius: BorderRadius.circular(16),
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(
-              isSelected ? selectedIcon : unselectedIcon,
-              color: isSelected ? const Color(0xFFC58189) : Colors.white,
-              size: 24,
+            AnimatedScale(
+              scale: isSelected ? 1.2 : 1.0,
+              duration: const Duration(milliseconds: 200),
+              child: Icon(
+                isSelected ? selectedIcon : unselectedIcon,
+                color: isSelected
+                    ? const Color(0xFFC58189)
+                    : Colors.white.withOpacity(0.8),
+                size: 24,
+              ),
             ),
             const SizedBox(height: 4),
             Text(
               label,
               style: TextStyle(
-                color: isSelected ? const Color(0xFFC58189) : Colors.white,
+                color: isSelected
+                    ? const Color(0xFFC58189)
+                    : Colors.white.withOpacity(0.8),
                 fontSize: 12,
                 fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
               ),
@@ -78,5 +95,38 @@ class BottomNavBar extends StatelessWidget {
     );
   }
 
-  // Removed the special QR scan button method since we're using standard nav items for all 4 tabs
+  Widget _buildSpecialNavItem() {
+    final bool isSelected = selectedIndex == 2;
+
+    return GestureDetector(
+      onTap: () => onItemTapped(2),
+      child: Container(
+        padding: const EdgeInsets.all(5),
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: isSelected
+              ? const Color(0xFFC58189)
+              : const Color(0xFFC58189).withOpacity(0.8),
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFFC58189).withOpacity(0.4),
+              blurRadius: isSelected ? 10 : 5,
+              spreadRadius: isSelected ? 2 : 0,
+            ),
+          ],
+        ),
+        child: Container(
+          padding: const EdgeInsets.all(10),
+          decoration: const BoxDecoration(
+            shape: BoxShape.circle,
+          ),
+          child: Icon(
+            Icons.qr_code_scanner_rounded,
+            color: Colors.white,
+            size: 26,
+          ),
+        ),
+      ),
+    );
+  }
 }

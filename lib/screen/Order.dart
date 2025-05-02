@@ -25,59 +25,38 @@ class _OrdersPageState extends State<OrdersPage>
   DateTime? selectedStartDate;
   DateTime? selectedEndDate;
   int selectedFilter = 0; // 0: Semua, 1: 30 Hari, 2: 90 Hari, 3: Custom
+  bool isSearching = false;
+  final FocusNode _searchFocusNode = FocusNode();
 
-  Future<void> _selectDateRange(BuildContext context) async {
-    DateTimeRange? picked = await showDateRangePicker(
-      context: context,
-      firstDate: DateTime(2022, 1, 1),
-      lastDate: DateTime.now(),
-      initialDateRange: selectedStartDate != null && selectedEndDate != null
-          ? DateTimeRange(start: selectedStartDate!, end: selectedEndDate!)
-          : null,
-    );
+  // Define theme colors
+  final Color primaryColor = const Color(0xFFC58189);
+  final Color secondaryColor = const Color(0xFFFDE7E9);
+  final Color accentColor = const Color(0xFF81C784);
+  final Color bgColor = const Color(0xFFF5F5F5);
 
-    if (picked != null) {
+  @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(length: 3, vsync: this);
+    loadAccessToken().then((_) {
+      if (_accessToken != null) {
+        _loadOrders();
+      }
+    });
+
+    _searchFocusNode.addListener(() {
       setState(() {
-        selectedStartDate = picked.start;
-        selectedEndDate = picked.end;
-        selectedFilter = 3; // Custom Date
-        _loadOrders(); // Refresh data setelah memilih filter
+        isSearching = _searchFocusNode.hasFocus;
       });
-    }
+    });
   }
 
-  Future<List<Map<String, dynamic>>> fetchTransactionsByStatus(
-      int status) async {
-    try {
-      print(_accessToken);
-      final response = await http.get(
-        Uri.parse(
-            '$apiBaseUrl/transactions?payment_status=$status&type=1'), // ✅ Memperbaiki query parameter
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $_accessToken',
-        },
-      );
-
-      if (response.statusCode != 200) {
-        throw Exception('Failed to fetch data: ${response.statusCode}');
-      }
-
-      final Map<String, dynamic> data = jsonDecode(response.body);
-      print(data);
-
-      if (data.containsKey('data') && data['data'] is Map<String, dynamic>) {
-        final transactions = data['data']['data'];
-        if (transactions is List) {
-          return transactions.cast<Map<String, dynamic>>();
-        }
-      }
-
-      return [];
-    } catch (e) {
-      print('Error fetching transactions: $e');
-      return [];
-    }
+  @override
+  void dispose() {
+    _tabController.dispose();
+    _searchController.dispose();
+    _searchFocusNode.dispose();
+    super.dispose();
   }
 
   Future<void> loadAccessToken() async {
@@ -94,75 +73,136 @@ class _OrdersPageState extends State<OrdersPage>
   Future<void> _loadOrders() async {
     setState(() => isLoading = true);
 
-    try {
-      DateTime now = DateTime.now();
-      DateTime? startDate;
-      DateTime? endDate;
+    DateTime now = DateTime.now();
+    DateTime? startDate;
+    DateTime? endDate;
 
-      // Tentukan filter waktu berdasarkan pilihan pengguna
-      if (selectedFilter == 1) {
-        startDate = now.subtract(const Duration(days: 30));
-      } else if (selectedFilter == 2) {
-        startDate = now.subtract(const Duration(days: 90));
-      } else if (selectedFilter == 3) {
-        startDate = selectedStartDate;
-        endDate = selectedEndDate;
-      }
+    // Set time filters based on user selection
+    if (selectedFilter == 1) {
+      startDate = now.subtract(const Duration(days: 30));
+    } else if (selectedFilter == 2) {
+      startDate = now.subtract(const Duration(days: 90));
+    } else if (selectedFilter == 3) {
+      startDate = selectedStartDate;
+      endDate = selectedEndDate;
+    }
 
-      List<Map<String, dynamic>> allOrders = [];
-      for (int status = 0; status <= 2; status++) {
-        final orders = await fetchTransactionsByStatus(status);
-        allOrders.addAll(orders);
-      }
+    List<Map<String, dynamic>> allOrders = [];
+    for (int status = 0; status <= 2; status++) {
+      final orders = await fetchTransactionsByStatus(status);
+      allOrders.addAll(orders);
+    }
 
-      // Filter berdasarkan tanggal jika ada filter yang dipilih
-      if (startDate != null) {
-        allOrders = allOrders.where((order) {
-          DateTime orderDate =
-              DateTime.tryParse(order['created_at']) ?? DateTime(2000);
-          return orderDate.isAfter(startDate!.subtract(Duration(seconds: 1))) &&
-              (endDate == null ||
-                  orderDate.isBefore(endDate!.add(Duration(days: 1))));
-        }).toList();
-      }
+    // Filter by date if a filter is selected
+    if (startDate != null) {
+      allOrders = allOrders.where((order) {
+        DateTime orderDate =
+            DateTime.tryParse(order['created_at']) ?? DateTime(2000);
+        return orderDate.isAfter(startDate!.subtract(Duration(seconds: 1))) &&
+            (endDate == null ||
+                orderDate.isBefore(endDate!.add(Duration(days: 1))));
+      }).toList();
+    }
 
-      // Filter berdasarkan pencarian produk
-      String searchQuery = _searchController.text.trim().toLowerCase();
-      print("Search Query: $searchQuery");
+    // Filter by product search
+    String searchQuery = _searchController.text.trim().toLowerCase();
 
-      if (searchQuery.isNotEmpty) {
-        allOrders = allOrders.where((order) {
-          final products = order['transaction_products'];
+    if (searchQuery.isNotEmpty) {
+      allOrders = allOrders.where((order) {
+        final products = order['transaction_products'];
 
-          if (products is List) {
-            return products.any((product) {
-              if (product is Map<String, dynamic>) {
-                final productCode = product['product_code'];
-                final productData = productCode is Map<String, dynamic>
-                    ? productCode['product']
-                    : null;
-                final productName = productData is Map<String, dynamic>
-                    ? productData['name']
-                    : null;
+        if (products is List) {
+          return products.any((product) {
+            if (product is Map<String, dynamic>) {
+              final productCode = product['product_code'];
+              final productData = productCode is Map<String, dynamic>
+                  ? productCode['product']
+                  : null;
+              final productName = productData is Map<String, dynamic>
+                  ? productData['name']
+                  : null;
 
-                if (productName is String) {
-                  return productName.toLowerCase().contains(searchQuery);
-                }
+              if (productName is String) {
+                return productName.toLowerCase().contains(searchQuery);
               }
-              return false;
-            });
-          }
-          return false;
-        }).toList();
+            }
+            return false;
+          });
+        }
+        return false;
+      }).toList();
+    }
+
+    setState(() {
+      pendingOrders = allOrders.where((o) => o['status'] == 0).toList();
+      readyToPickupOrders = allOrders.where((o) => o['status'] == 1).toList();
+      completedOrders = allOrders.where((o) => o['status'] == 2).toList();
+      isLoading = false;
+    });
+  }
+
+  Future<List<Map<String, dynamic>>> fetchTransactionsByStatus(
+      int status) async {
+    try {
+      final response = await http.get(
+        Uri.parse('$apiBaseUrl/transactions?payment_status=$status&type=1'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $_accessToken',
+        },
+      );
+
+      if (response.statusCode != 200) {
+        throw Exception('Failed to fetch data: ${response.statusCode}');
+      }
+      print(jsonDecode(response.body));
+
+      final Map<String, dynamic> data = jsonDecode(response.body);
+
+      if (data.containsKey('data') && data['data'] is Map<String, dynamic>) {
+        final transactions = data['data']['data'];
+        if (transactions is List) {
+          return transactions.cast<Map<String, dynamic>>();
+        }
       }
 
+      return [];
+    } catch (e) {
+      print('Error fetching transactions: $e');
+      return [];
+    }
+  }
+
+  Future<void> _selectDateRange(BuildContext context) async {
+    DateTimeRange? picked = await showDateRangePicker(
+      context: context,
+      firstDate: DateTime(2022, 1, 1),
+      lastDate: DateTime.now(),
+      initialDateRange: selectedStartDate != null && selectedEndDate != null
+          ? DateTimeRange(start: selectedStartDate!, end: selectedEndDate!)
+          : null,
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: ColorScheme.light(
+              primary: primaryColor,
+              onPrimary: Colors.white,
+              surface: Colors.white,
+              onSurface: Colors.black87,
+            ),
+          ),
+          child: child!,
+        );
+      },
+    );
+
+    if (picked != null) {
       setState(() {
-        pendingOrders = allOrders.where((o) => o['status'] == 0).toList();
-        readyToPickupOrders = allOrders.where((o) => o['status'] == 1).toList();
-        completedOrders = allOrders.where((o) => o['status'] == 2).toList();
+        selectedStartDate = picked.start;
+        selectedEndDate = picked.end;
+        selectedFilter = 3; // Custom Date
+        _loadOrders(); // Refresh data after filter selection
       });
-    } finally {
-      setState(() => isLoading = false);
     }
   }
 
@@ -173,6 +213,19 @@ class _OrdersPageState extends State<OrdersPage>
       initialDate: selectedStartDate ?? DateTime.now(),
       firstDate: DateTime(2022, 1, 1),
       lastDate: DateTime.now(),
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: ColorScheme.light(
+              primary: primaryColor,
+              onPrimary: Colors.white,
+              surface: Colors.white,
+              onSurface: Colors.black87,
+            ),
+          ),
+          child: child!,
+        );
+      },
     );
 
     if (picked != null) {
@@ -188,6 +241,19 @@ class _OrdersPageState extends State<OrdersPage>
       initialDate: selectedEndDate ?? DateTime.now(),
       firstDate: selectedStartDate ?? DateTime(2022, 1, 1),
       lastDate: DateTime.now(),
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: ColorScheme.light(
+              primary: primaryColor,
+              onPrimary: Colors.white,
+              surface: Colors.white,
+              onSurface: Colors.black87,
+            ),
+          ),
+          child: child!,
+        );
+      },
     );
 
     if (picked != null) {
@@ -202,232 +268,6 @@ class _OrdersPageState extends State<OrdersPage>
     if (selectedStartDate != null) {
       await _pickEndDate(context, setState);
     }
-  }
-
-  @override
-  void initState() {
-    super.initState();
-    _tabController = TabController(length: 3, vsync: this);
-    loadAccessToken().then((_) {
-      if (_accessToken != null) {
-        _loadOrders();
-      }
-    });
-  }
-
-  @override
-  void dispose() {
-    _tabController.dispose();
-    super.dispose();
-  }
-
-  void _showFilterDrawer(BuildContext context) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.white,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (context) {
-        return StatefulBuilder(
-          builder: (BuildContext context, StateSetter setState) {
-            return FractionallySizedBox(
-              heightFactor: 0.4, // Setengah layar
-              child: Padding(
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 16.0, vertical: 16.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // 🔹 Header Drawer
-                    Center(
-                      child: Container(
-                        width: 50,
-                        height: 6,
-                        margin: const EdgeInsets.only(bottom: 16),
-                        decoration: BoxDecoration(
-                          color: Colors.grey[300],
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                      ),
-                    ),
-                    const Text(
-                      'Filter Waktu Transaksi',
-                      style:
-                          TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                    ),
-                    const SizedBox(height: 10),
-
-                    // 🔹 Dropdown Filter Waktu
-                    Container(
-                      decoration: BoxDecoration(
-                        color: Colors.grey[100], // Latar belakang dropdown
-                        borderRadius:
-                            BorderRadius.circular(10), // Membulatkan sudut
-                        border:
-                            Border.all(color: Colors.grey.shade300, width: 1.5),
-                      ),
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 12), // Padding dalam container
-                      child: DropdownButtonHideUnderline(
-                        child: DropdownButton<int>(
-                          value: selectedFilter,
-                          isExpanded: true,
-                          icon: const Icon(Icons.arrow_drop_down,
-                              color: Color(0xFFC58189),
-                              size: 30), // Icon dropdown modern
-                          dropdownColor: Colors.white, // Warna latar dropdown
-                          borderRadius: BorderRadius.circular(
-                              10), // Membulatkan sudut dropdown
-                          items: const [
-                            DropdownMenuItem(
-                                value: 0, child: Text("📅 Semua Tanggal")),
-                            DropdownMenuItem(
-                                value: 1, child: Text("🗓 30 Hari Terakhir")),
-                            DropdownMenuItem(
-                                value: 2, child: Text("📆 90 Hari Terakhir")),
-                            DropdownMenuItem(
-                                value: 3,
-                                child: Text("📍 Pilih Tanggal Sendiri")),
-                          ],
-                          onChanged: (value) {
-                            setState(() {
-                              selectedFilter = value!;
-                              if (selectedFilter == 3) {
-                                _selectCustomDate(context, setState);
-                              }
-                            });
-                          },
-                          style: const TextStyle(
-                            fontSize: 16,
-                            color: Colors
-                                .black87, // Warna teks lebih gelap untuk kontras
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                    ),
-
-                    const SizedBox(height: 16),
-
-                    // 🔹 Jika Custom Date Dipilih, Tampilkan Rentang Tanggal
-                    if (selectedFilter == 3)
-                      Container(
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(
-                              color: Colors.grey.shade300, width: 1.5),
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text(
-                              "Pilih Rentang Tanggal:",
-                              style: TextStyle(
-                                  fontSize: 16, fontWeight: FontWeight.bold),
-                            ),
-                            const SizedBox(height: 8),
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                // 🔹 Tanggal Mulai
-                                GestureDetector(
-                                  onTap: () =>
-                                      _pickStartDate(context, setState),
-                                  child: Container(
-                                    padding: const EdgeInsets.symmetric(
-                                        horizontal: 12, vertical: 10),
-                                    decoration: BoxDecoration(
-                                      color: Colors.grey[100],
-                                      borderRadius: BorderRadius.circular(8),
-                                      border: Border.all(
-                                          color: Colors.grey.shade300,
-                                          width: 1.5),
-                                    ),
-                                    child: Row(
-                                      children: [
-                                        const Icon(Icons.calendar_today,
-                                            size: 18, color: Color(0xFFC58189)),
-                                        const SizedBox(width: 8),
-                                        Text(
-                                          selectedStartDate != null
-                                              ? "${selectedStartDate!.day} ${_getMonthName(selectedStartDate!.month)} ${selectedStartDate!.year}"
-                                              : "Pilih Tanggal",
-                                          style: const TextStyle(
-                                              fontSize: 14,
-                                              fontWeight: FontWeight.bold),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ),
-                                const Text(" - "),
-                                // 🔹 Tanggal Akhir
-                                GestureDetector(
-                                  onTap: () => _pickEndDate(context, setState),
-                                  child: Container(
-                                    padding: const EdgeInsets.symmetric(
-                                        horizontal: 12, vertical: 10),
-                                    decoration: BoxDecoration(
-                                      color: Colors.grey[100],
-                                      borderRadius: BorderRadius.circular(8),
-                                      border: Border.all(
-                                          color: Colors.grey.shade300,
-                                          width: 1.5),
-                                    ),
-                                    child: Row(
-                                      children: [
-                                        const Icon(Icons.calendar_today,
-                                            size: 18, color: Color(0xFFC58189)),
-                                        const SizedBox(width: 8),
-                                        Text(
-                                          selectedEndDate != null
-                                              ? "${selectedEndDate!.day} ${_getMonthName(selectedEndDate!.month)} ${selectedEndDate!.year}"
-                                              : "Pilih Tanggal",
-                                          style: const TextStyle(
-                                              fontSize: 14,
-                                              fontWeight: FontWeight.bold),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
-                      ),
-
-                    const Spacer(),
-
-                    // 🔹 Tombol Terapkan
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton(
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFFC58189),
-                        ),
-                        onPressed: () {
-                          Navigator.pop(context); // Tutup drawer
-                          _loadOrders(); // Terapkan filter
-                        },
-                        child: const Text("Terapkan Filter",
-                            style: TextStyle(color: Colors.white)),
-                      ),
-                    ),
-
-                    const SizedBox(height: 16),
-                  ],
-                ),
-              ),
-            );
-          },
-        );
-      },
-    );
   }
 
   String _getMonthName(int month) {
@@ -449,97 +289,632 @@ class _OrdersPageState extends State<OrdersPage>
     return months[month];
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        backgroundColor:
-            Colors.transparent, // Buat transparan agar gambar terlihat
-        flexibleSpace: Stack(
-          fit: StackFit.expand,
-          children: [
-            Image.asset(
-              'assets/images/appbar.png', // Ganti dengan path gambar yang sesuai
-              fit: BoxFit.cover, // Pastikan gambar memenuhi seluruh AppBar
-            ),
-            Container(
-              color: Colors.black
-                  .withOpacity(0.2), // Overlay agar teks tetap terbaca
-            ),
-          ],
-        ),
-        title: Padding(
-          padding: const EdgeInsets.only(bottom: 10.0),
-          child: Row(
-            children: [
-              Expanded(
-                child: TextFormField(
-                  autocorrect: false,
-                  controller: _searchController,
-                  onFieldSubmitted: (value) {
-                    _loadOrders(); // Load ulang data berdasarkan pencarian saat Enter ditekan
-                  },
-                  // focusNode: _textFieldFocusNode,
-                  decoration: InputDecoration(
-                    isDense: true,
-                    hintText: 'Cari Produk...',
-                    hintStyle: TextStyle(
-                      fontSize: 14,
-                      color: Color(0xFFC58189),
-                    ),
-                    enabledBorder: OutlineInputBorder(
-                      borderSide: BorderSide(color: Colors.transparent),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderSide: BorderSide(color: Colors.transparent),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    filled: true,
-                    fillColor: Colors.white,
-                    prefixIcon: Icon(
-                      Icons.search,
-                      color: Color(0xFFC58189),
-                    ),
+  void _showFilterDrawer(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (BuildContext context, StateSetter setState) {
+            return Container(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.grey.withOpacity(0.3),
+                    spreadRadius: 1,
+                    blurRadius: 5,
+                    offset: Offset(0, -2),
+                  ),
+                ],
+              ),
+              // Increased height factor to prevent overflow
+              child: FractionallySizedBox(
+                heightFactor: selectedFilter == 3 ? 0.6 : 0.4,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 20.0, vertical: 16.0),
+                  // Wrap in SingleChildScrollView to handle potential overflow
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Header Drawer with notch
+                      Center(
+                        child: Container(
+                          width: 50,
+                          height: 5,
+                          margin: const EdgeInsets.only(bottom: 20),
+                          decoration: BoxDecoration(
+                            color: Colors.grey[300],
+                            borderRadius: BorderRadius.circular(5),
+                          ),
+                        ),
+                      ),
+
+                      // Title with icon
+                      Row(
+                        children: [
+                          Icon(Icons.filter_alt, color: primaryColor, size: 24),
+                          const SizedBox(width: 8),
+                          Text(
+                            'Filter Waktu Transaksi',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.black87,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 20),
+
+                      // Time Filter Dropdown with improved styling
+                      Container(
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: Colors.grey.shade300),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.grey.withOpacity(0.1),
+                              spreadRadius: 0,
+                              blurRadius: 3,
+                              offset: Offset(0, 1),
+                            ),
+                          ],
+                        ),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 16, vertical: 4),
+                        child: DropdownButtonHideUnderline(
+                          child: DropdownButton<int>(
+                            value: selectedFilter,
+                            isExpanded: true,
+                            icon: Icon(Icons.keyboard_arrow_down,
+                                color: primaryColor),
+                            elevation: 16,
+                            borderRadius: BorderRadius.circular(12),
+                            items: const [
+                              DropdownMenuItem(
+                                value: 0,
+                                child: Row(
+                                  children: [
+                                    Icon(Icons.calendar_month,
+                                        color: Colors.grey),
+                                    SizedBox(width: 8),
+                                    Text("Semua Tanggal"),
+                                  ],
+                                ),
+                              ),
+                              DropdownMenuItem(
+                                value: 1,
+                                child: Row(
+                                  children: [
+                                    Icon(Icons.calendar_today,
+                                        color: Colors.blue),
+                                    SizedBox(width: 8),
+                                    Text("30 Hari Terakhir"),
+                                  ],
+                                ),
+                              ),
+                              DropdownMenuItem(
+                                value: 2,
+                                child: Row(
+                                  children: [
+                                    Icon(Icons.date_range, color: Colors.green),
+                                    SizedBox(width: 8),
+                                    Text("90 Hari Terakhir"),
+                                  ],
+                                ),
+                              ),
+                              DropdownMenuItem(
+                                value: 3,
+                                child: Row(
+                                  children: [
+                                    Icon(Icons.edit_calendar,
+                                        color: Colors.orange),
+                                    SizedBox(width: 8),
+                                    Text("Pilih Tanggal Sendiri"),
+                                  ],
+                                ),
+                              ),
+                            ],
+                            onChanged: (value) {
+                              setState(() {
+                                selectedFilter = value!;
+                                if (selectedFilter == 3) {
+                                  _selectCustomDate(context, setState);
+                                }
+                              });
+                            },
+                            style: const TextStyle(
+                              fontSize: 16,
+                              color: Colors.black87,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ),
+                      ),
+
+                      const SizedBox(height: 20),
+
+                      // Expanded scrollable area for date selection
+                      Expanded(
+                        child: SingleChildScrollView(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              // Custom Date Range Selection
+                              if (selectedFilter == 3)
+                                Container(
+                                  padding: const EdgeInsets.all(16),
+                                  margin: const EdgeInsets.only(bottom: 20),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    borderRadius: BorderRadius.circular(12),
+                                    border:
+                                        Border.all(color: Colors.grey.shade300),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: Colors.grey.withOpacity(0.1),
+                                        spreadRadius: 0,
+                                        blurRadius: 3,
+                                        offset: Offset(0, 1),
+                                      ),
+                                    ],
+                                  ),
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Row(
+                                        children: [
+                                          Icon(Icons.date_range,
+                                              color: primaryColor, size: 18),
+                                          const SizedBox(width: 8),
+                                          Text(
+                                            "Pilih Rentang Tanggal:",
+                                            style: TextStyle(
+                                              fontSize: 16,
+                                              fontWeight: FontWeight.bold,
+                                              color: Colors.black87,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                      const SizedBox(height: 16),
+                                      // Modified date selection layout to better handle overflow
+                                      Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          // Start date selector
+                                          Text(
+                                            "Tanggal Mulai:",
+                                            style: TextStyle(
+                                              fontSize: 14,
+                                              color: Colors.grey[700],
+                                            ),
+                                          ),
+                                          const SizedBox(height: 8),
+                                          GestureDetector(
+                                            onTap: () => _pickStartDate(
+                                                context, setState),
+                                            child: Container(
+                                              width: double.infinity,
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                horizontal: 12,
+                                                vertical: 12,
+                                              ),
+                                              decoration: BoxDecoration(
+                                                color: Colors.grey[50],
+                                                borderRadius:
+                                                    BorderRadius.circular(8),
+                                                border: Border.all(
+                                                    color:
+                                                        Colors.grey.shade300),
+                                              ),
+                                              child: Row(
+                                                children: [
+                                                  Icon(Icons.calendar_today,
+                                                      size: 16,
+                                                      color: primaryColor),
+                                                  const SizedBox(width: 8),
+                                                  Expanded(
+                                                    child: Text(
+                                                      selectedStartDate != null
+                                                          ? "${selectedStartDate!.day} ${_getMonthName(selectedStartDate!.month)} ${selectedStartDate!.year}"
+                                                          : "Pilih Tanggal Mulai",
+                                                      style: TextStyle(
+                                                        fontSize: 14,
+                                                        fontWeight:
+                                                            FontWeight.w500,
+                                                        color:
+                                                            selectedStartDate !=
+                                                                    null
+                                                                ? Colors.black87
+                                                                : Colors.grey,
+                                                      ),
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+                                          ),
+
+                                          const SizedBox(height: 16),
+
+                                          // End date selector
+                                          Text(
+                                            "Tanggal Akhir:",
+                                            style: TextStyle(
+                                              fontSize: 14,
+                                              color: Colors.grey[700],
+                                            ),
+                                          ),
+                                          const SizedBox(height: 8),
+                                          GestureDetector(
+                                            onTap: () =>
+                                                _pickEndDate(context, setState),
+                                            child: Container(
+                                              width: double.infinity,
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                horizontal: 12,
+                                                vertical: 12,
+                                              ),
+                                              decoration: BoxDecoration(
+                                                color: Colors.grey[50],
+                                                borderRadius:
+                                                    BorderRadius.circular(8),
+                                                border: Border.all(
+                                                    color:
+                                                        Colors.grey.shade300),
+                                              ),
+                                              child: Row(
+                                                children: [
+                                                  Icon(Icons.calendar_today,
+                                                      size: 16,
+                                                      color: primaryColor),
+                                                  const SizedBox(width: 8),
+                                                  Expanded(
+                                                    child: Text(
+                                                      selectedEndDate != null
+                                                          ? "${selectedEndDate!.day} ${_getMonthName(selectedEndDate!.month)} ${selectedEndDate!.year}"
+                                                          : "Pilih Tanggal Akhir",
+                                                      style: TextStyle(
+                                                        fontSize: 14,
+                                                        fontWeight:
+                                                            FontWeight.w500,
+                                                        color:
+                                                            selectedEndDate !=
+                                                                    null
+                                                                ? Colors.black87
+                                                                : Colors.grey,
+                                                      ),
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+                                          ),
+
+                                          // Date range visualization
+                                          if (selectedStartDate != null &&
+                                              selectedEndDate != null)
+                                            Container(
+                                              margin: const EdgeInsets.only(
+                                                  top: 16),
+                                              padding: const EdgeInsets.all(8),
+                                              decoration: BoxDecoration(
+                                                color: primaryColor
+                                                    .withOpacity(0.1),
+                                                borderRadius:
+                                                    BorderRadius.circular(8),
+                                                border: Border.all(
+                                                    color: primaryColor
+                                                        .withOpacity(0.3)),
+                                              ),
+                                              child: Row(
+                                                children: [
+                                                  Icon(Icons.info_outline,
+                                                      size: 16,
+                                                      color: primaryColor),
+                                                  const SizedBox(width: 8),
+                                                  Expanded(
+                                                    child: Text(
+                                                      selectedEndDate != null &&
+                                                              selectedStartDate !=
+                                                                  null
+                                                          ? "Rentang waktu: ${selectedEndDate!.difference(selectedStartDate!).inDays + 1} hari"
+                                                          : "Pilih kedua tanggal",
+                                                      style: TextStyle(
+                                                        fontSize: 13,
+                                                        color: primaryColor,
+                                                      ),
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+                                        ],
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ),
+                      ),
+
+                      // Apply Button with improved styling
+                      Container(
+                        width: double.infinity,
+                        height: 50,
+                        margin: const EdgeInsets.only(top: 16),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(12),
+                          boxShadow: [
+                            BoxShadow(
+                              color: primaryColor.withOpacity(0.3),
+                              spreadRadius: 1,
+                              blurRadius: 3,
+                              offset: Offset(0, 1),
+                            ),
+                          ],
+                        ),
+                        child: ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: primaryColor,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            elevation: 0,
+                          ),
+                          onPressed: () {
+                            Navigator.pop(context);
+                            _loadOrders();
+                          },
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(Icons.check_circle_outline,
+                                  color: Colors.white),
+                              const SizedBox(width: 8),
+                              Text(
+                                "Terapkan Filter",
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: bgColor,
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        flexibleSpace: Container(
+          decoration: BoxDecoration(
+            image: DecorationImage(
+              image: AssetImage('assets/images/appbar.png'),
+              fit: BoxFit.cover,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.2),
+                blurRadius: 5,
+                offset: Offset(0, 3),
+              ),
             ],
+          ),
+          child: Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  Colors.black.withOpacity(0.2),
+                  Colors.black.withOpacity(0.4),
+                ],
+              ),
+            ),
+          ),
+        ),
+        elevation: 0,
+        title: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          width: double.infinity,
+          height: 45,
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(isSearching ? 12 : 25),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.1),
+                blurRadius: 4,
+                offset: Offset(0, 2),
+              ),
+            ],
+          ),
+          child: TextField(
+            autocorrect: false,
+            controller: _searchController,
+            focusNode: _searchFocusNode,
+            onSubmitted: (value) => _loadOrders(),
+            style: TextStyle(fontSize: 14),
+            decoration: InputDecoration(
+              isDense: true,
+              hintText: 'Cari produk...',
+              hintStyle: TextStyle(
+                fontSize: 14,
+                color: primaryColor.withOpacity(0.7),
+              ),
+              prefixIcon: Icon(
+                Icons.search,
+                color: primaryColor,
+                size: 20,
+              ),
+              suffixIcon: _searchController.text.isNotEmpty
+                  ? GestureDetector(
+                      onTap: () {
+                        _searchController.clear();
+                        _loadOrders();
+                      },
+                      child: Icon(
+                        Icons.close,
+                        color: Colors.grey,
+                        size: 18,
+                      ),
+                    )
+                  : null,
+              border: InputBorder.none,
+              contentPadding:
+                  EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+            ),
           ),
         ),
         leading: IconButton(
+          icon: Icon(Icons.arrow_back_ios, color: Colors.white, size: 22),
           onPressed: () => context.go('/information'),
-          icon: const Icon(Icons.arrow_back, color: Colors.white),
         ),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.date_range, color: Colors.white),
-            onPressed: () {
-              _showFilterDrawer(context);
-            },
+          Container(
+            margin: EdgeInsets.only(right: 8),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.2),
+              shape: BoxShape.circle,
+            ),
+            child: IconButton(
+              icon: Icon(
+                Icons.filter_list_rounded,
+                color: Colors.white,
+                size: 24,
+              ),
+              onPressed: () => _showFilterDrawer(context),
+            ),
           ),
         ],
-        bottom: TabBar(
-          controller: _tabController,
-          indicatorColor: const Color(0xFFC58189),
-          labelColor: const Color(0xFFC58189),
-          unselectedLabelColor: Colors.white,
-          tabs: const [
-            Tab(text: 'Belum Bayar 💳'),
-            Tab(text: 'Siap Ambil 🏬'),
-            Tab(text: 'Selesai ✅'),
-          ],
+        bottom: PreferredSize(
+          preferredSize: Size.fromHeight(kToolbarHeight),
+          child: Container(
+            decoration: BoxDecoration(
+              border: Border(
+                bottom: BorderSide(
+                  color: Colors.white.withOpacity(0.3),
+                  width: 1,
+                ),
+              ),
+            ),
+            child: Center(
+              child: TabBar(
+                controller: _tabController,
+                indicatorColor: Colors.white,
+                indicatorWeight: 3,
+                labelColor: Colors.white,
+                unselectedLabelColor: Colors.white.withOpacity(0.7),
+                labelStyle:
+                    TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                unselectedLabelStyle:
+                    TextStyle(fontWeight: FontWeight.normal, fontSize: 13),
+                tabs: [
+                  Tab(
+                    child: Row(
+                      mainAxisAlignment:
+                          MainAxisAlignment.center, // Center icon + text
+                      mainAxisSize: MainAxisSize.min, // Wrap content size
+                      children: [
+                        Icon(Icons.payment_outlined, size: 18),
+                        SizedBox(width: 6),
+                        Flexible(
+                          child:
+                              Text('Not Paid', overflow: TextOverflow.ellipsis),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Tab(
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.store_outlined, size: 18),
+                        SizedBox(width: 6),
+                        Flexible(
+                          child: Text('Ready', overflow: TextOverflow.ellipsis),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Tab(
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.check_circle_outline, size: 18),
+                        SizedBox(width: 6),
+                        Flexible(
+                          child: Text('Done', overflow: TextOverflow.ellipsis),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
         ),
       ),
       body: isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : TabBarView(
-              controller: _tabController,
-              children: [
-                _buildOrderList(pendingOrders),
-                _buildOrderList(readyToPickupOrders),
-                _buildOrderList(completedOrders),
-              ],
+          ? Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  CircularProgressIndicator(
+                    valueColor: AlwaysStoppedAnimation<Color>(primaryColor),
+                    strokeWidth: 3,
+                  ),
+                  SizedBox(height: 16),
+                  Text(
+                    'Memuat pesanan...',
+                    style: TextStyle(
+                      color: Colors.grey[600],
+                      fontSize: 14,
+                    ),
+                  ),
+                ],
+              ),
+            )
+          : Container(
+              color: bgColor,
+              child: TabBarView(
+                controller: _tabController,
+                children: [
+                  _buildOrderList(pendingOrders),
+                  _buildOrderList(readyToPickupOrders),
+                  _buildOrderList(completedOrders),
+                ],
+              ),
             ),
     );
   }
@@ -550,14 +925,26 @@ class _OrdersPageState extends State<OrdersPage>
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Icon(
-            Icons.note_alt_outlined,
-            size: 80,
-            color: Colors.grey.shade400,
+            Icons.receipt_long, // bisa diganti sesuai kebutuhan
+            size: 100,
+            color: Colors.grey[400],
           ),
           const SizedBox(height: 16),
-          const Text(
+          Text(
             'Belum ada pesanan',
-            style: TextStyle(fontSize: 16, color: Colors.grey),
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: Colors.grey[600],
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Pesanan Anda akan muncul di sini',
+            style: TextStyle(
+              fontSize: 14,
+              color: Colors.grey[500],
+            ),
           ),
         ],
       ),
@@ -578,6 +965,7 @@ class _OrdersPageState extends State<OrdersPage>
         final operations = order['TransactionOperation'] ?? [];
         final expirationTime = order['expired_at'] != null
             ? DateTime.tryParse(order['expired_at'])
+                ?.subtract(Duration(hours: 7))
             : null;
 
         // Calculate prices
@@ -597,243 +985,678 @@ class _OrdersPageState extends State<OrdersPage>
               .add(const Duration(hours: 7));
           if (parsedDate != null) {
             formattedCreatedAt =
-                DateFormat("dd-MM-yyyy HH:mm").format(parsedDate);
+                DateFormat("dd MMM yyyy • HH:mm").format(parsedDate);
           }
         }
 
-        return Card(
+        return Container(
           margin: const EdgeInsets.only(bottom: 16.0),
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-          elevation: 3,
-          child: InkWell(
-            onTap: () {
-              context.push('/detail/${order['id']}');
-            },
-            child: Column(
-              children: [
-                // 🔹 HEADER PESANAN
-                Container(
-                  decoration: BoxDecoration(
-                    color: order['status'] == 0
-                        ? const Color(0xFFFDE7E9) // Belum Bayar: Merah Muda
-                        : const Color(0xFFE8F5E9), // Siap Ambil: Hijau Muda
-                    borderRadius: const BorderRadius.vertical(
-                      top: Radius.circular(10),
-                    ),
-                  ),
-                  padding: const EdgeInsets.all(12),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            order['store']?['store_name'] ??
-                                'Toko Tidak Diketahui',
-                            style: const TextStyle(
-                                fontWeight: FontWeight.bold, fontSize: 16),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            'Tanggal: $formattedCreatedAt',
-                            style: const TextStyle(
-                                fontSize: 14, color: Colors.black54),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.grey.withOpacity(0.15),
+                spreadRadius: 1,
+                blurRadius: 5,
+                offset: Offset(0, 2),
+              ),
+            ],
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(16),
+            child: Material(
+              color: Colors.transparent,
+              child: InkWell(
+                onTap: () => context.push('/detail/${order['id']}'),
+                borderRadius: BorderRadius.circular(16),
+                child: Column(
+                  children: [
+                    // Order Header
+                    Container(
+                      decoration: BoxDecoration(
+                        color: order['status'] == 0
+                            ? secondaryColor
+                            : order['status'] == 1
+                                ? Color(0xFFE8F5E9)
+                                : Color(0xFFF0F4FF),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.grey.withOpacity(0.1),
+                            spreadRadius: 0,
+                            blurRadius: 3,
+                            offset: Offset(0, 1),
                           ),
                         ],
                       ),
-                      if (order['status'] == 1)
-                        _buildStatusLabel(
-                            "Siap Diambil", const Color(0xFF81C784)),
-                      if (order['status'] == 2)
-                        _buildStatusLabel("Selesai", const Color(0xFF81C784)),
-                      if (order['status'] == 0 && expirationTime != null)
-                        CountdownTimer(expirationTime),
-                    ],
-                  ),
-                ),
-
-                // 🔹 DETAIL PESANAN
-                Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      ...products.map((product) {
-                        double price =
-                            double.tryParse(product['price'].toString()) ?? 0;
-                        double adjPrice = double.tryParse(
-                                product['adjustment_price'].toString()) ??
-                            0;
-                        double discount =
-                            double.tryParse(product['discount'].toString()) ??
-                                0;
-                        double totalPrice = double.tryParse(
-                                product['total_price'].toString()) ??
-                            0;
-
-                        return Padding(
-                          padding: const EdgeInsets.only(bottom: 4.0),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Expanded(
-                                    child: Text(
-                                      '${product['product_code']['product']['name']} (${product['weight']}g)',
-                                      style: const TextStyle(fontSize: 14),
-                                      overflow: TextOverflow
-                                          .ellipsis, // Handles overflow with ellipsis
-                                      maxLines:
-                                          1, // Ensures text doesn't wrap to a new line
-                                    ),
-                                  ),
-                                  Text(
-                                    'Rp ${formatCurrency(totalPrice)}',
-                                    style: const TextStyle(fontSize: 14),
-                                  ),
-                                ],
-                              ),
-                              // 🔹 Tampilkan Adjustment Price Jika > 0
-                              if (adjPrice > 0)
-                                Row(
-                                  mainAxisAlignment:
-                                      MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    const Text("Adjustment Price",
-                                        style: TextStyle(
-                                            fontSize: 14, color: Colors.blue)),
-                                    Text(
-                                      "+Rp ${formatCurrency(adjPrice)}",
-                                      style: const TextStyle(
-                                          fontSize: 14, color: Colors.blue),
-                                    ),
-                                  ],
-                                ),
-                              // 🔹 Tampilkan Discount Jika > 0
-                              if (discount > 0)
-                                Row(
-                                  mainAxisAlignment:
-                                      MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    const Text("Discount",
-                                        style: TextStyle(
-                                            fontSize: 14, color: Colors.green)),
-                                    Text(
-                                      "-Rp ${formatCurrency(discount)}",
-                                      style: const TextStyle(
-                                          fontSize: 14, color: Colors.green),
-                                    ),
-                                  ],
-                                ),
-                            ],
-                          ),
-                        );
-                      }).toList(),
-
-                      // 🔹 TAMPILKAN TRANSACTION OPERATIONS (Jika Ada)
-                      if (operations.isNotEmpty) ...[
-                        const SizedBox(height: 6),
-                        const Text(
-                          "Additional Service",
-                          style: TextStyle(
-                              fontSize: 14, fontWeight: FontWeight.bold),
-                        ),
-                        ...operations.map((operation) {
-                          return Padding(
-                            padding: const EdgeInsets.only(top: 4.0),
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 12,
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text(
-                                    "${operation['name']} (x${operation['unit']})"),
-                                Text(
-                                  "Rp ${formatCurrency(double.tryParse(operation['total_price'].toString()) ?? 0)}",
-                                  style: const TextStyle(fontSize: 14),
+                                Row(
+                                  children: [
+                                    Icon(
+                                      order['status'] == 0
+                                          ? Icons.store
+                                          : order['status'] == 1
+                                              ? Icons.store
+                                              : Icons.check_circle,
+                                      size: 16,
+                                      color: order['status'] == 0
+                                          ? primaryColor
+                                          : accentColor,
+                                    ),
+                                    const SizedBox(width: 6),
+                                    Flexible(
+                                      child: Text(
+                                        order['store']?['store_name'] ??
+                                            'Toko Tidak Diketahui',
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 15,
+                                          color: Colors.black87,
+                                        ),
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 4),
+                                Row(
+                                  children: [
+                                    Icon(
+                                      Icons.access_time,
+                                      size: 14,
+                                      color: Colors.black54,
+                                    ),
+                                    const SizedBox(width: 4),
+                                    Text(
+                                      formattedCreatedAt ??
+                                          'Tanggal tidak tersedia',
+                                      style: TextStyle(
+                                        fontSize: 13,
+                                        color: Colors.black54,
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ],
                             ),
-                          );
-                        }).toList(),
-                      ],
-
-                      const Divider(height: 16, thickness: 1),
-
-                      // 🔹 Harga Sebelum Voucher
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          const Text('Harga Sebelum Voucher',
-                              style: TextStyle(fontSize: 14)),
-                          Text('Rp ${formatCurrency(subTotal)}',
-                              style: const TextStyle(fontSize: 14)),
-                        ],
-                      ),
-
-                      // 🔹 Potongan Voucher (Tampil jika > 0)
-                      if (discount > 0)
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            const Text('Potongan Voucher',
-                                style: TextStyle(
-                                    fontSize: 14, color: Colors.green)),
-                            Text('-Rp ${formatCurrency(discount)}',
-                                style: const TextStyle(
-                                    fontSize: 14, color: Colors.green)),
-                          ],
-                        ),
-
-                      // 🔹 Tax (Jika Ada)
-                      if (taxPrice > 0)
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text('Pajak (${taxPercentage.toStringAsFixed(1)}%)',
-                                style: const TextStyle(fontSize: 14)),
-                            Text('Rp ${formatCurrency(taxPrice)}',
-                                style: const TextStyle(fontSize: 14)),
-                          ],
-                        ),
-
-                      // 🔹 Poin Earned (Jika Ada)
-                      if (pointsEarned > 0)
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            const Text('Poin Earned',
-                                style: TextStyle(
-                                    fontSize: 14, color: Colors.blue)),
-                            Text('$pointsEarned Poin',
-                                style: const TextStyle(
-                                    fontSize: 14, color: Colors.blue)),
-                          ],
-                        ),
-
-                      const Divider(height: 16, thickness: 1),
-
-                      // 🔹 Total Bayar
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          const Text('Total Bayar',
-                              style: TextStyle(
-                                  fontSize: 16, fontWeight: FontWeight.bold)),
-                          Text(
-                            'Rp ${formatCurrency(totalPrice)}',
-                            style: const TextStyle(
-                                fontSize: 16, fontWeight: FontWeight.bold),
                           ),
+                          if (order['status'] == 0 && expirationTime != null)
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 10,
+                                vertical: 4,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(12),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.grey.withOpacity(0.1),
+                                    spreadRadius: 0,
+                                    blurRadius: 2,
+                                    offset: Offset(0, 1),
+                                  ),
+                                ],
+                              ),
+                              child: CountdownTimer(expirationTime),
+                            ),
+                          if (order['status'] == 1)
+                            _buildStatusBadge("Siap Diambil", accentColor),
+                          if (order['status'] == 2)
+                            _buildStatusBadge("Selesai", Colors.blue),
                         ],
                       ),
-                    ],
-                  ),
+                    ),
+
+                    // Order Details
+                    Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // Products List
+                          ...products.asMap().entries.map((entry) {
+                            final int idx = entry.key;
+                            final product = entry.value;
+
+                            double price =
+                                double.tryParse(product['price'].toString()) ??
+                                    0;
+                            double adjPrice = double.tryParse(
+                                    product['adjustment_price'].toString()) ??
+                                0;
+                            double discount = double.tryParse(
+                                    product['discount'].toString()) ??
+                                0;
+                            double totalPrice = double.tryParse(
+                                    product['total_price'].toString()) ??
+                                0;
+
+                            return Container(
+                              padding: const EdgeInsets.symmetric(vertical: 8),
+                              decoration: BoxDecoration(
+                                border: idx < products.length - 1
+                                    ? Border(
+                                        bottom: BorderSide(
+                                          color: Colors.grey.shade100,
+                                          width: 1,
+                                        ),
+                                      )
+                                    : null,
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      // Replace the Container with Icon in your product card with this image implementation
+                                      Container(
+                                        width: 40,
+                                        height: 40,
+                                        decoration: BoxDecoration(
+                                          color: Colors.grey.shade100,
+                                          borderRadius:
+                                              BorderRadius.circular(8),
+                                        ),
+                                        child: ClipRRect(
+                                          borderRadius:
+                                              BorderRadius.circular(8),
+                                          child: product['product_code'] !=
+                                                      null &&
+                                                  product['product_code']
+                                                          ['image'] !=
+                                                      null
+                                              ? Image.network(
+                                                  '$apiBaseUrlImage${product['product_code']['image']}',
+                                                  width: 40,
+                                                  height: 40,
+                                                  fit: BoxFit.cover,
+                                                  errorBuilder: (context, error,
+                                                      stackTrace) {
+                                                    // Fallback icon if image fails to load
+                                                    return Icon(
+                                                      Icons
+                                                          .shopping_bag_outlined,
+                                                      color: primaryColor,
+                                                      size: 20,
+                                                    );
+                                                  },
+                                                  loadingBuilder: (context,
+                                                      child, loadingProgress) {
+                                                    if (loadingProgress == null)
+                                                      return child;
+                                                    return Center(
+                                                      child: SizedBox(
+                                                        width: 20,
+                                                        height: 20,
+                                                        child:
+                                                            CircularProgressIndicator(
+                                                          strokeWidth: 2,
+                                                          valueColor:
+                                                              AlwaysStoppedAnimation<
+                                                                      Color>(
+                                                                  primaryColor),
+                                                          value: loadingProgress
+                                                                      .expectedTotalBytes !=
+                                                                  null
+                                                              ? loadingProgress
+                                                                      .cumulativeBytesLoaded /
+                                                                  loadingProgress
+                                                                      .expectedTotalBytes!
+                                                              : null,
+                                                        ),
+                                                      ),
+                                                    );
+                                                  },
+                                                )
+                                              : Icon(
+                                                  Icons.shopping_bag_outlined,
+                                                  color: primaryColor,
+                                                  size: 20,
+                                                ),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 12),
+
+                                      // Product Info
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              '${product['product_code']['product']['name']}',
+                                              style: TextStyle(
+                                                fontSize: 14,
+                                                fontWeight: FontWeight.w500,
+                                                color: Colors.black87,
+                                              ),
+                                              maxLines: 2,
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                            const SizedBox(height: 2),
+                                            Text(
+                                              '${product['weight']}g',
+                                              style: TextStyle(
+                                                fontSize: 13,
+                                                color: Colors.black54,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+
+                                      // Price
+                                      Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.end,
+                                        children: [
+                                          Text(
+                                            'Rp ${formatCurrency(totalPrice)}',
+                                            style: TextStyle(
+                                              fontSize: 14,
+                                              fontWeight: FontWeight.w600,
+                                              color: Colors.black87,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ],
+                                  ),
+
+                                  // Additional Product Info (Adjustment & Discount)
+                                  if (adjPrice > 0 || discount > 0)
+                                    Container(
+                                      margin: const EdgeInsets.only(top: 8),
+                                      padding: const EdgeInsets.all(8),
+                                      decoration: BoxDecoration(
+                                        color: Colors.grey.shade50,
+                                        borderRadius: BorderRadius.circular(8),
+                                        border: Border.all(
+                                          color: Colors.grey.shade200,
+                                          width: 1,
+                                        ),
+                                      ),
+                                      child: Column(
+                                        children: [
+                                          if (adjPrice > 0)
+                                            Row(
+                                              mainAxisAlignment:
+                                                  MainAxisAlignment
+                                                      .spaceBetween,
+                                              children: [
+                                                Text(
+                                                  "Adjustment Price",
+                                                  style: TextStyle(
+                                                    fontSize: 13,
+                                                    color: Colors.blue[700],
+                                                  ),
+                                                ),
+                                                Text(
+                                                  "+Rp ${formatCurrency(adjPrice)}",
+                                                  style: TextStyle(
+                                                    fontSize: 13,
+                                                    fontWeight: FontWeight.w500,
+                                                    color: Colors.blue[700],
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          if (adjPrice > 0 && discount > 0)
+                                            SizedBox(height: 4),
+                                          if (discount > 0)
+                                            Row(
+                                              mainAxisAlignment:
+                                                  MainAxisAlignment
+                                                      .spaceBetween,
+                                              children: [
+                                                Text(
+                                                  "Discount",
+                                                  style: TextStyle(
+                                                    fontSize: 13,
+                                                    color: Colors.green[700],
+                                                  ),
+                                                ),
+                                                Text(
+                                                  "-Rp ${formatCurrency(discount)}",
+                                                  style: TextStyle(
+                                                    fontSize: 13,
+                                                    fontWeight: FontWeight.w500,
+                                                    color: Colors.green[700],
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                        ],
+                                      ),
+                                    ),
+                                ],
+                              ),
+                            );
+                          }).toList(),
+
+                          // Additional Services (Operations)
+                          if (operations.isNotEmpty) ...[
+                            const SizedBox(height: 16),
+                            Container(
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: Colors.grey.shade50,
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(
+                                  color: Colors.grey.shade200,
+                                ),
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    children: [
+                                      Icon(
+                                        Icons.construction_outlined,
+                                        size: 16,
+                                        color: Colors.orange[800],
+                                      ),
+                                      const SizedBox(width: 6),
+                                      Text(
+                                        "Layanan Tambahan",
+                                        style: TextStyle(
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.bold,
+                                          color: Colors.black87,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 8),
+                                  ...operations.map((operation) {
+                                    final double adjustmentPrice =
+                                        double.tryParse(
+                                                operation['adjustment_price']
+                                                        ?.toString() ??
+                                                    '0') ??
+                                            0;
+
+                                    return Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Padding(
+                                          padding: const EdgeInsets.only(
+                                              bottom: 4.0),
+                                          child: Row(
+                                            mainAxisAlignment:
+                                                MainAxisAlignment.spaceBetween,
+                                            children: [
+                                              Text(
+                                                "${operation['name']} (x${operation['unit']})",
+                                                style: TextStyle(
+                                                  fontSize: 13,
+                                                  color: Colors.black87,
+                                                ),
+                                              ),
+                                              Text(
+                                                "Rp ${formatCurrency(double.tryParse(operation['total_price'].toString()) ?? 0)}",
+                                                style: TextStyle(
+                                                  fontSize: 13,
+                                                  fontWeight: FontWeight.w500,
+                                                  color: Colors.black87,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                        // Only show adjustment if it's not zero
+                                        if (adjustmentPrice != 0)
+                                          Padding(
+                                            padding: const EdgeInsets.only(
+                                                left: 16.0, bottom: 4.0),
+                                            child: Row(
+                                              mainAxisAlignment:
+                                                  MainAxisAlignment
+                                                      .spaceBetween,
+                                              children: [
+                                                Text(
+                                                  "Penyesuaian",
+                                                  style: TextStyle(
+                                                    fontSize: 12,
+                                                    fontStyle: FontStyle.italic,
+                                                    color: Colors.grey[600],
+                                                  ),
+                                                ),
+                                                Text(
+                                                  adjustmentPrice >= 0
+                                                      ? "+ Rp ${formatCurrency(adjustmentPrice)}"
+                                                      : "- Rp ${formatCurrency(adjustmentPrice.abs())}",
+                                                  style: TextStyle(
+                                                    fontSize: 12,
+                                                    fontStyle: FontStyle.italic,
+                                                    color: adjustmentPrice >= 0
+                                                        ? Colors.green[700]
+                                                        : Colors.red[700],
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                      ],
+                                    );
+                                  }).toList(),
+                                ],
+                              ),
+                            ),
+                          ],
+
+                          // Order Summary
+                          Container(
+                            margin: const EdgeInsets.only(top: 16),
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: Colors.grey.shade50,
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                color: Colors.grey.shade200,
+                              ),
+                            ),
+                            child: Column(
+                              children: [
+                                // Sub Total
+                                Row(
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Text(
+                                      'Subtotal',
+                                      style: TextStyle(
+                                        fontSize: 13,
+                                        color: Colors.black87,
+                                      ),
+                                    ),
+                                    Text(
+                                      'Rp ${formatCurrency(subTotal)}',
+                                      style: TextStyle(
+                                        fontSize: 13,
+                                        color: Colors.black87,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+
+                                // Tax
+                                if (taxPrice > 0) ...[
+                                  const SizedBox(height: 4),
+                                  Row(
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Text(
+                                        'Pajak (${taxPercentage.toStringAsFixed(1)}%)',
+                                        style: TextStyle(
+                                          fontSize: 13,
+                                          color: Colors.black87,
+                                        ),
+                                      ),
+                                      Text(
+                                        'Rp ${formatCurrency(taxPrice)}',
+                                        style: TextStyle(
+                                          fontSize: 13,
+                                          color: Colors.black87,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+
+                                // Voucher Discount
+                                if (discount > 0) ...[
+                                  const SizedBox(height: 4),
+                                  Row(
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Row(
+                                        children: [
+                                          Icon(
+                                            Icons.discount_outlined,
+                                            size: 14,
+                                            color: Colors.green[700],
+                                          ),
+                                          const SizedBox(width: 4),
+                                          Text(
+                                            'Potongan Voucher',
+                                            style: TextStyle(
+                                              fontSize: 13,
+                                              color: Colors.green[700],
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                      Text(
+                                        '-Rp ${formatCurrency(discount)}',
+                                        style: TextStyle(
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.w500,
+                                          color: Colors.green[700],
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+
+                                // Divider
+                                Padding(
+                                  padding:
+                                      const EdgeInsets.symmetric(vertical: 8.0),
+                                  child: Divider(
+                                    color: Colors.grey.shade300,
+                                    height: 1,
+                                  ),
+                                ),
+
+                                // Total
+                                Row(
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Text(
+                                      'Total Bayar',
+                                      style: TextStyle(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.black,
+                                      ),
+                                    ),
+                                    Text(
+                                      'Rp ${formatCurrency(totalPrice)}',
+                                      style: TextStyle(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.bold,
+                                        color: primaryColor,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+
+                          // Points Earned
+                          if (pointsEarned > 0) ...[
+                            const SizedBox(height: 12),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 8,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Colors.blue.shade50,
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(
+                                  color: Colors.blue.shade100,
+                                ),
+                              ),
+                              child: Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Row(
+                                    children: [
+                                      Icon(
+                                        Icons.loyalty_outlined,
+                                        size: 16,
+                                        color: Colors.blue[700],
+                                      ),
+                                      const SizedBox(width: 6),
+                                      Text(
+                                        'Poin yang Didapat',
+                                        style: TextStyle(
+                                          fontSize: 13,
+                                          color: Colors.blue[700],
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 8,
+                                      vertical: 2,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: Colors.blue[700],
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    child: Text(
+                                      '+$pointsEarned Poin',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.white,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
-              ],
+              ),
             ),
           ),
         );
@@ -841,18 +1664,37 @@ class _OrdersPageState extends State<OrdersPage>
     );
   }
 
-// 🔹 Widget Label Status
-  Widget _buildStatusLabel(String text, Color color) {
+  Widget _buildStatusBadge(String text, Color color) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
-        color: color,
-        borderRadius: BorderRadius.circular(4),
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: color.withOpacity(0.5),
+          width: 1,
+        ),
       ),
-      child: Text(
-        text,
-        style: const TextStyle(
-            color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            text == "Siap Diambil"
+                ? Icons.shopping_bag_outlined
+                : Icons.check_circle_outline,
+            color: color,
+            size: 12,
+          ),
+          const SizedBox(width: 4),
+          Text(
+            text,
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.bold,
+              color: color,
+            ),
+          ),
+        ],
       ),
     );
   }

@@ -15,7 +15,7 @@ class MenuScreen extends StatefulWidget {
 }
 
 class _MenuScreenState extends State<MenuScreen> {
-  int _selectedIndex = 3;
+  int _selectedIndex = 4;
   String? _accessToken;
   bool _isLoading = true;
 
@@ -55,12 +55,6 @@ class _MenuScreenState extends State<MenuScreen> {
   ];
 
   final List<MenuItemData> _settingsMenuItems = [
-    MenuItemData(
-      icon: Icons.headset_mic_outlined,
-      title: 'Bantuan Logamas Care',
-      route: '/faq',
-      isNamed: false,
-    ),
     MenuItemData(
       icon: Icons.qr_code_scanner,
       title: 'Show My QR',
