@@ -21,7 +21,7 @@ class WaitingForPaymentPage extends StatefulWidget {
 class _WaitingForPaymentPageState extends State<WaitingForPaymentPage>
     with SingleTickerProviderStateMixin {
   bool _isLoading = false;
-  String _statusMessage = '';
+  String _statusMessage = 'Waiting for Payment';
   bool _hasError = false;
   Timer? _pollingTimer;
   int _remainingTime = 3600; // Default 1 jam dalam detik
