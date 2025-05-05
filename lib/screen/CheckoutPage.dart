@@ -72,12 +72,36 @@ class _CheckoutPageState extends State<CheckoutPage> {
           'https://assets.tripay.co.id/upload/payment-icon/8WQ3APST5s1579461828.png',
       "icon": Icons.bakery_dining
     },
-     {
+    {
       "code": "MANDIRIVA",
       "name": "Mandiri Virtual Account",
       "group": "Virtual Account",
       "image":
           'https://assets.tripay.co.id/upload/payment-icon/T9Z012UE331583531536.png',
+      "icon": Icons.bakery_dining
+    },
+    {
+      "code": "CIMBVA",
+      "name": "CIMB Virtual Account",
+      "group": "Virtual Account",
+      "image":
+          'https://assets.tripay.co.id/upload/payment-icon/WtEJwfuphn1614003973.png',
+      "icon": Icons.bakery_dining
+    },
+    {
+      "code": "OCBCVA",
+      "name": "OCBC Virtual Account",
+      "group": "Virtual Account",
+      "image":
+          'https://assets.tripay.co.id/upload/payment-icon/ysiSToLvKl1644244798.png',
+      "icon": Icons.bakery_dining
+    },
+    {
+      "code": "QRIS2",
+      "name": "Qris",
+      "group": "Virtual Account",
+      "image":
+          'https://assets.tripay.co.id/upload/payment-icon/8ewGzP6SWe1649667701.png',
       "icon": Icons.bakery_dining
     },
   ];
@@ -407,19 +431,6 @@ class _CheckoutPageState extends State<CheckoutPage> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Padding(
-                            padding:
-                                const EdgeInsets.only(top: 16.0, bottom: 8.0),
-                            child: Text(
-                              "Virtual Account",
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                                color: Color(0xFF31394E),
-                              ),
-                            ),
-                          ),
-
                           // Payment method cards
                           ...paymentMethods.map((method) {
                             final bool isSelected =

@@ -518,10 +518,6 @@ class _LocationScreenState extends State<LocationScreen>
       return _buildLoadingState();
     }
 
-    if (_errorMessage.isNotEmpty && _tokoDalamRadius.isEmpty) {
-      return _buildErrorState();
-    }
-
     return Stack(
       children: [
         // Map
