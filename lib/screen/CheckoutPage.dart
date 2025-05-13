@@ -112,14 +112,17 @@ class _CheckoutPageState extends State<CheckoutPage> {
     storeProducts = widget.cartData['data'][0];
     print(widget.cartData);
 
-    // Calculate initial total price
+    // Calculate initial total price (before any discount or tax)
     initialTotalPrice = _calculateTotalPrice();
 
-    // Now calculate the tax
+    // Set initial discount to 0
+    discount = 0;
+
+    // Calculate tax based on price after discount
     _calculateTax();
 
-    // Calculate the total price after tax and discount
-    totalPrice = initialTotalPrice + taxAmount - discount;
+    // Calculate the final total price
+    totalPrice = (initialTotalPrice - discount) + taxAmount;
 
     // Fetch any available voucher data
     _fetchVoucherData();
@@ -175,7 +178,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
     for (var product in storeProducts['ProductList']) {
       price += product['productPrice'] * product['quantity'];
     }
-    print("Initial Total Price: $price");
+    print("Initial Total Price (before discount/tax): $price");
     return price;
   }
 
@@ -184,15 +187,18 @@ class _CheckoutPageState extends State<CheckoutPage> {
         double.tryParse(storeProducts['store']['tax_percentage'].toString()) ??
             0.0;
     print("Tax Percentage: $taxPercentage");
-    print("Initial Total Price: $initialTotalPrice");
 
-    // Calculate tax
-    taxAmount = (initialTotalPrice * taxPercentage) / 100;
+    // Get the price after discount
+    final priceAfterDiscount = initialTotalPrice - discount;
+    print("Price after discount: $priceAfterDiscount");
+
+    // Calculate tax on the discounted price
+    taxAmount = (priceAfterDiscount * taxPercentage) / 100;
     print("Tax Amount: $taxAmount");
 
-    // Update the total price with the tax applied
-    totalPrice = initialTotalPrice + taxAmount - discount;
-    print("Total Price after Tax: $totalPrice");
+    // Update the total price
+    totalPrice = priceAfterDiscount + taxAmount;
+    print("Total Price (after discount and tax): $totalPrice");
   }
 
   int _calculateTotalPoints() {
@@ -215,22 +221,25 @@ class _CheckoutPageState extends State<CheckoutPage> {
   void _applyVoucher(Map<String, dynamic>? voucher) {
     setState(() {
       if (voucher == null) {
+        // Reset voucher and recalculate
         discount = 0;
-        totalPrice = initialTotalPrice + taxAmount;
         selectedVoucher = null;
         selectedVoucherOwnedId = null;
         selectedVoucherId = null;
       } else {
+        // Calculate discount
         double calculatedDiscount =
             (voucher['discount_amount'] / 100) * initialTotalPrice;
         discount = calculatedDiscount > voucher['max_discount']
             ? voucher['max_discount']
             : calculatedDiscount;
-        totalPrice = initialTotalPrice + taxAmount - discount;
         selectedVoucher = voucher['voucher_name'];
         selectedVoucherOwnedId = voucher['voucher_owned_id'];
         selectedVoucherId = voucher['voucher_id'];
       }
+
+      // Recalculate tax based on new discount
+      _calculateTax();
     });
   }
 
