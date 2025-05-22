@@ -37,7 +37,7 @@ class BottomNavBar extends StatelessWidget {
               _buildNavItem(
                   1, Icons.store_outlined, Icons.store_rounded, 'Store'),
               _buildSpecialNavItem(),
-              _buildNavItem(3, Icons.help_outline, Icons.help_rounded, 'FAQ'),
+              _buildNavItem(3, Icons.chat_bubble_outline, Icons.chat_bubble, 'Chat'),
               _buildNavItem(4, Icons.info_outline, Icons.info_rounded, 'Info'),
             ],
           ),

@@ -298,7 +298,7 @@ class _LocationScreenState extends State<LocationScreen>
   void _startLocationTracking() {
     const LocationSettings locationSettings = LocationSettings(
       accuracy: LocationAccuracy.bestForNavigation,
-      distanceFilter: 5, // Update every 5 meters
+      distanceFilter: 1, // Update every 5 meters
     );
 
     _positionStream = Geolocator.getPositionStream(

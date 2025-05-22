@@ -106,6 +106,19 @@ class _StorePageState extends State<StorePage> {
     }
   }
 
+  void _openChat() {
+    if (storeData != null) {
+      // Navigate ke chat screen
+      context.push(
+        '/chat/${widget.storeId}',
+        extra: {
+          'storeName': storeData!['store_name'],
+          'storeLogo': storeData!['logo'],
+        },
+      );
+    }
+  }
+
   void applyFilter(
     Set<String> selectedCategoryNames,
     Set<String> selectedPurities,
@@ -2117,7 +2130,7 @@ class _StorePageState extends State<StorePage> {
                                       child: Material(
                                         color: Colors.transparent,
                                         child: InkWell(
-                                          onTap: _openWhatsApp,
+                                          onTap: _openChat,
                                           borderRadius:
                                               BorderRadius.circular(10),
                                           child: Container(
@@ -2144,7 +2157,7 @@ class _StorePageState extends State<StorePage> {
                                                 ),
                                                 SizedBox(width: 8),
                                                 Text(
-                                                  'Chat',
+                                                  'Live Chat',
                                                   style: TextStyle(
                                                     color: Color(0xFFC58189),
                                                     fontSize: 14,

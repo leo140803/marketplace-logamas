@@ -21,7 +21,7 @@ void navigate(BuildContext context, int index) {
     context.go('/scan');
     // Navigator.pushReplacementNamed(context, '/nearby');
   } else if (index == 3) {
-    context.go('/faq');
+    context.go('/conversations');
   } else if (index == 4) {
     context.go('/information');
   }

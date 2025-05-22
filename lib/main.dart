@@ -8,8 +8,10 @@ import 'package:marketplace_logamas/api/firebase_api.dart';
 import 'package:marketplace_logamas/screen/Barcode.dart';
 import 'package:marketplace_logamas/screen/Cart.dart';
 import 'package:marketplace_logamas/screen/ChangePasswordScreen.dart';
+import 'package:marketplace_logamas/screen/ChatScreen.dart';
 import 'package:marketplace_logamas/screen/CheckoutPage.dart';
 import 'package:marketplace_logamas/screen/ConfirmationScreen.dart';
+import 'package:marketplace_logamas/screen/Conversation.dart';
 import 'package:marketplace_logamas/screen/EditProfile.dart';
 import 'package:marketplace_logamas/screen/FAQ.dart';
 import 'package:marketplace_logamas/screen/ForgotPass.dart';
@@ -317,6 +319,37 @@ final router = GoRouter(
           builder: (context, state) {
             final barcode = state.uri.queryParameters['barcode']!;
             return ProductCodeDetailPage(barcode: barcode);
+          },
+        ),
+        GoRoute(
+          path: '/chat/:storeId',
+          builder: (context, state) {
+            final storeId = state.pathParameters['storeId']!;
+            final extra = state.extra as Map<String, dynamic>?;
+
+            return ChatScreen(
+              storeId: storeId,
+              storeName: extra?['storeName'] ?? 'Store',
+              storeLogo: extra?['storeLogo'],
+            );
+          },
+        ),
+        GoRoute(
+          path: '/conversations',
+          builder: (context, state) => ConversationListScreen(),
+        ),
+
+        GoRoute(
+          path: '/chat/:storeId',
+          builder: (context, state) {
+            final storeId = state.pathParameters['storeId']!;
+            final extra = state.extra as Map<String, dynamic>?;
+
+            return ChatScreen(
+              storeId: storeId,
+              storeName: extra?['storeName'] ?? 'Store',
+              storeLogo: extra?['storeLogo'],
+            );
           },
         ),
       ],
