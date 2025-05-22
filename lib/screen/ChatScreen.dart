@@ -387,6 +387,7 @@ class _ChatScreenState extends State<ChatScreen> {
                         border: Border.all(color: Colors.grey[300]!),
                       ),
                       child: TextField(
+                        autocorrect: false,
                         controller: _messageController,
                         decoration: InputDecoration(
                           hintText: 'Type a message...',
