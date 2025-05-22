@@ -11,6 +11,7 @@ import 'package:marketplace_logamas/screen/SearchResultPage.dart';
 import 'package:marketplace_logamas/widget/BottomNavigationBar.dart';
 import 'package:marketplace_logamas/widget/Dialog.dart';
 import 'dart:convert';
+import 'dart:async';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:shimmer/shimmer.dart';
 import 'package:cached_network_image/cached_network_image.dart';
@@ -37,6 +38,19 @@ class _LocationScreenState extends State<LocationScreen>
   bool _showStoreList = false;
   String _errorMessage = '';
 
+  // Navigation related variables
+  List<LatLng> _routePoints = [];
+  bool _isNavigating = false;
+  bool _isCalculatingRoute = false;
+  Map<String, dynamic>? _destinationStore;
+  StreamSubscription<Position>? _positionStream;
+  List<String> _navigationInstructions = [];
+  int _currentInstructionIndex = 0;
+  double _totalDistance = 0;
+  double _remainingDistance = 0;
+  String _estimatedTime = '';
+  double _currentHeading = 0;
+
   // Theme colors
   final Color primaryColor = const Color(0xFFC58189);
   final Color secondaryColor = const Color(0xFF31394E);
@@ -56,6 +70,7 @@ class _LocationScreenState extends State<LocationScreen>
   void dispose() {
     _animationController.dispose();
     _searchController.dispose();
+    _positionStream?.cancel();
     super.dispose();
   }
 
@@ -80,7 +95,6 @@ class _LocationScreenState extends State<LocationScreen>
           double tokoLon = item['longitude']?.toDouble() ?? 0.0;
           double distance = 0.0;
 
-          // Calculate distance only if user location is available
           if (_latitude != null && _longitude != null) {
             distance = _haversine(_latitude!, _longitude!, tokoLat, tokoLon);
           }
@@ -158,7 +172,6 @@ class _LocationScreenState extends State<LocationScreen>
     bool serviceEnabled;
     LocationPermission permission;
 
-    // Check if location services are enabled
     serviceEnabled = await Geolocator.isLocationServiceEnabled();
     if (!serviceEnabled) {
       setState(() {
@@ -167,7 +180,6 @@ class _LocationScreenState extends State<LocationScreen>
       return Future.error('Location services are disabled.');
     }
 
-    // Check location permissions
     permission = await Geolocator.checkPermission();
     if (permission == LocationPermission.denied) {
       permission = await Geolocator.requestPermission();
@@ -186,7 +198,6 @@ class _LocationScreenState extends State<LocationScreen>
       return Future.error('Location permissions are permanently denied.');
     }
 
-    // Get current position
     try {
       final position = await Geolocator.getCurrentPosition(
         desiredAccuracy: LocationAccuracy.high,
@@ -196,9 +207,190 @@ class _LocationScreenState extends State<LocationScreen>
       setState(() {
         _latitude = position.latitude;
         _longitude = position.longitude;
+        _currentHeading = position.heading;
       });
     } catch (e) {
       return Future.error('Failed to get current location: $e');
+    }
+  }
+
+  // Navigation Functions
+  Future<void> _calculateRoute(double destLat, double destLon) async {
+    if (_latitude == null || _longitude == null) return;
+
+    setState(() {
+      _isCalculatingRoute = true;
+    });
+
+    try {
+      // Using OpenRouteService (free API)
+      final apiKey =
+          '5b3ce3597851110001cf62489cbeaa660b1444fe9d07890be7bae821';
+      final url = Uri.parse(
+        'https://api.openrouteservice.org/v2/directions/driving-car?'
+        'api_key=$apiKey&'
+        'start=${_longitude!},${_latitude!}&'
+        'end=$destLon,$destLat&'
+        'format=geojson&'
+        'instructions=true',
+      );
+
+      final response = await http.get(url);
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        final coordinates =
+            data['features'][0]['geometry']['coordinates'] as List;
+        final properties = data['features'][0]['properties'];
+
+        List<LatLng> routePoints = coordinates
+            .map((coord) => LatLng(coord[1].toDouble(), coord[0].toDouble()))
+            .toList();
+
+        List<String> instructions = [];
+        if (properties['segments'] != null &&
+            properties['segments'].isNotEmpty) {
+          final steps = properties['segments'][0]['steps'] as List;
+          instructions =
+              steps.map((step) => step['instruction'].toString()).toList();
+        }
+
+        setState(() {
+          _routePoints = routePoints;
+          _navigationInstructions = instructions;
+          _totalDistance =
+              properties['summary']['distance'] / 1000; // Convert to km
+          _remainingDistance = _totalDistance;
+          _estimatedTime = _formatDuration(properties['summary']['duration']);
+          _currentInstructionIndex = 0;
+        });
+      } else {
+        throw Exception('Failed to calculate route');
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Route calculation failed: ${e.toString()}')),
+      );
+    } finally {
+      setState(() {
+        _isCalculatingRoute = false;
+      });
+    }
+  }
+
+  void _startNavigation(Map<String, dynamic> store) async {
+    _destinationStore = store;
+    await _calculateRoute(store['lat'], store['lon']);
+
+    if (_routePoints.isNotEmpty) {
+      setState(() {
+        _isNavigating = true;
+      });
+
+      // Start real-time location tracking
+      _startLocationTracking();
+
+      // Fit map to show route
+      _fitMapToRoute();
+    }
+  }
+
+  void _startLocationTracking() {
+    const LocationSettings locationSettings = LocationSettings(
+      accuracy: LocationAccuracy.bestForNavigation,
+      distanceFilter: 5, // Update every 5 meters
+    );
+
+    _positionStream = Geolocator.getPositionStream(
+      locationSettings: locationSettings,
+    ).listen((Position position) {
+      setState(() {
+        _latitude = position.latitude;
+        _longitude = position.longitude;
+        _currentHeading = position.heading;
+      });
+
+      // Update remaining distance and instruction
+      _updateNavigationProgress();
+
+      // Center map on user location during navigation
+      if (_isNavigating) {
+        _mapController.move(
+          LatLng(position.latitude, position.longitude),
+          17,
+        );
+      }
+    });
+  }
+
+  void _updateNavigationProgress() {
+    if (_destinationStore == null || _latitude == null || _longitude == null)
+      return;
+
+    // Calculate remaining distance to destination
+    double distanceToDestination = _haversine(
+      _latitude!,
+      _longitude!,
+      _destinationStore!['lat'],
+      _destinationStore!['lon'],
+    );
+
+    setState(() {
+      _remainingDistance = distanceToDestination;
+    });
+
+    // Check if arrived (within 50 meters)
+    if (distanceToDestination < 0.05) {
+      _arriveAtDestination();
+    }
+  }
+
+  void _arriveAtDestination() {
+    _stopNavigation();
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('🎉 Arrived!'),
+        content: Text('You have arrived at ${_destinationStore!['nama']}'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('OK'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _stopNavigation() {
+    setState(() {
+      _isNavigating = false;
+      _routePoints.clear();
+      _navigationInstructions.clear();
+      _destinationStore = null;
+      _currentInstructionIndex = 0;
+    });
+
+    _positionStream?.cancel();
+  }
+
+  void _fitMapToRoute() {
+    if (_routePoints.isEmpty) return;
+
+    final bounds = LatLngBounds.fromPoints(_routePoints);
+    _mapController.fitCamera(
+        CameraFit.bounds(bounds: bounds, padding: const EdgeInsets.all(50)));
+  }
+
+  String _formatDuration(double seconds) {
+    int hours = (seconds / 3600).floor();
+    int minutes = ((seconds % 3600) / 60).floor();
+
+    if (hours > 0) {
+      return '${hours}h ${minutes}m';
+    } else {
+      return '${minutes}m';
     }
   }
 
@@ -223,7 +415,6 @@ class _LocationScreenState extends State<LocationScreen>
 
   void _goToMyLocation() {
     if (_latitude != null && _longitude != null) {
-      // Use the standard move method instead of animatedMove
       _mapController.move(LatLng(_latitude!, _longitude!), 15);
 
       ScaffoldMessenger.of(context).showSnackBar(
@@ -414,6 +605,29 @@ class _LocationScreenState extends State<LocationScreen>
                 // Action Buttons
                 Row(
                   children: [
+                    // Navigate Button (NEW!)
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        onPressed: () {
+                          Navigator.pop(context);
+                          _startNavigation(toko);
+                        },
+                        icon: const Icon(Icons.navigation, color: Colors.white),
+                        label: const Text(
+                          "Navigate",
+                          style: TextStyle(color: Colors.white),
+                        ),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.green[600],
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          elevation: 0,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
                     // "Open in Maps" Button
                     Expanded(
                       child: ElevatedButton.icon(
@@ -423,7 +637,7 @@ class _LocationScreenState extends State<LocationScreen>
                         icon:
                             const Icon(Icons.map_outlined, color: Colors.white),
                         label: const Text(
-                          "Directions",
+                          "Maps",
                           style: TextStyle(color: Colors.white),
                         ),
                         style: ElevatedButton.styleFrom(
@@ -436,7 +650,7 @@ class _LocationScreenState extends State<LocationScreen>
                         ),
                       ),
                     ),
-                    const SizedBox(width: 10),
+                    const SizedBox(width: 8),
                     // "Visit Store" Button
                     Expanded(
                       child: ElevatedButton.icon(
@@ -446,7 +660,7 @@ class _LocationScreenState extends State<LocationScreen>
                         },
                         icon: const Icon(Icons.store, color: Colors.white),
                         label: const Text(
-                          'Visit Store',
+                          'Visit',
                           style: TextStyle(color: Colors.white),
                         ),
                         style: ElevatedButton.styleFrom(
@@ -526,11 +740,9 @@ class _LocationScreenState extends State<LocationScreen>
           options: MapOptions(
             initialCenter: _latitude != null && _longitude != null
                 ? LatLng(_latitude!, _longitude!)
-                : const LatLng(
-                    -6.2088, 106.8456), // Default to Jakarta if no location
+                : const LatLng(-6.2088, 106.8456),
             initialZoom: 13,
             onTap: (_, __) {
-              // Close store list if open
               if (_showStoreList) {
                 _toggleStoreList();
               }
@@ -538,6 +750,19 @@ class _LocationScreenState extends State<LocationScreen>
           ),
           children: [
             openStreetMapLayer,
+
+            // Route polyline (NEW!)
+            if (_routePoints.isNotEmpty)
+              PolylineLayer(
+                polylines: [
+                  Polyline(
+                    points: _routePoints,
+                    strokeWidth: 5.0,
+                    color: Colors.blue[600]!,
+                  ),
+                ],
+              ),
+
             MarkerLayer(
               markers: [
                 if (_latitude != null && _longitude != null)
@@ -563,112 +788,118 @@ class _LocationScreenState extends State<LocationScreen>
           ],
         ),
 
-        // Search Bar and Nearby Button
-        Positioned(
-          top: MediaQuery.of(context).padding.top + 10,
-          left: 16,
-          right: 16,
-          child: Card(
-            elevation: 4,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: TextField(
-                      controller: _searchController,
-                      decoration: InputDecoration(
-                        hintText: 'Search for stores...',
-                        hintStyle: TextStyle(
-                          fontSize: 16,
-                          color: Colors.grey[600],
+        // Navigation Panel (NEW!)
+        if (_isNavigating)
+          Positioned(
+            top: MediaQuery.of(context).padding.top + 10,
+            left: 16,
+            right: 16,
+            child: _buildNavigationPanel(),
+          ),
+
+        // Search Bar (modified position when navigating)
+        if (!_isNavigating)
+          Positioned(
+            top: MediaQuery.of(context).padding.top + 10,
+            left: 16,
+            right: 16,
+            child: Card(
+              elevation: 4,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: _searchController,
+                        decoration: InputDecoration(
+                          hintText: 'Search for stores...',
+                          hintStyle: TextStyle(
+                            fontSize: 16,
+                            color: Colors.grey[600],
+                          ),
+                          prefixIcon: Icon(Icons.search, color: primaryColor),
+                          border: InputBorder.none,
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 12,
+                          ),
                         ),
-                        prefixIcon: Icon(Icons.search, color: primaryColor),
-                        border: InputBorder.none,
-                        contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 12,
-                        ),
-                      ),
-                      onSubmitted: (value) async {
-                        if (value.trim().isEmpty) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                                content: Text('Please enter a search term')),
-                          );
-                          return;
-                        }
-
-                        try {
-                          // Show loading indicator
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('Searching...'),
-                              duration: Duration(seconds: 1),
-                            ),
-                          );
-
-                          // Call search API
-                          List<Map<String, dynamic>> results =
-                              await searchStores(value);
-
-                          // Clear the search field
-                          _searchController.clear();
-
-                          // Navigate to results page
-                          if (mounted) {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => SearchResultPage(
-                                  searchResults: results,
-                                ),
-                              ),
-                            );
-                          }
-                        } catch (error) {
-                          if (mounted) {
+                        onSubmitted: (value) async {
+                          if (value.trim().isEmpty) {
                             ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content:
-                                    Text('Search failed: ${error.toString()}'),
-                                backgroundColor: Colors.red,
+                              const SnackBar(
+                                  content: Text('Please enter a search term')),
+                            );
+                            return;
+                          }
+
+                          try {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Searching...'),
+                                duration: Duration(seconds: 1),
                               ),
                             );
+
+                            List<Map<String, dynamic>> results =
+                                await searchStores(value);
+
+                            _searchController.clear();
+
+                            if (mounted) {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => SearchResultPage(
+                                    searchResults: results,
+                                  ),
+                                ),
+                              );
+                            }
+                          } catch (error) {
+                            if (mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(
+                                      'Search failed: ${error.toString()}'),
+                                  backgroundColor: Colors.red,
+                                ),
+                              );
+                            }
                           }
-                        }
+                        },
+                      ),
+                    ),
+                    IconButton(
+                      onPressed: () {
+                        context.push(
+                          '/nearby-stores',
+                          extra: _tokoDalamRadius,
+                        );
                       },
-                    ),
-                  ),
-                  IconButton(
-                    onPressed: () {
-                      context.push(
-                        '/nearby-stores',
-                        extra: _tokoDalamRadius,
-                      );
-                    },
-                    icon: Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: secondaryColor,
-                        borderRadius: BorderRadius.circular(8),
+                      icon: Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: secondaryColor,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Icon(
+                          Icons.storefront_outlined,
+                          color: Colors.white,
+                          size: 20,
+                        ),
                       ),
-                      child: Icon(
-                        Icons.storefront_outlined,
-                        color: Colors.white,
-                        size: 20,
-                      ),
+                      tooltip: 'Nearby Stores',
                     ),
-                    tooltip: 'Nearby Stores',
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
           ),
-        ),
 
         // Action Buttons (Bottom Right)
         Positioned(
@@ -677,18 +908,36 @@ class _LocationScreenState extends State<LocationScreen>
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              // List stores button
-              FloatingActionButton(
-                heroTag: 'listButton',
-                backgroundColor: _showStoreList ? primaryColor : Colors.white,
-                onPressed: _toggleStoreList,
-                elevation: 2,
-                child: Icon(
-                  _showStoreList ? Icons.list_alt : Icons.format_list_bulleted,
-                  color: _showStoreList ? Colors.white : secondaryColor,
+              // Stop Navigation Button (NEW!)
+              if (_isNavigating)
+                FloatingActionButton(
+                  heroTag: 'stopNavigationButton',
+                  backgroundColor: Colors.red[600],
+                  onPressed: _stopNavigation,
+                  elevation: 2,
+                  child: const Icon(
+                    Icons.stop,
+                    color: Colors.white,
+                  ),
                 ),
-              ),
-              const SizedBox(height: 12),
+              if (_isNavigating) const SizedBox(height: 12),
+
+              // List stores button
+              if (!_isNavigating)
+                FloatingActionButton(
+                  heroTag: 'listButton',
+                  backgroundColor: _showStoreList ? primaryColor : Colors.white,
+                  onPressed: _toggleStoreList,
+                  elevation: 2,
+                  child: Icon(
+                    _showStoreList
+                        ? Icons.list_alt
+                        : Icons.format_list_bulleted,
+                    color: _showStoreList ? Colors.white : secondaryColor,
+                  ),
+                ),
+              if (!_isNavigating) const SizedBox(height: 12),
+
               // My location button
               FloatingActionButton(
                 heroTag: 'locationButton',
@@ -704,122 +953,254 @@ class _LocationScreenState extends State<LocationScreen>
           ),
         ),
 
-        // Store list panel (animated)
-        AnimatedBuilder(
-          animation: _animationController,
-          builder: (context, child) {
-            return Positioned(
-              bottom: 0,
-              left: 0,
-              right: 0,
-              height: MediaQuery.of(context).size.height *
-                  0.4 *
-                  _animationController.value,
-              child: Container(
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: const BorderRadius.vertical(
-                    top: Radius.circular(20),
-                  ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.1),
-                      blurRadius: 10,
-                      offset: const Offset(0, -2),
+        // Store list panel (hidden during navigation)
+        if (!_isNavigating)
+          AnimatedBuilder(
+            animation: _animationController,
+            builder: (context, child) {
+              return Positioned(
+                bottom: 0,
+                left: 0,
+                right: 0,
+                height: MediaQuery.of(context).size.height *
+                    0.4 *
+                    _animationController.value,
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: const BorderRadius.vertical(
+                      top: Radius.circular(20),
                     ),
-                  ],
-                ),
-                child: ClipRRect(
-                  borderRadius: const BorderRadius.vertical(
-                    top: Radius.circular(20),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.1),
+                        blurRadius: 10,
+                        offset: const Offset(0, -2),
+                      ),
+                    ],
                   ),
-                  child: Column(
-                    children: [
-                      // Handle
-                      Container(
-                        width: 50,
-                        height: 5,
-                        margin: const EdgeInsets.symmetric(vertical: 10),
-                        decoration: BoxDecoration(
-                          color: Colors.grey[300],
-                          borderRadius: BorderRadius.circular(10),
+                  child: ClipRRect(
+                    borderRadius: const BorderRadius.vertical(
+                      top: Radius.circular(20),
+                    ),
+                    child: Column(
+                      children: [
+                        Container(
+                          width: 50,
+                          height: 5,
+                          margin: const EdgeInsets.symmetric(vertical: 10),
+                          decoration: BoxDecoration(
+                            color: Colors.grey[300],
+                            borderRadius: BorderRadius.circular(10),
+                          ),
                         ),
-                      ),
-                      // Title
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 20),
-                        child: Row(
-                          children: [
-                            const Text(
-                              'Nearby Stores',
-                              style: TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            const Spacer(),
-                            TextButton.icon(
-                              onPressed: () {
-                                context.push(
-                                  '/nearby-stores',
-                                  extra: _tokoDalamRadius,
-                                );
-                              },
-                              icon: const Icon(Icons.arrow_forward, size: 16),
-                              label: const Text('View All'),
-                              style: TextButton.styleFrom(
-                                foregroundColor: primaryColor,
-                                padding: EdgeInsets.zero,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const Divider(),
-                      // List
-                      Expanded(
-                        child: _tokoDalamRadius.isEmpty
-                            ? Center(
-                                child: Column(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: const [
-                                    Icon(
-                                      Icons.store_mall_directory_outlined,
-                                      size: 50,
-                                      color: Colors.grey,
-                                    ),
-                                    SizedBox(height: 16),
-                                    Text(
-                                      'No stores found nearby',
-                                      style: TextStyle(
-                                        color: Colors.grey,
-                                        fontSize: 16,
-                                      ),
-                                    ),
-                                  ],
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 20),
+                          child: Row(
+                            children: [
+                              const Text(
+                                'Nearby Stores',
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
                                 ),
-                              )
-                            : ListView.builder(
-                                padding:
-                                    const EdgeInsets.symmetric(horizontal: 16),
-                                itemCount: _tokoDalamRadius.length > 10
-                                    ? 10
-                                    : _tokoDalamRadius.length,
-                                itemBuilder: (context, index) {
-                                  final store = _tokoDalamRadius[index];
-                                  return _buildStoreListItem(store);
-                                },
                               ),
+                              const SizedBox(width: 8),
+                              const Spacer(),
+                              TextButton.icon(
+                                onPressed: () {
+                                  context.push(
+                                    '/nearby-stores',
+                                    extra: _tokoDalamRadius,
+                                  );
+                                },
+                                icon: const Icon(Icons.arrow_forward, size: 16),
+                                label: const Text('View All'),
+                                style: TextButton.styleFrom(
+                                  foregroundColor: primaryColor,
+                                  padding: EdgeInsets.zero,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const Divider(),
+                        Expanded(
+                          child: _tokoDalamRadius.isEmpty
+                              ? Center(
+                                  child: Column(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: const [
+                                      Icon(
+                                        Icons.store_mall_directory_outlined,
+                                        size: 50,
+                                        color: Colors.grey,
+                                      ),
+                                      SizedBox(height: 16),
+                                      Text(
+                                        'No stores found nearby',
+                                        style: TextStyle(
+                                          color: Colors.grey,
+                                          fontSize: 16,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                )
+                              : ListView.builder(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 16),
+                                  itemCount: _tokoDalamRadius.length > 10
+                                      ? 10
+                                      : _tokoDalamRadius.length,
+                                  itemBuilder: (context, index) {
+                                    final store = _tokoDalamRadius[index];
+                                    return _buildStoreListItem(store);
+                                  },
+                                ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
+      ],
+    );
+  }
+
+  // NEW Navigation Panel Widget
+  Widget _buildNavigationPanel() {
+    return Card(
+      elevation: 8,
+      color: Colors.blue[700],
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(15),
+      ),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Destination info
+            Row(
+              children: [
+                Icon(Icons.navigation, color: Colors.white, size: 24),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Navigating to',
+                        style: TextStyle(color: Colors.white70, fontSize: 12),
+                      ),
+                      Text(
+                        _destinationStore?['nama'] ?? 'Unknown',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ],
                   ),
                 ),
+              ],
+            ),
+            const SizedBox(height: 12),
+
+            // Distance and time info
+            Row(
+              children: [
+                Expanded(
+                  child: Container(
+                    padding:
+                        const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Column(
+                      children: [
+                        Text(
+                          '${_remainingDistance.toStringAsFixed(1)} km',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        Text(
+                          'Remaining',
+                          style: TextStyle(color: Colors.white70, fontSize: 12),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Container(
+                    padding:
+                        const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Column(
+                      children: [
+                        Text(
+                          _estimatedTime,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        Text(
+                          'Est. Time',
+                          style: TextStyle(color: Colors.white70, fontSize: 12),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+
+            // Current instruction
+            if (_navigationInstructions.isNotEmpty &&
+                _currentInstructionIndex < _navigationInstructions.length)
+              Container(
+                margin: const EdgeInsets.only(top: 12),
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.turn_right, color: Colors.blue[700], size: 24),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        _navigationInstructions[_currentInstructionIndex],
+                        style: TextStyle(
+                          color: Colors.blue[700],
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            );
-          },
+          ],
         ),
-      ],
+      ),
     );
   }
 
@@ -841,10 +1222,21 @@ class _LocationScreenState extends State<LocationScreen>
           width: 24,
           height: 24,
           decoration: BoxDecoration(
-            color: primaryColor,
+            color: _isNavigating ? Colors.blue[600] : primaryColor,
             shape: BoxShape.circle,
             border: Border.all(color: Colors.white, width: 2),
           ),
+          // Show direction arrow during navigation
+          child: _isNavigating
+              ? Transform.rotate(
+                  angle: _currentHeading * (math.pi / 180),
+                  child: const Icon(
+                    Icons.navigation,
+                    color: Colors.white,
+                    size: 16,
+                  ),
+                )
+              : null,
         ),
       ),
     );
@@ -853,9 +1245,12 @@ class _LocationScreenState extends State<LocationScreen>
   Widget _buildStoreMarker(Map<String, dynamic> store) {
     return Stack(
       children: [
-        const Icon(
+        Icon(
           Icons.location_on,
-          color: Color(0xFF31394E),
+          color: _destinationStore != null &&
+                  _destinationStore!['store_id'] == store['store_id']
+              ? Colors.green
+              : const Color(0xFF31394E),
           size: 40,
         ),
         Positioned(
@@ -869,7 +1264,13 @@ class _LocationScreenState extends State<LocationScreen>
               decoration: BoxDecoration(
                 color: Colors.white,
                 shape: BoxShape.circle,
-                border: Border.all(color: const Color(0xFF31394E), width: 1),
+                border: Border.all(
+                  color: _destinationStore != null &&
+                          _destinationStore!['store_id'] == store['store_id']
+                      ? Colors.green
+                      : const Color(0xFF31394E),
+                  width: 1,
+                ),
               ),
               child: Center(
                 child: store['logo'] != null
@@ -907,7 +1308,6 @@ class _LocationScreenState extends State<LocationScreen>
           padding: const EdgeInsets.all(12),
           child: Row(
             children: [
-              // Store logo
               ClipRRect(
                 borderRadius: BorderRadius.circular(8),
                 child: store['logo'] != null
@@ -940,12 +1340,10 @@ class _LocationScreenState extends State<LocationScreen>
                       ),
               ),
               const SizedBox(width: 12),
-              // Store info
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Store name
                     Text(
                       store['nama'] ?? 'Unknown Store',
                       style: const TextStyle(
@@ -956,7 +1354,6 @@ class _LocationScreenState extends State<LocationScreen>
                       overflow: TextOverflow.ellipsis,
                     ),
                     const SizedBox(height: 4),
-                    // Store address (shortened)
                     Text(
                       store['address'] ?? 'No address',
                       style: TextStyle(
@@ -970,7 +1367,6 @@ class _LocationScreenState extends State<LocationScreen>
                 ),
               ),
               const SizedBox(width: 8),
-              // Distance badge
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
@@ -1121,7 +1517,6 @@ class _LocationScreenState extends State<LocationScreen>
             const SizedBox(height: 16),
             TextButton(
               onPressed: () {
-                // Load store list anyway, without filtering by distance
                 _fetchTokoData();
                 setState(() {
                   _errorMessage = '';

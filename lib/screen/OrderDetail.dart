@@ -990,7 +990,7 @@ class _OrderDetailsPageState extends State<OrderDetailsPage>
               'Rp ${formatCurrency(double.tryParse(_transactionData!['sub_total_price'].toString()) ?? 0)}',
             ),
             _buildSummaryRow(
-              'Tax (${_getTaxPercentage()}%)',
+              'Tax (${_transactionData!['tax_percent'].toString()}%)',
               'Rp ${formatCurrency(double.tryParse(_transactionData!['tax_price'].toString()) ?? 0)}',
             ),
             if (_getDiscountAmount() > 0)
