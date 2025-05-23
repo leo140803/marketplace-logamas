@@ -40,7 +40,7 @@ class ChatService {
   }
 
   void _connectSocket() {
-    _socket = IO.io('https://c0fa-66-96-225-86.ngrok-free.app/chat', <String, dynamic>{
+    _socket = IO.io('http://127.0.0.1:3001/chat', <String, dynamic>{
       'transports': ['websocket'],
       'autoConnect': true,
       'query': {
@@ -102,7 +102,7 @@ class ChatService {
 
     if (!isConnected) {
       print('❌ Socket not connected, retrying in 1 second...');
-      Future.delayed(Duration(seconds: 1), () {
+      Future.delayed(Duration(seconds: 3), () {
         if (isConnected) {
           joinChat(userId, storeId);
         } else {
