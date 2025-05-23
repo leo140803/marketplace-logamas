@@ -56,6 +56,12 @@ class _MenuScreenState extends State<MenuScreen> {
 
   final List<MenuItemData> _settingsMenuItems = [
     MenuItemData(
+      icon: Icons.question_mark_rounded,
+      title: 'FAQ',
+      route: '/faq',
+      isNamed: false,
+    ),
+    MenuItemData(
       icon: Icons.qr_code_scanner,
       title: 'Show My QR',
       route: '/myQR',

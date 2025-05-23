@@ -334,10 +334,6 @@ class _FAQPageState extends State<FAQPage> with SingleTickerProviderStateMixin {
         },
         body: _buildBody(),
       ),
-      bottomNavigationBar: BottomNavBar(
-        selectedIndex: _selectedIndex,
-        onItemTapped: _onItemTapped,
-      ),
     );
   }
 
@@ -379,7 +375,10 @@ class _FAQPageState extends State<FAQPage> with SingleTickerProviderStateMixin {
         ),
         centerTitle: true,
       ),
-      automaticallyImplyLeading: false,
+      leading: IconButton(
+        icon: Icon(Icons.arrow_back_ios, color: Colors.white, size: 22),
+        onPressed: () => context.go('/information'),
+      ),
     );
   }
 

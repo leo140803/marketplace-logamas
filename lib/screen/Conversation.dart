@@ -170,15 +170,27 @@ class _ConversationListScreenState extends State<ConversationListScreen> {
     return Scaffold(
       backgroundColor: Colors.grey[100],
       appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        flexibleSpace: Stack(
+          fit: StackFit.expand,
+          children: [
+            Image.asset(
+              'assets/images/appbar.png',
+              fit: BoxFit.cover,
+            ),
+            Container(
+              color: Colors.black.withOpacity(0.2),
+            ),
+          ],
+        ),
         automaticallyImplyLeading: false,
-        backgroundColor: Color(0xFF31394E),
+        centerTitle: true,
         elevation: 0,
-        title: Text(
+        title: const Text(
           'Messages',
           style: TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
             color: Colors.white,
+            fontWeight: FontWeight.bold,
           ),
         ),
         actions: [
