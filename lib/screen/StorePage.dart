@@ -2119,7 +2119,7 @@ class _StorePageState extends State<StorePage> {
                                 ),
                               ),
 
-                              // Action buttons (Chat and Follow)
+                              // Action buttons (Chat, WhatsApp, and Follow)
                               Padding(
                                 padding:
                                     const EdgeInsets.fromLTRB(16, 0, 16, 16),
@@ -2160,6 +2160,50 @@ class _StorePageState extends State<StorePage> {
                                                   'Live Chat',
                                                   style: TextStyle(
                                                     color: Color(0xFFC58189),
+                                                    fontSize: 14,
+                                                    fontWeight: FontWeight.bold,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+
+                                    SizedBox(width: 10),
+
+                                    // WhatsApp button
+                                    Expanded(
+                                      child: Material(
+                                        color: Colors.transparent,
+                                        child: InkWell(
+                                          onTap: _openWhatsApp,
+                                          borderRadius:
+                                              BorderRadius.circular(10),
+                                          child: Container(
+                                            padding: const EdgeInsets.symmetric(
+                                                vertical: 12),
+                                            decoration: BoxDecoration(
+                                              color: Color(0xFF25D366),
+                                              borderRadius:
+                                                  BorderRadius.circular(10),
+                                            ),
+                                            alignment: Alignment.center,
+                                            child: Row(
+                                              mainAxisAlignment:
+                                                  MainAxisAlignment.center,
+                                              children: [
+                                                Icon(
+                                                  Icons.chat,
+                                                  color: Colors.white,
+                                                  size: 18,
+                                                ),
+                                                SizedBox(width: 8),
+                                                Text(
+                                                  'WA',
+                                                  style: TextStyle(
+                                                    color: Colors.white,
                                                     fontSize: 14,
                                                     fontWeight: FontWeight.bold,
                                                   ),
