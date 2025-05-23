@@ -51,6 +51,7 @@ class _LocationScreenState extends State<LocationScreen>
   double _remainingDistance = 0;
   String _estimatedTime = '';
   double _currentHeading = 0;
+  String _currentTransportMode = 'driving-car'; // Added transport mode
 
   // Theme colors
   final Color primaryColor = const Color(0xFFC58189);
@@ -345,8 +346,295 @@ class _LocationScreenState extends State<LocationScreen>
     }
   }
 
-  // Navigation Functions
-  Future<void> _calculateRoute(double destLat, double destLon) async {
+  // NEW: Transportation Mode Selection Dialog
+  void _showTransportationModeDialog(Map<String, dynamic> store) {
+    showGeneralDialog(
+      context: context,
+      barrierDismissible: true,
+      barrierLabel: 'Transportation Mode Selection',
+      barrierColor: Colors.black.withOpacity(0.5),
+      transitionDuration: const Duration(milliseconds: 300),
+      pageBuilder: (context, animation, secondaryAnimation) {
+        return _buildTransportModeDialog(animation, store);
+      },
+      transitionBuilder: (context, animation, secondaryAnimation, child) {
+        return ScaleTransition(
+          scale: Tween<double>(begin: 0.7, end: 1.0).animate(
+            CurvedAnimation(parent: animation, curve: Curves.easeOutBack),
+          ),
+          child: FadeTransition(
+            opacity: animation,
+            child: child,
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildTransportModeDialog(
+      Animation<double> animation, Map<String, dynamic> store) {
+    return Center(
+      child: Material(
+        type: MaterialType.transparency,
+        child: Container(
+          margin: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(20),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.1),
+                blurRadius: 20,
+                spreadRadius: 5,
+              ),
+            ],
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Header
+              Container(
+                padding: const EdgeInsets.all(24),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [primaryColor, primaryColor.withOpacity(0.8)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: const BorderRadius.vertical(
+                    top: Radius.circular(20),
+                  ),
+                ),
+                child: Column(
+                  children: [
+                    Icon(
+                      Icons.directions,
+                      color: Colors.white,
+                      size: 40,
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      'Choose Transportation',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'How would you like to get there?',
+                      style: TextStyle(
+                        color: Colors.white.withOpacity(0.9),
+                        fontSize: 14,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              // Transportation Options
+              Padding(
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  children: [
+                    // Store info
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: Colors.grey[50],
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: Colors.grey[200]!),
+                      ),
+                      child: Row(
+                        children: [
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(8),
+                            child: store['logo'] != null
+                                ? CachedNetworkImage(
+                                    imageUrl:
+                                        '$apiBaseUrlImage${store['logo']}',
+                                    width: 40,
+                                    height: 40,
+                                    fit: BoxFit.cover,
+                                    errorWidget: (context, url, error) =>
+                                        Container(
+                                      width: 40,
+                                      height: 40,
+                                      color: Colors.grey[200],
+                                      child: const Icon(Icons.store,
+                                          color: Colors.grey),
+                                    ),
+                                  )
+                                : Container(
+                                    width: 40,
+                                    height: 40,
+                                    color: Colors.grey[200],
+                                    child: const Icon(Icons.store,
+                                        color: Colors.grey),
+                                  ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  store['nama'] ?? 'Unknown Store',
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 16,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                                if (store.containsKey('distance'))
+                                  Text(
+                                    "${_formatDistance(store['distance'])} km away",
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: Colors.grey[600],
+                                    ),
+                                  ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    const SizedBox(height: 24),
+
+                    // Transport options
+                    _buildTransportOption(
+                      icon: Icons.directions_car,
+                      title: 'Driving',
+                      subtitle: 'Main route by car',
+                      color: Colors.blue,
+                      mode: 'driving-car',
+                      store: store,
+                    ),
+                    const SizedBox(height: 12),
+                    _buildTransportOption(
+                      icon: Icons.motorcycle,
+                      title: 'Motorcycle',
+                      subtitle: 'Quick and flexible',
+                      color: Colors.orange,
+                      mode: 'cycling-regular',
+                      store: store,
+                    ),
+                    const SizedBox(height: 12),
+                    _buildTransportOption(
+                      icon: Icons.directions_walk,
+                      title: 'Walking',
+                      subtitle: 'Pedestrian route',
+                      color: Colors.green,
+                      mode: 'foot-walking',
+                      store: store,
+                    ),
+                  ],
+                ),
+              ),
+
+              // Cancel button
+              Padding(
+                padding: const EdgeInsets.only(bottom: 20, left: 20, right: 20),
+                child: TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: Text(
+                    'Cancel',
+                    style: TextStyle(
+                      color: Colors.grey[600],
+                      fontSize: 16,
+                    ),
+                  ),
+                  style: TextButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(
+                        vertical: 12, horizontal: 24),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTransportOption({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required Color color,
+    required String mode,
+    required Map<String, dynamic> store,
+  }) {
+    return InkWell(
+      onTap: () {
+        Navigator.pop(context);
+        _startNavigationWithMode(store, mode);
+      },
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          border: Border.all(color: Colors.grey[200]!),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: color.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(
+                icon,
+                color: color,
+                size: 24,
+              ),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    subtitle,
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: Colors.grey[600],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Icon(
+              Icons.arrow_forward_ios,
+              color: Colors.grey[400],
+              size: 16,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // MODIFIED: Navigation Functions
+  Future<void> _calculateRoute(
+      double destLat, double destLon, String transportMode) async {
     if (!_isValidCoordinate(_latitude) || !_isValidCoordinate(_longitude)) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -364,13 +652,14 @@ class _LocationScreenState extends State<LocationScreen>
 
     setState(() {
       _isCalculatingRoute = true;
+      _currentTransportMode = transportMode;
     });
 
     try {
       // Using OpenRouteService (free API)
       final apiKey = '5b3ce3597851110001cf62489cbeaa660b1444fe9d07890be7bae821';
       final url = Uri.parse(
-        'https://api.openrouteservice.org/v2/directions/driving-car?'
+        'https://api.openrouteservice.org/v2/directions/$transportMode?'
         'api_key=$apiKey&'
         'start=${_longitude!},${_latitude!}&'
         'end=$destLon,$destLat&'
@@ -420,20 +709,13 @@ class _LocationScreenState extends State<LocationScreen>
               : 0.0;
           _remainingDistance = _totalDistance;
           final duration = properties['summary']['duration'];
-          _estimatedTime = _isValidCoordinate(duration?.toDouble())
-              ? _formatDuration(duration)
-              : '0m';
+          _estimatedTime = _formatDuration(duration);
           _currentInstructionIndex = 0;
         });
       } else {
         throw Exception('Failed to calculate route');
       }
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Route calculation failed: ${e.toString()}')),
-        );
-      }
     } finally {
       setState(() {
         _isCalculatingRoute = false;
@@ -441,6 +723,7 @@ class _LocationScreenState extends State<LocationScreen>
     }
   }
 
+  // MODIFIED: Start navigation with transport mode selection
   void _startNavigation(Map<String, dynamic> store) async {
     if (!_isValidCoordinate(store['lat']) ||
         !_isValidCoordinate(store['lon'])) {
@@ -450,8 +733,15 @@ class _LocationScreenState extends State<LocationScreen>
       return;
     }
 
+    // Show transportation mode selection dialog
+    _showTransportationModeDialog(store);
+  }
+
+  // NEW: Start navigation with selected mode
+  void _startNavigationWithMode(
+      Map<String, dynamic> store, String transportMode) async {
     _destinationStore = store;
-    await _calculateRoute(store['lat'], store['lon']);
+    await _calculateRoute(store['lat'], store['lon'], transportMode);
 
     if (_routePoints.isNotEmpty) {
       setState(() {
@@ -558,6 +848,7 @@ class _LocationScreenState extends State<LocationScreen>
     showGeneralDialog(
       context: context,
       barrierDismissible: false,
+      barrierLabel: 'Arrival Celebration',
       barrierColor: Colors.black.withOpacity(0.7),
       transitionDuration: const Duration(milliseconds: 600),
       pageBuilder: (context, animation, secondaryAnimation) {
@@ -576,9 +867,6 @@ class _LocationScreenState extends State<LocationScreen>
         );
       },
     );
-    // setState(() {
-    //   _destinationStore= null;
-    // });
   }
 
   Widget _buildCelebrationDialog(Animation<double> animation) {
@@ -668,8 +956,8 @@ class _LocationScreenState extends State<LocationScreen>
                               ),
                             ],
                           ),
-                          child: const Icon(
-                            Icons.navigation,
+                          child: Icon(
+                            _getTransportIcon(_currentTransportMode),
                             color: Colors.green,
                             size: 40,
                           ),
@@ -874,6 +1162,20 @@ class _LocationScreenState extends State<LocationScreen>
     );
   }
 
+  // NEW: Helper to get transport icon
+  IconData _getTransportIcon(String transportMode) {
+    switch (transportMode) {
+      case 'driving-car':
+        return Icons.directions_car;
+      case 'cycling-regular':
+        return Icons.motorcycle;
+      case 'foot-walking':
+        return Icons.directions_walk;
+      default:
+        return Icons.navigation;
+    }
+  }
+
   Widget _buildConfettiParticle(
       Animation<double> animation, int index, Size screenSize) {
     final colors = [
@@ -936,11 +1238,11 @@ class _LocationScreenState extends State<LocationScreen>
         _isNavigating = false;
         _routePoints.clear();
         _navigationInstructions.clear();
-        // _destinationStore = null;
         _currentInstructionIndex = 0;
         _totalDistance = 0;
         _remainingDistance = 0;
         _estimatedTime = '';
+        _currentTransportMode = 'driving-car';
 
         // Ensure coordinates remain valid
         if (!_isValidCoordinate(_latitude)) {
@@ -1370,7 +1672,7 @@ class _LocationScreenState extends State<LocationScreen>
                   Polyline(
                     points: _routePoints,
                     strokeWidth: 5.0,
-                    color: Colors.blue[600]!,
+                    color: _getRouteColor(_currentTransportMode),
                   ),
                 ],
               ),
@@ -1689,11 +1991,25 @@ class _LocationScreenState extends State<LocationScreen>
     );
   }
 
+  // NEW: Get route color based on transport mode
+  Color _getRouteColor(String transportMode) {
+    switch (transportMode) {
+      case 'driving-car':
+        return Colors.blue[600]!;
+      case 'cycling-regular':
+        return Colors.orange[600]!;
+      case 'foot-walking':
+        return Colors.green[600]!;
+      default:
+        return Colors.blue[600]!;
+    }
+  }
+
   // Navigation Panel Widget
   Widget _buildNavigationPanel() {
     return Card(
       elevation: 8,
-      color: Colors.blue[700],
+      color: _getRouteColor(_currentTransportMode),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(15),
       ),
@@ -1705,7 +2021,8 @@ class _LocationScreenState extends State<LocationScreen>
             // Destination info
             Row(
               children: [
-                Icon(Icons.navigation, color: Colors.white, size: 24),
+                Icon(_getTransportIcon(_currentTransportMode),
+                    color: Colors.white, size: 24),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Column(
@@ -1802,13 +2119,14 @@ class _LocationScreenState extends State<LocationScreen>
                 ),
                 child: Row(
                   children: [
-                    Icon(Icons.turn_right, color: Colors.blue[700], size: 24),
+                    Icon(Icons.turn_right,
+                        color: _getRouteColor(_currentTransportMode), size: 24),
                     const SizedBox(width: 12),
                     Expanded(
                       child: Text(
                         _navigationInstructions[_currentInstructionIndex],
                         style: TextStyle(
-                          color: Colors.blue[700],
+                          color: _getRouteColor(_currentTransportMode),
                           fontSize: 14,
                           fontWeight: FontWeight.w500,
                         ),
@@ -1841,7 +2159,9 @@ class _LocationScreenState extends State<LocationScreen>
           width: 24,
           height: 24,
           decoration: BoxDecoration(
-            color: _isNavigating ? Colors.blue[600] : primaryColor,
+            color: _isNavigating
+                ? _getRouteColor(_currentTransportMode)
+                : primaryColor,
             shape: BoxShape.circle,
             border: Border.all(color: Colors.white, width: 2),
           ),
@@ -1849,8 +2169,8 @@ class _LocationScreenState extends State<LocationScreen>
           child: _isNavigating && _isValidCoordinate(_currentHeading)
               ? Transform.rotate(
                   angle: _currentHeading * (math.pi / 180),
-                  child: const Icon(
-                    Icons.navigation,
+                  child: Icon(
+                    _getTransportIcon(_currentTransportMode),
                     color: Colors.white,
                     size: 16,
                   ),

@@ -206,86 +206,148 @@ class _ChatScreenState extends State<ChatScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.grey[50],
-      appBar: AppBar(
-        backgroundColor: Color(0xFF31394E),
-        elevation: 0,
-        leading: IconButton(
-          icon: Icon(Icons.arrow_back, color: Colors.white),
-          onPressed: () => GoRouter.of(context).pop(),
-        ),
-        title: Row(
-          children: [
-            // Store logo
-            Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: Colors.white,
+      appBar: PreferredSize(
+        preferredSize: Size.fromHeight(70),
+        child: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                Color(0xFF31394E),
+                Color(0xFF3D4A5C),
+              ],
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.1),
+                blurRadius: 8,
+                offset: Offset(0, 2),
               ),
-              child: ClipOval(
-                child: widget.storeLogo != null
-                    ? Image.network(
-                        '$apiBaseUrlImage${widget.storeLogo}',
-                        fit: BoxFit.cover,
-                        errorBuilder: (context, error, stackTrace) {
-                          return Container(
-                            alignment: Alignment.center,
-                            decoration: BoxDecoration(
-                              color: Color(0xFFC58189),
-                            ),
-                            child: Text(
-                              widget.storeName.substring(0, 1).toUpperCase(),
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.white,
-                              ),
-                            ),
-                          );
-                        },
-                      )
-                    : Container(
-                        alignment: Alignment.center,
-                        decoration: BoxDecoration(
-                          color: Color(0xFFC58189),
+            ],
+          ),
+          child: AppBar(
+            backgroundColor: Colors.transparent,
+            elevation: 0,
+            toolbarHeight: 70,
+            leading: Container(
+              margin: EdgeInsets.only(left: 8),
+              child: IconButton(
+                icon: Container(
+                  padding: EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(
+                    Icons.arrow_back_ios,
+                    color: Colors.white,
+                    size: 18,
+                  ),
+                ),
+                onPressed: () => GoRouter.of(context).pop(),
+              ),
+            ),
+            title: Row(
+              children: [
+                // Enhanced store logo with status indicator
+                Stack(
+                  children: [
+                    Container(
+                      width: 48,
+                      height: 48,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: Colors.white.withOpacity(0.3),
+                          width: 2,
                         ),
-                        child: Text(
-                          widget.storeName.substring(0, 1).toUpperCase(),
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.2),
+                            blurRadius: 8,
+                            offset: Offset(0, 4),
                           ),
-                        ),
+                        ],
                       ),
-              ),
-            ),
-            SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    widget.storeName,
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
+                      child: ClipOval(
+                        child: widget.storeLogo != null
+                            ? Image.network(
+                                '$apiBaseUrlImage${widget.storeLogo}',
+                                fit: BoxFit.cover,
+                                errorBuilder: (context, error, stackTrace) {
+                                  return Container(
+                                    alignment: Alignment.center,
+                                    decoration: BoxDecoration(
+                                      gradient: LinearGradient(
+                                        colors: [
+                                          Color(0xFFC58189),
+                                          Color(0xFFE8A5B0),
+                                        ],
+                                      ),
+                                    ),
+                                    child: Text(
+                                      widget.storeName
+                                          .substring(0, 1)
+                                          .toUpperCase(),
+                                      style: TextStyle(
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.white,
+                                      ),
+                                    ),
+                                  );
+                                },
+                              )
+                            : Container(
+                                alignment: Alignment.center,
+                                decoration: BoxDecoration(
+                                  gradient: LinearGradient(
+                                    colors: [
+                                      Color(0xFFC58189),
+                                      Color(0xFFE8A5B0),
+                                    ],
+                                  ),
+                                ),
+                                child: Text(
+                                  widget.storeName
+                                      .substring(0, 1)
+                                      .toUpperCase(),
+                                  style: TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                              ),
+                      ),
                     ),
-                    overflow: TextOverflow.ellipsis,
+                    // Online status indicator
+                  ],
+                ),
+                SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        widget.storeName,
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.white,
+                          letterSpacing: 0.5,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      SizedBox(height: 2),
+                    ],
                   ),
-                  Text(
-                    'Chat with store',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Colors.white70,
-                    ),
-                  ),
-                ],
-              ),
+                ),
+              ],
             ),
-          ],
+          ),
         ),
       ),
       body: Column(
@@ -432,6 +494,56 @@ class _ChatScreenState extends State<ChatScreen> {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildMenuBottomSheet() {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      child: SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 40,
+              height: 4,
+              margin: EdgeInsets.symmetric(vertical: 12),
+              decoration: BoxDecoration(
+                color: Colors.grey[300],
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            ListTile(
+              leading: Icon(Icons.store, color: Color(0xFF31394E)),
+              title: Text('View Store Profile'),
+              onTap: () {
+                Navigator.pop(context);
+                // Navigate to store profile
+              },
+            ),
+            ListTile(
+              leading: Icon(Icons.block, color: Colors.red),
+              title: Text('Block Store'),
+              onTap: () {
+                Navigator.pop(context);
+                // Handle block store
+              },
+            ),
+            ListTile(
+              leading: Icon(Icons.report, color: Colors.orange),
+              title: Text('Report Store'),
+              onTap: () {
+                Navigator.pop(context);
+                // Handle report store
+              },
+            ),
+            SizedBox(height: 16),
+          ],
+        ),
       ),
     );
   }
