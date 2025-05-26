@@ -142,6 +142,7 @@ class _LoginPageState extends State<LoginPage>
 
     try {
       const String apiUrl = '$apiBaseUrl/user/login';
+      print(apiUrl);
       final response = await http.post(
         Uri.parse(apiUrl),
         headers: {
@@ -186,6 +187,7 @@ class _LoginPageState extends State<LoginPage>
         }
       } else {
         final responseBody = jsonDecode(response.body);
+        print(responseBody);
         final errorMessage =
             responseBody['message'] ?? 'Terjadi kesalahan. Silakan coba lagi.';
 

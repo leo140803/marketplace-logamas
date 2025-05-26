@@ -1219,7 +1219,7 @@ class _HomePageWidgetState extends State<HomePageWidget>
                               children: [
                                 // Info tooltip
                                 Tooltip(
-                                  message: "Gold prices from indogold.id",
+                                  message: "Gold prices from anekalogam.co.id",
                                   preferBelow: false,
                                   decoration: BoxDecoration(
                                     color: Colors.black87,
