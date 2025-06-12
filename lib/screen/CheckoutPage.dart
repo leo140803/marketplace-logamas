@@ -2098,30 +2098,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
                               ),
                             ],
                           ),
-                          SizedBox(height: 8),
 
-                          // Tax
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Text(
-                                'Tax (${storeProducts['store']['tax_percentage']}%)',
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  color: Colors.grey[700],
-                                ),
-                              ),
-                              Text(
-                                'Rp ${formatCurrency(taxAmount)}',
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  color: Color(0xFF31394E),
-                                ),
-                              ),
-                            ],
-                          ),
-
-                          // Discount if applicable
                           if (selectedVoucher != null) ...[
                             SizedBox(height: 8),
                             Row(
@@ -2149,6 +2126,29 @@ class _CheckoutPageState extends State<CheckoutPage> {
                               ],
                             ),
                           ],
+
+                          SizedBox(height: 8),
+
+                          // Tax
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                'Tax (${storeProducts['store']['tax_percentage']}%)',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  color: Colors.grey[700],
+                                ),
+                              ),
+                              Text(
+                                'Rp ${formatCurrency(taxAmount)}',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  color: Color(0xFF31394E),
+                                ),
+                              ),
+                            ],
+                          ),
 
                           SizedBox(height: 16),
                           Divider(height: 1, color: Colors.grey[200]),

@@ -1587,9 +1587,69 @@ class ProductItem extends StatelessWidget {
     required this.apiBaseUrlImage,
   }) : super(key: key);
 
+  void _showErrorSnackBar(BuildContext context, String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: AppTheme.errorColor,
+        behavior: SnackBarBehavior.floating,
+        margin: EdgeInsets.all(8),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+      ),
+    );
+  }
+
+  Future<void> _openCertificateLink(
+      BuildContext context, String? certificateLink) async {
+    if (certificateLink != null) {
+      final Uri url = Uri.parse(certificateLink);
+
+      // Tampilkan indikator loading
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (BuildContext dialogContext) {
+          // Gunakan dialogContext untuk Navigator.pop
+          return AlertDialog(
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: const [
+                SpinKitRing(
+                  color: AppTheme.primaryColor,
+                  size: 40.0,
+                ),
+                SizedBox(height: 16),
+                Text("Opening certificate..."),
+              ],
+            ),
+          );
+        },
+      );
+
+      try {
+        if (await canLaunchUrl(url)) {
+          Navigator.pop(
+              context); // Tutup dialog menggunakan context yang sesuai
+          await launchUrl(url, mode: LaunchMode.externalApplication);
+          HapticFeedback.mediumImpact();
+        } else {
+          Navigator.pop(context); // Tutup dialog
+          _showErrorSnackBar(context, "Unable to open the certificate link.");
+        }
+      } catch (e) {
+        Navigator.pop(context); // Tutup dialog
+        _showErrorSnackBar(
+            context, "Error opening certificate link: ${e.toString()}");
+      }
+    } else {
+      _showErrorSnackBar(context, "Certificate link is not available.");
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     var transactionReview = product['TransactionReview'];
+    var certificateLink = product['product_code']['certificate_link'];
 
     // Calculate review deadline
     DateTime updatedAt = DateTime.parse(product['updated_at']);
@@ -1804,6 +1864,82 @@ class ProductItem extends StatelessWidget {
                   transactionReview == null &&
                   canReview)
                 _buildRateProductButton(context),
+              if (transactionStatus == 2 && certificateLink != null)
+                Padding(
+                  padding: const EdgeInsets.only(top: 16.0),
+                  child: Container(
+                    width: double.infinity,
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [
+                          AppTheme.primaryColor,
+                          AppTheme.primaryColor.withOpacity(0.8),
+                        ],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      borderRadius: BorderRadius.circular(12),
+                      boxShadow: [
+                        BoxShadow(
+                          color: AppTheme.primaryColor.withOpacity(0.3),
+                          blurRadius: 8,
+                          offset: Offset(0, 4),
+                          spreadRadius: 1,
+                        ),
+                      ],
+                    ),
+                    child: Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        onTap: () =>
+                            _openCertificateLink(context, certificateLink),
+                        borderRadius: BorderRadius.circular(12),
+                        child: Padding(
+                          padding: EdgeInsets.symmetric(
+                              vertical: 14, horizontal: 20),
+                          child: Row(
+                            children: [
+                              Container(
+                                padding: EdgeInsets.all(10),
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withOpacity(0.15),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Icon(
+                                  Icons.verified,
+                                  color: Colors.white,
+                                  size: 20,
+                                ),
+                              ),
+                              SizedBox(width: 16),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Text(
+                                      'View Certificate',
+                                      style: TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.white,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              Icon(
+                                Icons.arrow_forward_ios,
+                                color: Colors.white.withOpacity(0.8),
+                                size: 16,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
             ],
           ),
         ),
