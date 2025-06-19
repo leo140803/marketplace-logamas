@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:http/http.dart' as http;
+import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
 import 'package:marketplace_logamas/function/Utils.dart';
 import 'package:marketplace_logamas/screen/FullScreenImageView.dart';
@@ -15,6 +16,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:shimmer/shimmer.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter_spinkit/flutter_spinkit.dart';
+import 'package:path/path.dart' as path;
 
 // Theme constants
 class AppTheme {
@@ -71,6 +73,10 @@ class _TradeDetailsPageState extends State<TradeDetailsPage> {
   bool _isLoading = true;
   bool _isExpired = false;
   int _reviewExpirationDays = 7;
+  List<XFile> selectedImages = [];
+  final ImagePicker _picker = ImagePicker();
+  List<XFile> editImages = []; // gambar baru yg dipilih
+  List<String> oldImages = []; // url gambar lama (preview saja)
 
   @override
   void initState() {
@@ -1151,10 +1157,73 @@ class _TradeDetailsPageState extends State<TradeDetailsPage> {
         ? product['product_code']['product']['name'] ?? 'Unknown Product'
         : 'External Product';
 
+    var certificateLink = product['product_code'] != null
+        ? product['product_code']['certificate_link']
+        : null;
+
     // Check if product image is null and provide a placeholder
     String? productImageUrl = product['product_code'] != null
         ? product['product_code']['image']
         : null;
+
+    void _showErrorSnackBar(BuildContext context, String message) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(message),
+          backgroundColor: AppTheme.errorColor,
+          behavior: SnackBarBehavior.floating,
+          margin: EdgeInsets.all(8),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        ),
+      );
+    }
+
+    Future<void> _openCertificateLink(
+        BuildContext context, String? certificateLink) async {
+      if (certificateLink != null) {
+        final Uri url = Uri.parse(certificateLink);
+
+        // Tampilkan indikator loading
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (BuildContext dialogContext) {
+            // Gunakan dialogContext untuk Navigator.pop
+            return AlertDialog(
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: const [
+                  SpinKitRing(
+                    color: AppTheme.primaryColor,
+                    size: 40.0,
+                  ),
+                  SizedBox(height: 16),
+                  Text("Opening certificate..."),
+                ],
+              ),
+            );
+          },
+        );
+
+        try {
+          if (await canLaunchUrl(url)) {
+            Navigator.pop(
+                context); // Tutup dialog menggunakan context yang sesuai
+            await launchUrl(url, mode: LaunchMode.externalApplication);
+            HapticFeedback.mediumImpact();
+          } else {
+            Navigator.pop(context); // Tutup dialog
+            _showErrorSnackBar(context, "Unable to open the certificate link.");
+          }
+        } catch (e) {
+          Navigator.pop(context); // Tutup dialog
+          _showErrorSnackBar(
+              context, "Error opening certificate link: ${e.toString()}");
+        }
+      } else {
+        _showErrorSnackBar(context, "Certificate link is not available.");
+      }
+    }
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 16.0),
@@ -1376,6 +1445,83 @@ class _TradeDetailsPageState extends State<TradeDetailsPage> {
                   canReview &&
                   isProductBought)
                 _buildRateProductButton(reviewDeadline, product['id']),
+
+              if (paymentStatus == 2 && certificateLink != null)
+                Padding(
+                  padding: const EdgeInsets.only(top: 16.0),
+                  child: Container(
+                    width: double.infinity,
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [
+                          AppTheme.primaryColor,
+                          AppTheme.primaryColor.withOpacity(0.8),
+                        ],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      borderRadius: BorderRadius.circular(12),
+                      boxShadow: [
+                        BoxShadow(
+                          color: AppTheme.primaryColor.withOpacity(0.3),
+                          blurRadius: 8,
+                          offset: Offset(0, 4),
+                          spreadRadius: 1,
+                        ),
+                      ],
+                    ),
+                    child: Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        onTap: () =>
+                            _openCertificateLink(context, certificateLink),
+                        borderRadius: BorderRadius.circular(12),
+                        child: Padding(
+                          padding: EdgeInsets.symmetric(
+                              vertical: 14, horizontal: 20),
+                          child: Row(
+                            children: [
+                              Container(
+                                padding: EdgeInsets.all(10),
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withOpacity(0.15),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Icon(
+                                  Icons.verified,
+                                  color: Colors.white,
+                                  size: 20,
+                                ),
+                              ),
+                              SizedBox(width: 16),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Text(
+                                      'View Certificate',
+                                      style: TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.white,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              Icon(
+                                Icons.arrow_forward_ios,
+                                color: Colors.white.withOpacity(0.8),
+                                size: 16,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
             ],
           ),
         ),
@@ -1446,6 +1592,62 @@ class _TradeDetailsPageState extends State<TradeDetailsPage> {
             ),
           ),
 
+          if (review['images'] != null &&
+              review['images'] is List &&
+              review['images'].isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(top: 12.0),
+              child: Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: List.generate(review['images'].length, (index) {
+                  final imageUrl = review['images'][index];
+                  return GestureDetector(
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => FullScreenImageView(
+                              imageUrl: '$apiBaseUrlImage2$imageUrl'),
+                        ),
+                      );
+                    },
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(8),
+                      child: Image.network(
+                        '$apiBaseUrlImage2$imageUrl',
+                        width: 80,
+                        height: 80,
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) => Container(
+                          width: 80,
+                          height: 80,
+                          color: Colors.grey[300],
+                          child:
+                              Icon(Icons.broken_image, color: Colors.grey[700]),
+                        ),
+                        loadingBuilder: (context, child, progress) {
+                          if (progress == null) return child;
+                          return Container(
+                            width: 80,
+                            height: 80,
+                            alignment: Alignment.center,
+                            child: CircularProgressIndicator(
+                              value: progress.expectedTotalBytes != null
+                                  ? progress.cumulativeBytesLoaded /
+                                      progress.expectedTotalBytes!
+                                  : null,
+                              strokeWidth: 2,
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                  );
+                }),
+              ),
+            ),
+
           // Admin reply if available
           if (review['reply_admin'] != null)
             Container(
@@ -1496,6 +1698,7 @@ class _TradeDetailsPageState extends State<TradeDetailsPage> {
                     _transactionData!['customer_id'],
                     review['rating'],
                     review['review'],
+                    review['images'] ?? [],
                   );
                 },
                 icon: Icon(Icons.edit, size: 16, color: AppTheme.accentColor),
@@ -1556,7 +1759,7 @@ class _TradeDetailsPageState extends State<TradeDetailsPage> {
         return StatefulBuilder(
           builder: (context, setDialogState) {
             return Dialog(
-              backgroundColor: AppTheme.primaryColor,
+              backgroundColor: Colors.white,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(16.0),
               ),
@@ -1571,13 +1774,13 @@ class _TradeDetailsPageState extends State<TradeDetailsPage> {
                       style: TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
-                        color: Colors.white,
+                        color: AppTheme.primaryColor,
                       ),
                     ),
                     SizedBox(height: 12),
                     Text(
                       "Share your experience with this product",
-                      style: TextStyle(fontSize: 14, color: Colors.white70),
+                      style: TextStyle(fontSize: 14, color: Colors.grey[600]),
                       textAlign: TextAlign.center,
                     ),
                     SizedBox(height: 20),
@@ -1611,23 +1814,89 @@ class _TradeDetailsPageState extends State<TradeDetailsPage> {
                     // Review Text Input
                     Container(
                       decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.1),
+                        color: Colors.grey[50],
                         borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: Colors.grey[300]!),
                       ),
                       child: TextField(
                         controller: reviewController,
                         maxLines: 3,
-                        style: TextStyle(color: Colors.white),
+                        style: TextStyle(color: Colors.black87),
                         decoration: InputDecoration(
                           hintText: "Write your review here...",
-                          hintStyle: TextStyle(color: Colors.white54),
+                          hintStyle: TextStyle(color: Colors.grey[400]),
                           border: InputBorder.none,
                           contentPadding: EdgeInsets.all(16),
                         ),
                       ),
                     ),
                     SizedBox(height: 24),
-
+                    Wrap(
+                      spacing: 8,
+                      children: [
+                        for (var img in selectedImages)
+                          Stack(
+                            children: [
+                              ClipRRect(
+                                borderRadius: BorderRadius.circular(8),
+                                child: Image.file(
+                                  File(img.path),
+                                  width: 80,
+                                  height: 80,
+                                  fit: BoxFit.cover,
+                                ),
+                              ),
+                              Positioned(
+                                top: 0,
+                                right: 0,
+                                child: GestureDetector(
+                                  onTap: () {
+                                    setDialogState(() {
+                                      selectedImages.remove(img);
+                                    });
+                                  },
+                                  child: CircleAvatar(
+                                    radius: 10,
+                                    backgroundColor: Colors.black54,
+                                    child: Icon(Icons.close,
+                                        size: 14, color: Colors.white),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        if (selectedImages.length < 3)
+                          GestureDetector(
+                            onTap: () async {
+                              final picked = await _picker.pickMultiImage();
+                              if (picked != null &&
+                                  picked.length + selectedImages.length <= 3) {
+                                setDialogState(() {
+                                  selectedImages.addAll(picked);
+                                });
+                              } else {
+                                ScaffoldMessenger.of(context)
+                                    .showSnackBar(SnackBar(
+                                  content: Text("Maximum 3 images allowed"),
+                                  backgroundColor: AppTheme.warningColor,
+                                ));
+                              }
+                            },
+                            child: Container(
+                              width: 80,
+                              height: 80,
+                              decoration: BoxDecoration(
+                                color: Colors.grey[200],
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(color: Colors.grey),
+                              ),
+                              child: Icon(Icons.add_a_photo,
+                                  color: Colors.grey[800]),
+                            ),
+                          ),
+                      ],
+                    ),
+                    SizedBox(height: 16),
                     // Submit and Cancel Buttons
                     Row(
                       children: [
@@ -1638,13 +1907,13 @@ class _TradeDetailsPageState extends State<TradeDetailsPage> {
                               padding: EdgeInsets.symmetric(vertical: 12),
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(12),
-                                side: BorderSide(color: Colors.white24),
+                                side: BorderSide(color: Colors.grey[300]!),
                               ),
                             ),
                             child: Text(
                               "Cancel",
                               style: TextStyle(
-                                color: Colors.white70,
+                                color: Colors.grey[700],
                                 fontWeight: FontWeight.w500,
                               ),
                             ),
@@ -1698,10 +1967,20 @@ class _TradeDetailsPageState extends State<TradeDetailsPage> {
   }
 
   void _showEditReviewDialog(
-      String reviewId, String userId, int currentRating, String currentReview) {
+    String reviewId,
+    String userId,
+    int currentRating,
+    String currentReview,
+    List<dynamic> currentImages, // <= TERIMA gambar lama
+  ) {
     double rating = currentRating.toDouble();
     TextEditingController reviewController =
         TextEditingController(text: currentReview);
+
+    // inisialisasi
+    editImages.clear();
+    oldImages = currentImages.cast<String>();
+    print(oldImages);
 
     showDialog(
       context: context,
@@ -1709,28 +1988,25 @@ class _TradeDetailsPageState extends State<TradeDetailsPage> {
         return StatefulBuilder(
           builder: (context, setDialogState) {
             return Dialog(
-              backgroundColor: AppTheme.primaryColor,
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16.0),
-              ),
-              child: Padding(
-                padding: const EdgeInsets.all(20.0),
+                  borderRadius: BorderRadius.circular(16)),
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(20),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
                     Text(
                       "Edit Your Review",
                       style: TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
-                        color: Colors.white,
+                        color: AppTheme.primaryColor,
                       ),
                     ),
                     SizedBox(height: 12),
                     Text(
                       "Update your rating and review",
-                      style: TextStyle(fontSize: 14, color: Colors.white70),
+                      style: TextStyle(fontSize: 14, color: Colors.grey[600]),
                       textAlign: TextAlign.center,
                     ),
                     SizedBox(height: 20),
@@ -1763,16 +2039,17 @@ class _TradeDetailsPageState extends State<TradeDetailsPage> {
                     // Review Text Input
                     Container(
                       decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.1),
+                        color: Colors.grey[50],
                         borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: Colors.grey[300]!),
                       ),
                       child: TextField(
                         controller: reviewController,
                         maxLines: 3,
-                        style: TextStyle(color: Colors.white),
+                        style: TextStyle(color: Colors.black87),
                         decoration: InputDecoration(
                           hintText: "Update your review...",
-                          hintStyle: TextStyle(color: Colors.white54),
+                          hintStyle: TextStyle(color: Colors.grey[400]),
                           border: InputBorder.none,
                           contentPadding: EdgeInsets.all(16),
                         ),
@@ -1780,58 +2057,140 @@ class _TradeDetailsPageState extends State<TradeDetailsPage> {
                     ),
                     SizedBox(height: 24),
 
-                    // Submit and Cancel Buttons
-                    Row(
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text("Images (max 3)",
+                          style: TextStyle(
+                              fontWeight: FontWeight.w600,
+                              color: AppTheme.primaryColor)),
+                    ),
+                    SizedBox(height: 8),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
                       children: [
-                        Expanded(
-                          child: TextButton(
-                            onPressed: () => Navigator.pop(context),
-                            style: TextButton.styleFrom(
-                              padding: EdgeInsets.symmetric(vertical: 12),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
-                                side: BorderSide(color: Colors.white24),
+                        // Gambar lama (network)
+                        for (int i = 0; i < oldImages.length; i++)
+                          Stack(
+                            children: [
+                              ClipRRect(
+                                borderRadius: BorderRadius.circular(8),
+                                child: Image.network(
+                                  '$apiBaseUrlImage2${oldImages[i]}',
+                                  width: 80,
+                                  height: 80,
+                                  fit: BoxFit.cover,
+                                ),
                               ),
-                            ),
-                            child: Text(
-                              "Cancel",
-                              style: TextStyle(
-                                color: Colors.white70,
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
+                              Positioned(
+                                top: 0,
+                                right: 0,
+                                child: GestureDetector(
+                                  onTap: () {
+                                    setDialogState(() {
+                                      oldImages.removeAt(i);
+                                    });
+                                  },
+                                  child: CircleAvatar(
+                                    radius: 10,
+                                    backgroundColor: Colors.black54,
+                                    child: Icon(Icons.close,
+                                        size: 14, color: Colors.white),
+                                  ),
+                                ),
+                              )
+                            ],
                           ),
-                        ),
-                        SizedBox(width: 12),
-                        Expanded(
-                          child: ElevatedButton(
-                            onPressed: () {
-                              _submitEditReview(
-                                reviewId,
-                                userId,
-                                rating.toInt(),
-                                reviewController.text,
-                              );
-                              Navigator.pop(context);
+
+                        // Gambar baru (file)
+                        for (int i = 0; i < editImages.length; i++)
+                          Stack(
+                            children: [
+                              ClipRRect(
+                                borderRadius: BorderRadius.circular(8),
+                                child: Image.file(
+                                  File(editImages[i].path),
+                                  width: 80,
+                                  height: 80,
+                                  fit: BoxFit.cover,
+                                ),
+                              ),
+                              Positioned(
+                                top: 0,
+                                right: 0,
+                                child: GestureDetector(
+                                  onTap: () {
+                                    setDialogState(() {
+                                      editImages.removeAt(i);
+                                    });
+                                  },
+                                  child: CircleAvatar(
+                                    radius: 10,
+                                    backgroundColor: Colors.black54,
+                                    child: Icon(Icons.close,
+                                        size: 14, color: Colors.white),
+                                  ),
+                                ),
+                              )
+                            ],
+                          ),
+
+                        // Tombol tambah (hanya jika total < 3)
+                        if (oldImages.length + editImages.length < 3)
+                          GestureDetector(
+                            onTap: () async {
+                              final picked = await _picker.pickMultiImage();
+                              if (picked != null &&
+                                  picked.length +
+                                          oldImages.length +
+                                          editImages.length <=
+                                      3) {
+                                setDialogState(() {
+                                  editImages.addAll(picked);
+                                });
+                              } else {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text("Maximum 3 images allowed"),
+                                    backgroundColor: AppTheme.warningColor,
+                                  ),
+                                );
+                              }
                             },
-                            style: ElevatedButton.styleFrom(
-                              padding: EdgeInsets.symmetric(vertical: 12),
-                              backgroundColor: AppTheme.accentColor,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                            ),
-                            child: Text(
-                              "Update",
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.bold,
-                              ),
+                            child: Container(
+                              width: 80,
+                              height: 80,
+                              decoration: BoxDecoration(
+                                  color: Colors.grey[200],
+                                  borderRadius: BorderRadius.circular(8),
+                                  border: Border.all(color: Colors.grey)),
+                              child: Icon(Icons.add_a_photo,
+                                  color: Colors.grey[800]),
                             ),
                           ),
-                        ),
                       ],
                     ),
+
+                    SizedBox(height: 24),
+
+                    // ----------  BUTTON  ----------
+                    ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                          backgroundColor: AppTheme.accentColor,
+                          minimumSize: Size(double.infinity, 48)),
+                      onPressed: () {
+                        _submitEditReview(
+                          reviewId,
+                          userId,
+                          rating.toInt(),
+                          reviewController.text,
+                          oldImages, // <-- kirim sisa gambar lama
+                        );
+                        Navigator.pop(context);
+                      },
+                      child:
+                          Text("Update", style: TextStyle(color: Colors.white)),
+                    )
                   ],
                 ),
               ),
@@ -1845,7 +2204,6 @@ class _TradeDetailsPageState extends State<TradeDetailsPage> {
   // Function to submit rating
   Future<void> _submitRating(
       String productId, double rating, String review) async {
-    // Show loading indicator
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -1867,56 +2225,63 @@ class _TradeDetailsPageState extends State<TradeDetailsPage> {
     );
 
     try {
-      final String url = '$apiBaseUrl/review';
+      final url = Uri.parse('$apiBaseUrl/review');
+      final request = http.MultipartRequest('POST', url);
       String token = await getAccessToken();
 
-      final response = await http.post(
-        Uri.parse(url),
-        headers: {
-          'Authorization': 'Bearer $token',
-          'Content-Type': 'application/json',
-        },
-        body: jsonEncode({
-          "transaction_product_id": productId,
-          "rating": rating.toInt(),
-          "review": review,
-        }),
-      );
+      request.headers['Authorization'] = 'Bearer $token';
+      request.fields['transaction_product_id'] = productId;
+      request.fields['rating'] = rating.toInt().toString();
+      request.fields['review'] = review;
 
-      // Close loading dialog
-      Navigator.pop(context);
+      for (int i = 0; i < selectedImages.length; i++) {
+        final imageFile = File(selectedImages[i].path);
+        final stream = http.ByteStream(imageFile.openRead());
+        final length = await imageFile.length();
 
-      final Map<String, dynamic> responseData = json.decode(response.body);
-
-      if (response.statusCode == 201 && responseData['success']) {
-        // Provide success feedback
-        HapticFeedback.mediumImpact();
-
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text("Review submitted successfully!"),
-            backgroundColor: AppTheme.successColor,
-            behavior: SnackBarBehavior.floating,
-          ),
+        final multipartFile = http.MultipartFile(
+          'images', // harus disesuaikan dengan nama field multer backend
+          stream,
+          length,
+          filename: path.basename(imageFile.path),
         );
 
+        request.files.add(multipartFile);
+      }
+
+      final streamedResponse = await request.send();
+      final response = await http.Response.fromStream(streamedResponse);
+
+      Navigator.pop(context); // close loading
+
+      final Map<String, dynamic> responseData = json.decode(response.body);
+      if (response.statusCode == 201 && responseData['success']) {
+        HapticFeedback.mediumImpact();
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text("Review submitted successfully!"),
+          backgroundColor: AppTheme.successColor,
+        ));
         setState(() {
+          selectedImages.clear();
           _fetchTransactionData();
         });
       } else {
-        _showErrorDialog("Failed to submit review: ${responseData['message']}");
+        _showErrorDialog("Failed: ${responseData['message']}");
       }
-    } catch (error) {
-      // Close loading dialog
+    } catch (e) {
       Navigator.pop(context);
-      _showErrorDialog("Error submitting review: $error");
+      _showErrorDialog("Error submitting review: $e");
     }
   }
 
   // Function to edit an existing review
   Future<void> _submitEditReview(
-      String reviewId, String userId, int rating, String review) async {
-    // Show loading indicator
+    String reviewId,
+    String userId,
+    int rating,
+    String review,
+    List<String> remainingOld, // url yg masih dipertahankan
+  ) async {
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -1938,50 +2303,51 @@ class _TradeDetailsPageState extends State<TradeDetailsPage> {
     );
 
     try {
-      final String url = '$apiBaseUrl/review';
-      String token = await getAccessToken();
+      final url = Uri.parse('$apiBaseUrl/review');
+      final req = http.MultipartRequest('PATCH', url);
+      final token = await getAccessToken();
 
-      final response = await http.patch(
-        Uri.parse(url),
-        headers: {
-          'Authorization': 'Bearer $token',
-          'Content-Type': 'application/json',
-        },
-        body: jsonEncode({
-          "review_id": reviewId,
-          "user_id": userId,
-          "rating": rating,
-          "review": review,
-        }),
-      );
+      req.headers['Authorization'] = 'Bearer $token';
 
-      // Close loading dialog
+      // field biasa
+      req.fields['review_id'] = reviewId;
+      req.fields['user_id'] = userId;
+      req.fields['rating'] = rating.toString();
+      req.fields['review'] = review;
+
+      // url gambar lama yang masih dipakai
+      // backend akan meng-gabung images dari file + field ini
+      req.fields['keep_images'] = jsonEncode(remainingOld);
+
+      // file gambar baru
+      for (var x in editImages) {
+        final f = File(x.path);
+        req.files.add(
+          await http.MultipartFile.fromPath('images', f.path,
+              filename: path.basename(f.path)),
+        );
+      }
+
+      final res = await http.Response.fromStream(await req.send());
       Navigator.pop(context);
 
-      final Map<String, dynamic> responseData = json.decode(response.body);
-
-      if (response.statusCode == 200 && responseData['success']) {
-        // Provide success feedback
+      final body = json.decode(res.body);
+      if (res.statusCode == 200 && body['success']) {
         HapticFeedback.mediumImpact();
-
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
             content: Text("Review updated successfully!"),
-            backgroundColor: AppTheme.successColor,
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
-
+            backgroundColor: AppTheme.successColor));
         setState(() {
+          editImages.clear();
+          oldImages.clear();
           _fetchTransactionData();
         });
       } else {
-        _showErrorDialog("Failed to update review: ${responseData['message']}");
+        _showErrorDialog("Failed: ${body['message']}");
       }
-    } catch (error) {
-      // Close loading dialog
+    } catch (e) {
       Navigator.pop(context);
-      _showErrorDialog("Error updating review: $error");
+      _showErrorDialog("Error updating review: $e");
     }
   }
 

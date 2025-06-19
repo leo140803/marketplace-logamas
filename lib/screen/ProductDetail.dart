@@ -317,6 +317,7 @@ class _ProductDetailPageState extends State<ProductDetailPage>
     required String review,
     required int rating,
     String? replyAdmin,
+    List<String> images = const [],
   }) {
     return Card(
       color: Colors.white,
@@ -379,6 +380,53 @@ class _ProductDetailPageState extends State<ProductDetailPage>
               maxLines: 6,
               overflow: TextOverflow.ellipsis,
             ),
+
+            if (images.isNotEmpty) ...[
+              const SizedBox(height: 12),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: images.map((url) {
+                  return GestureDetector(
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => FullScreenImageView(
+                            imageUrl: '$apiBaseUrlImage2$url',
+                          ),
+                        ),
+                      );
+                    },
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(8),
+                      child: Image.network(
+                        '$apiBaseUrlImage2$url',
+                        width: 80,
+                        height: 80,
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) => Container(
+                          width: 80,
+                          height: 80,
+                          color: Colors.grey[300],
+                          child: const Icon(Icons.broken_image),
+                        ),
+                        loadingBuilder: (context, child, loadingProgress) {
+                          if (loadingProgress == null) return child;
+                          return Container(
+                            width: 80,
+                            height: 80,
+                            alignment: Alignment.center,
+                            child:
+                                const CircularProgressIndicator(strokeWidth: 2),
+                          );
+                        },
+                      ),
+                    ),
+                  );
+                }).toList(),
+              ),
+            ],
 
             // Balasan dari admin
             if (replyAdmin != null && replyAdmin.isNotEmpty) ...[
@@ -1146,6 +1194,7 @@ class _ProductDetailPageState extends State<ProductDetailPage>
                             review: review['review'] ?? '',
                             rating: review['rating'] ?? 0,
                             replyAdmin: review['reply_admin'],
+                            images: List<String>.from(review['images'] ?? []),
                           );
                         },
                       ),
