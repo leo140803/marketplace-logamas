@@ -751,7 +751,39 @@ class _ProductDetailPageState extends State<ProductDetailPage>
                         ],
                       ),
                     ),
+                ],
+              ),
 
+              const SizedBox(height: 8),
+
+              // Stock indicator with better styling
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Container(
+                    padding:
+                        const EdgeInsets.symmetric(vertical: 6, horizontal: 12),
+                    decoration: BoxDecoration(
+                      color: product['stock'] > 0
+                          ? Colors.green[50]
+                          : Colors.red[50],
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                        color: product['stock'] > 0 ? Colors.green : Colors.red,
+                        width: 1,
+                      ),
+                    ),
+                    child: Text(
+                      product['stock'] > 0
+                          ? 'In Stock (${product['stock']})'
+                          : 'Out of Stock',
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: product['stock'] > 0 ? Colors.green : Colors.red,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
                   // Wishlist button
                   GestureDetector(
                     onTap: () async {
@@ -788,33 +820,6 @@ class _ProductDetailPageState extends State<ProductDetailPage>
                     ),
                   ),
                 ],
-              ),
-
-              const SizedBox(height: 8),
-
-              // Stock indicator with better styling
-              Container(
-                padding:
-                    const EdgeInsets.symmetric(vertical: 6, horizontal: 12),
-                decoration: BoxDecoration(
-                  color:
-                      product['stock'] > 0 ? Colors.green[50] : Colors.red[50],
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(
-                    color: product['stock'] > 0 ? Colors.green : Colors.red,
-                    width: 1,
-                  ),
-                ),
-                child: Text(
-                  product['stock'] > 0
-                      ? 'In Stock (${product['stock']})'
-                      : 'Out of Stock',
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: product['stock'] > 0 ? Colors.green : Colors.red,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
               ),
             ],
           ),
