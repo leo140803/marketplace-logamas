@@ -77,6 +77,7 @@ class _OrderDetailsPageState extends State<OrderDetailsPage>
   final ImagePicker _picker = ImagePicker();
   List<XFile> editImages = []; // gambar baru yg dipilih
   List<String> oldImages = []; // url gambar lama (preview saja)
+  String? _accessToken;
 
   // Animation controller for status changes
   late AnimationController _animationController;
@@ -99,11 +100,24 @@ class _OrderDetailsPageState extends State<OrderDetailsPage>
       curve: Curves.easeInOut,
     );
 
+    loadAccessToken();
     _fetchReviewExpiration();
     _fetchTransactionData();
 
     // Add haptic feedback for page load
     HapticFeedback.lightImpact();
+  }
+
+  Future<void> loadAccessToken() async {
+    try {
+      final token = await getAccessToken();
+      ;
+      setState(() {
+        _accessToken = token;
+      });
+    } catch (e) {
+      print('Error loading access token or user data: $e');
+    }
   }
 
   Future<void> _fetchReviewExpiration() async {
@@ -207,7 +221,13 @@ class _OrderDetailsPageState extends State<OrderDetailsPage>
     );
 
     try {
-      final response = await http.get(Uri.parse(url));
+      final response = await http.get(
+        Uri.parse(url),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $_accessToken',
+        },
+      );
       print(response.statusCode);
 
       // Close the progress dialog
@@ -2030,7 +2050,7 @@ class ProductItem extends StatelessWidget {
                   transactionReview == null &&
                   canReview)
                 _buildRateProductButton(context),
-              if (transactionStatus == 2 && certificateLink != null)
+              if (transactionStatus == 2 && certificateLink != '')
                 Padding(
                   padding: const EdgeInsets.only(top: 16.0),
                   child: Container(

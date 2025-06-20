@@ -66,6 +66,12 @@ class _HomePageWidgetState extends State<HomePageWidget>
     _getUserName();
     banners = fetchBannerImages();
     goldPrices = fetchGoldPrices();
+    goldPrices.then((data) {
+      print('Harga Beli: ${data['hargaBeli']}');
+      print('Harga Jual: ${data['hargaJual']}');
+    }).catchError((e) {
+      print('Gagal ambil harga emas: $e');
+    });
     followedStores = fetchFollowedStores();
     futureProducts = fetchProducts();
 
@@ -146,11 +152,19 @@ class _HomePageWidgetState extends State<HomePageWidget>
 
   Future<Map<String, String>> fetchGoldPrices() async {
     final response = await http.get(Uri.parse('$apiBaseUrl/goldprice/now'));
+    print(response.statusCode);
     if (response.statusCode == 200) {
-      final data = json.decode(response.body);
+      final body = json.decode(response.body);
+      final data = body['data'];
+
+      if (data == null ||
+          data['hargaBeli'] == null ||
+          data['hargaJual'] == null) {
+        throw Exception('Field hargaBeli atau hargaJual tidak ditemukan');
+      }
       return {
-        'hargaBeli': data['data']['hargaBeli'],
-        'hargaJual': data['data']['hargaJual'],
+        'hargaBeli': formatCurrency(data['hargaBeli'].toDouble()).toString(),
+        'hargaJual': formatCurrency(data['hargaJual'].toDouble()).toString(),
       };
     } else {
       throw Exception('Failed to fetch gold prices');
@@ -1284,149 +1298,151 @@ class _HomePageWidgetState extends State<HomePageWidget>
                                   Expanded(child: shimmerBox()),
                                 ],
                               );
-                            } else if (snapshot.hasError || !snapshot.hasData) {
-                              return Center(
-                                child: Padding(
-                                  padding: const EdgeInsets.all(8.0),
-                                  child: Text(
-                                    'Failed to load prices',
-                                    style: TextStyle(color: Colors.white70),
-                                  ),
-                                ),
-                              );
-                            } else {
-                              final hargaBeli =
-                                  snapshot.data!['hargaBeli'] ?? '-';
-                              final hargaJual =
-                                  snapshot.data!['hargaJual'] ?? '-';
-
-                              return Row(
-                                children: [
-                                  Expanded(
-                                    child: Container(
-                                      padding: EdgeInsets.all(12),
-                                      decoration: BoxDecoration(
-                                        color: Colors.blue.withOpacity(0.1),
-                                        borderRadius: BorderRadius.circular(10),
-                                        border: Border.all(
-                                            color:
-                                                Colors.blue.withOpacity(0.3)),
-                                      ),
-                                      child: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          Row(
-                                            children: [
-                                              Container(
-                                                padding: EdgeInsets.all(4),
-                                                decoration: BoxDecoration(
-                                                  color: Colors.blue
-                                                      .withOpacity(0.2),
-                                                  borderRadius:
-                                                      BorderRadius.circular(4),
-                                                ),
-                                                child: Icon(
-                                                  Icons.shopping_bag,
-                                                  color: Colors.blue,
-                                                  size: 14,
-                                                ),
-                                              ),
-                                              SizedBox(width: 6),
-                                              Text(
-                                                'Harga Beli',
-                                                style: TextStyle(
-                                                  color: Colors.white,
-                                                  fontWeight: FontWeight.bold,
-                                                  fontSize: 14,
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                          SizedBox(height: 8),
-                                          Text(
-                                            'Rp $hargaBeli',
-                                            style: TextStyle(
-                                              fontSize: 18,
-                                              color: Colors.white,
-                                              fontWeight: FontWeight.bold,
-                                            ),
-                                          ),
-                                          Text(
-                                            'per gram',
-                                            style: TextStyle(
-                                              fontSize: 12,
-                                              color: Colors.white70,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  ),
-                                  SizedBox(width: 12),
-                                  Expanded(
-                                    child: Container(
-                                      padding: EdgeInsets.all(12),
-                                      decoration: BoxDecoration(
-                                        color: Colors.red.withOpacity(0.1),
-                                        borderRadius: BorderRadius.circular(10),
-                                        border: Border.all(
-                                            color: Colors.red.withOpacity(0.3)),
-                                      ),
-                                      child: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          Row(
-                                            children: [
-                                              Container(
-                                                padding: EdgeInsets.all(4),
-                                                decoration: BoxDecoration(
-                                                  color: Colors.red
-                                                      .withOpacity(0.2),
-                                                  borderRadius:
-                                                      BorderRadius.circular(4),
-                                                ),
-                                                child: Icon(
-                                                  Icons.sell_rounded,
-                                                  color: Colors.red,
-                                                  size: 14,
-                                                ),
-                                              ),
-                                              SizedBox(width: 6),
-                                              Text(
-                                                'Harga Jual',
-                                                style: TextStyle(
-                                                  color: Colors.white,
-                                                  fontWeight: FontWeight.bold,
-                                                  fontSize: 14,
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                          SizedBox(height: 8),
-                                          Text(
-                                            'Rp $hargaJual',
-                                            style: TextStyle(
-                                              fontSize: 18,
-                                              color: Colors.white,
-                                              fontWeight: FontWeight.bold,
-                                            ),
-                                          ),
-                                          Text(
-                                            'per gram',
-                                            style: TextStyle(
-                                              fontSize: 12,
-                                              color: Colors.white70,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  ),
-                                ],
+                            }
+                            if (snapshot.hasError) {
+                              return Text(
+                                'Terjadi kesalahan: ${snapshot.error}',
+                                style: TextStyle(color: Colors.redAccent),
                               );
                             }
+                            final data = snapshot.data;
+                            if (data == null ||
+                                data['hargaBeli'] == null ||
+                                data['hargaJual'] == null) {
+                              return Text(
+                                'Data harga tidak tersedia',
+                                style: TextStyle(color: Colors.orangeAccent),
+                              );
+                            }
+
+                            final hargaBeli = data['hargaBeli']!;
+                            final hargaJual = data['hargaJual']!;
+
+                            return Row(
+                              children: [
+                                Expanded(
+                                  child: Container(
+                                    padding: EdgeInsets.all(12),
+                                    decoration: BoxDecoration(
+                                      color: Colors.blue.withOpacity(0.1),
+                                      borderRadius: BorderRadius.circular(10),
+                                      border: Border.all(
+                                          color: Colors.blue.withOpacity(0.3)),
+                                    ),
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Row(
+                                          children: [
+                                            Container(
+                                              padding: EdgeInsets.all(4),
+                                              decoration: BoxDecoration(
+                                                color: Colors.blue
+                                                    .withOpacity(0.2),
+                                                borderRadius:
+                                                    BorderRadius.circular(4),
+                                              ),
+                                              child: Icon(
+                                                Icons.shopping_bag,
+                                                color: Colors.blue,
+                                                size: 14,
+                                              ),
+                                            ),
+                                            SizedBox(width: 6),
+                                            Text(
+                                              'Harga Beli',
+                                              style: TextStyle(
+                                                color: Colors.white,
+                                                fontWeight: FontWeight.bold,
+                                                fontSize: 14,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                        SizedBox(height: 8),
+                                        Text(
+                                          'Rp $hargaBeli',
+                                          style: TextStyle(
+                                            fontSize: 18,
+                                            color: Colors.white,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                        Text(
+                                          'per gram',
+                                          style: TextStyle(
+                                            fontSize: 12,
+                                            color: Colors.white70,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                                SizedBox(width: 12),
+                                Expanded(
+                                  child: Container(
+                                    padding: EdgeInsets.all(12),
+                                    decoration: BoxDecoration(
+                                      color: Colors.red.withOpacity(0.1),
+                                      borderRadius: BorderRadius.circular(10),
+                                      border: Border.all(
+                                          color: Colors.red.withOpacity(0.3)),
+                                    ),
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Row(
+                                          children: [
+                                            Container(
+                                              padding: EdgeInsets.all(4),
+                                              decoration: BoxDecoration(
+                                                color:
+                                                    Colors.red.withOpacity(0.2),
+                                                borderRadius:
+                                                    BorderRadius.circular(4),
+                                              ),
+                                              child: Icon(
+                                                Icons.sell_rounded,
+                                                color: Colors.red,
+                                                size: 14,
+                                              ),
+                                            ),
+                                            SizedBox(width: 6),
+                                            Text(
+                                              'Harga Jual',
+                                              style: TextStyle(
+                                                color: Colors.white,
+                                                fontWeight: FontWeight.bold,
+                                                fontSize: 14,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                        SizedBox(height: 8),
+                                        Text(
+                                          'Rp $hargaJual',
+                                          style: TextStyle(
+                                            fontSize: 18,
+                                            color: Colors.white,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                        Text(
+                                          'per gram',
+                                          style: TextStyle(
+                                            fontSize: 12,
+                                            color: Colors.white70,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            );
                           },
                         ),
                       ],

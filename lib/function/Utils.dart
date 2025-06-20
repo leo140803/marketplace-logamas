@@ -8,7 +8,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 const String apiBaseUrl = 'http://127.0.0.1:3001/api';
 const String apiBaseUrlImage = 'http://127.0.0.1:3000/';
 const String apiBaseUrlImage2 = 'http://127.0.0.1:3001';
-const String apiBaseUrlNota = 'http://127.0.0.1:3000';
+const String apiBaseUrlNota = 'http://127.0.0.1:3001';
 const String apiBaseUrlPlatform = 'http://127.0.0.1:3020';
 
 void navigate(BuildContext context, int index) {

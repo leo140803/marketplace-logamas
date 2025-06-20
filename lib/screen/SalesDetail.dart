@@ -69,14 +69,27 @@ class _SalesDetailsPageState extends State<SalesDetailsPage> {
   Map<String, dynamic>? _transactionData;
   bool _isLoading = true;
   bool _isExpired = false;
+  String? _accessToken;
 
   @override
   void initState() {
     super.initState();
+    loadAccessToken();
     _fetchTransactionData();
 
     // Add haptic feedback for page load
     HapticFeedback.lightImpact();
+  }
+
+  Future<void> loadAccessToken() async {
+    try {
+      final token = await getAccessToken();;
+      setState(() {
+        _accessToken = token;
+      });
+    } catch (e) {
+      print('Error loading access token or user data: $e');
+    }
   }
 
   // Show error with retry option
@@ -166,7 +179,13 @@ class _SalesDetailsPageState extends State<SalesDetailsPage> {
     );
 
     try {
-      final response = await http.get(Uri.parse(url));
+      final response = await http.get(
+        Uri.parse(url),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $_accessToken',
+        },
+      );
 
       // Close the progress dialog
       Navigator.pop(context);
