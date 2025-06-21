@@ -29,6 +29,7 @@ class _RegisterScreenState extends State<RegisterScreen>
   bool _isPasswordVisible = false;
   bool _isConfirmPasswordVisible = false;
   bool isLoading = false;
+  bool _isTermsAccepted = false; // Added TnC checkbox state
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
 
@@ -113,6 +114,13 @@ class _RegisterScreenState extends State<RegisterScreen>
   void register(BuildContext context) async {
     // Validate all fields first
     if (_formKey.currentState?.validate() != true) {
+      return;
+    }
+
+    // Check if terms and conditions are accepted
+    if (!_isTermsAccepted) {
+      dialog(context, 'Persetujuan Diperlukan',
+          'Anda harus menyetujui Syarat dan Ketentuan untuk melanjutkan pendaftaran.');
       return;
     }
 
@@ -380,7 +388,11 @@ class _RegisterScreenState extends State<RegisterScreen>
                     PhoneNumberField(
                       controller: phoneController,
                     ),
-                    const SizedBox(height: 32),
+                    const SizedBox(height: 24),
+
+                    // Terms and Conditions Checkbox
+                    _buildTermsAndConditionsCheckbox(),
+                    const SizedBox(height: 24),
 
                     // Register Button
                     _buildGradientButton(
@@ -424,6 +436,72 @@ class _RegisterScreenState extends State<RegisterScreen>
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildTermsAndConditionsCheckbox() {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          margin: const EdgeInsets.only(top: 2),
+          child: Transform.scale(
+            scale: 1.1,
+            child: Checkbox(
+              value: _isTermsAccepted,
+              onChanged: (bool? value) {
+                setState(() {
+                  _isTermsAccepted = value ?? false;
+                });
+              },
+              activeColor: const Color(0xFFC58189),
+              checkColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(4),
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: GestureDetector(
+            onTap: () {
+              setState(() {
+                _isTermsAccepted = !_isTermsAccepted;
+              });
+            },
+            child: Wrap(
+              children: [
+                Text(
+                  'Saya menyetujui ',
+                  style: GoogleFonts.poppins(
+                    color: Colors.grey[700],
+                    fontSize: 14,
+                  ),
+                ),
+                GestureDetector(
+                  onTap: () => context.push('/tnc'),
+                  child: Text(
+                    'Syarat dan Ketentuan',
+                    style: GoogleFonts.poppins(
+                      color: Colors.blue,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+                Text(
+                  'yang berlaku.',
+                  style: GoogleFonts.poppins(
+                    color: Colors.grey[700],
+                    fontSize: 14,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
     );
   }
 

@@ -35,6 +35,7 @@ import 'package:marketplace_logamas/screen/ScanQRPage.dart';
 import 'package:marketplace_logamas/screen/Search.dart';
 import 'package:marketplace_logamas/screen/SearchResult.dart';
 import 'package:marketplace_logamas/screen/StorePage.dart';
+import 'package:marketplace_logamas/screen/TnC.dart';
 import 'package:marketplace_logamas/screen/Trade.dart';
 import 'package:marketplace_logamas/screen/TradeDetail.dart';
 import 'package:marketplace_logamas/screen/UserPoinPage.dart';
@@ -66,7 +67,7 @@ void main() async {
 
 final router = GoRouter(
   // '/store/72574284-33f6-4ca8-a725-f00df1a62291',
-  initialLocation: '/landing',
+  initialLocation: '/tnc',
   navigatorKey: navigatorKey,
   debugLogDiagnostics: true,
   routes: [
@@ -151,6 +152,10 @@ final router = GoRouter(
         GoRoute(
           path: 'information',
           builder: (context, state) => MenuScreen(),
+        ),
+        GoRoute(
+          path: 'tnc',
+          builder: (context, state) => TermsConditionsPage(),
         ),
         GoRoute(
           path: 'order',
