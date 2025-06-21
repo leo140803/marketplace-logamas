@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
-import 'dart:async'; // Import untuk Timer
+import 'dart:async';
+
+import 'package:marketplace_logamas/function/Utils.dart'; // Import untuk Timer
 
 class WaitingForPaymentPage extends StatefulWidget {
   final String orderId;
@@ -26,6 +28,7 @@ class _WaitingForPaymentPageState extends State<WaitingForPaymentPage>
   Timer? _pollingTimer;
   int _remainingTime = 3600; // Default 1 jam dalam detik
   late AnimationController _pulseController;
+  Map<String, dynamic>? _transactionData;
 
   @override
   void initState() {
@@ -53,6 +56,79 @@ class _WaitingForPaymentPageState extends State<WaitingForPaymentPage>
     _pollingTimer?.cancel();
     _pulseController.dispose();
     super.dispose();
+  }
+
+  Future<void> _fetchTransactionData() async {
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      print(widget.orderId);
+      final url = Uri.parse('$apiBaseUrl/transactions/${widget.orderId}');
+      final response = await http.get(url);
+      String status = 'Unknown status';
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> data = json.decode(response.body);
+        if (data['success']) {
+          if (data['data']['data']['status'] == -1) {
+            status = 'Pembayaran Gagal';
+            _showFailureDialog(context, status);
+
+            // Tunggu sebentar, lalu arahkan ke halaman gagal
+            Future.delayed(const Duration(seconds: 2), () {
+              context.go(
+                  '/payment_failed?order_id=${widget.orderId}&status=$status');
+            });
+          } else if (data['data']['data']['status'] == 0) {
+            status = 'Menunggu Pembayaran';
+          } else if (data['data']['data']['status'] == 1 ||
+              data['data']['data']['status'] == 2) {
+            status = 'Pembayaran Berhasil';
+            _pollingTimer?.cancel();
+            // Navigasi ke halaman sukses
+            _showSuccessDialog(context);
+
+            // Tunggu sebentar, lalu arahkan ke halaman sukses
+            Future.delayed(const Duration(seconds: 2), () {
+              context.go('/payment_success?order_id=${widget.orderId}');
+            });
+          }
+          setState(() {
+            _transactionData = data['data']['data'];
+            _isLoading = false;
+          });
+        } else {
+          _showErrorSnackBar("Failed to load payment status",
+              onRetry: _fetchTransactionData);
+        }
+      } else {
+        _showErrorSnackBar("Server error. Please try again later",
+            onRetry: _fetchTransactionData);
+      }
+    } catch (error) {
+      _showErrorSnackBar("Network error. Please check your connection",
+          onRetry: _fetchTransactionData);
+    }
+  }
+
+  void _showErrorSnackBar(String message, {Function? onRetry}) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: Color(0xFFF44336),
+        action: onRetry != null
+            ? SnackBarAction(
+                label: 'Retry',
+                textColor: Colors.white,
+                onPressed: () => onRetry(),
+              )
+            : null,
+        behavior: SnackBarBehavior.floating,
+        margin: EdgeInsets.all(8),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+      ),
+    );
   }
 
   String _formatRemainingTime() {
@@ -411,7 +487,7 @@ class _WaitingForPaymentPageState extends State<WaitingForPaymentPage>
                   width: double.infinity,
                   height: 50,
                   child: ElevatedButton(
-                    onPressed: _isLoading ? null : checkPaymentStatus,
+                    onPressed: _isLoading ? null : _fetchTransactionData,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFF1565C0),
                       foregroundColor: Colors.white,

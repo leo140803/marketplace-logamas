@@ -774,7 +774,7 @@ class _StorePageState extends State<StorePage> {
   }
 
   Widget _buildPoinHistoryCard(Map<String, dynamic> history) {
-    final createdAt = DateTime.parse(history['created_at']);
+    final createdAt = DateTime.parse(history['created_at']).add(Duration(hours: 7));
     final formattedDate =
         "${createdAt.day.toString().padLeft(2, '0')}-${createdAt.month.toString().padLeft(2, '0')}-${createdAt.year}";
     final formattedTime =

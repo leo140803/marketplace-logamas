@@ -965,7 +965,6 @@ class _OrdersPageState extends State<OrdersPage>
         final operations = order['TransactionOperation'] ?? [];
         final expirationTime = order['expired_at'] != null
             ? DateTime.tryParse(order['expired_at'])
-                ?.subtract(Duration(hours: 7))
             : null;
 
         // Calculate prices

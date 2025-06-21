@@ -330,8 +330,7 @@ class _OrderDetailsPageState extends State<OrderDetailsPage>
         return;
       }
 
-      DateTime expiredAt = DateTime.parse(_transactionData!['expired_at'])
-          .subtract(Duration(hours: 7));
+      DateTime expiredAt = DateTime.parse(_transactionData!['expired_at']);
 
       Duration difference = expiredAt.difference(DateTime.now());
 

@@ -187,7 +187,7 @@ class _StorePointsPageState extends State<StorePointsPage>
 
   String _formatDateTime(String dateTimeStr) {
     try {
-      final dateTime = DateTime.parse(dateTimeStr);
+      final dateTime = DateTime.parse(dateTimeStr).add(Duration(hours: 7));
       return DateFormat('dd MMM yyyy, HH:mm').format(dateTime);
     } catch (e) {
       return 'Invalid date';
