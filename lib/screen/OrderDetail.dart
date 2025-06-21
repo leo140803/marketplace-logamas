@@ -413,7 +413,7 @@ class _OrderDetailsPageState extends State<OrderDetailsPage>
       actions: [
         if (!_isLoading &&
             _transactionData != null &&
-            _transactionData!['status'] == 2)
+            _transactionData!['status'] != 0)
           IconButton(
             onPressed: _downloadNota,
             tooltip: 'Download Receipt',
