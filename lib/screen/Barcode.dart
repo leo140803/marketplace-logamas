@@ -80,27 +80,29 @@ class _BarcodePageState extends State<BarcodePage> {
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(16.0),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              const Text(
-                'Your Digital ID',
-                style: TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
+          child: Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                const Text(
+                  'Your Digital ID',
+                  style: TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
-              ),
-              const SizedBox(height: 10),
-              const Text(
-                'Scan this barcode to access your profile data in store',
-                textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 16, color: Colors.grey),
-              ),
-              const SizedBox(height: 30),
-              _buildContent(),
-              const SizedBox(height: 30),
-            ],
+                const SizedBox(height: 10),
+                const Text(
+                  'Scan this barcode to access your profile data in store',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(fontSize: 16, color: Colors.grey),
+                ),
+                const SizedBox(height: 30),
+                _buildContent(),
+                const SizedBox(height: 30),
+              ],
+            ),
           ),
         ),
       ),

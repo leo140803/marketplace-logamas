@@ -774,7 +774,8 @@ class _StorePageState extends State<StorePage> {
   }
 
   Widget _buildPoinHistoryCard(Map<String, dynamic> history) {
-    final createdAt = DateTime.parse(history['created_at']).add(Duration(hours: 7));
+    final createdAt =
+        DateTime.parse(history['created_at']).add(Duration(hours: 7));
     final formattedDate =
         "${createdAt.day.toString().padLeft(2, '0')}-${createdAt.month.toString().padLeft(2, '0')}-${createdAt.year}";
     final formattedTime =
@@ -2335,10 +2336,20 @@ class _StorePageState extends State<StorePage> {
                           : SliverGrid(
                               gridDelegate:
                                   SliverGridDelegateWithFixedCrossAxisCount(
-                                crossAxisCount: 2,
-                                crossAxisSpacing: 10,
-                                mainAxisSpacing: 10,
-                                childAspectRatio: 0.65,
+                                crossAxisCount: MediaQuery.of(context)
+                                            .size
+                                            .width >
+                                        1200
+                                    ? 8
+                                    : MediaQuery.of(context).size.width > 800
+                                        ? 5
+                                        : 2,
+                                crossAxisSpacing: 12,
+                                mainAxisSpacing: 12,
+                                childAspectRatio:
+                                    MediaQuery.of(context).size.width > 800
+                                        ? 0.75
+                                        : 0.65,
                               ),
                               delegate: SliverChildBuilderDelegate(
                                 (context, index) {

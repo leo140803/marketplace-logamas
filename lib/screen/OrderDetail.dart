@@ -17,6 +17,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter_spinkit/flutter_spinkit.dart';
 import 'package:shimmer/shimmer.dart';
 import 'package:path/path.dart' as path;
+import 'package:flutter/foundation.dart';
 
 // Theme constants
 class AppTheme {
@@ -1268,7 +1269,7 @@ class _OrderDetailsPageState extends State<OrderDetailsPage>
                               ),
                             ],
                           ),
-                        if (selectedImages.length < 3)
+                        if (!kIsWeb && selectedImages.length < 3)
                           GestureDetector(
                             onTap: () async {
                               final picked = await _picker.pickMultiImage();
@@ -1467,6 +1468,15 @@ class _OrderDetailsPageState extends State<OrderDetailsPage>
                               fontWeight: FontWeight.w600,
                               color: AppTheme.primaryColor)),
                     ),
+                    if (kIsWeb)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 8),
+                        child: Text(
+                          "Image upload is not supported on the web version.",
+                          style:
+                              TextStyle(fontSize: 12, color: Colors.grey[600]),
+                        ),
+                      ),
                     SizedBox(height: 8),
                     Wrap(
                       spacing: 8,
@@ -1506,40 +1516,41 @@ class _OrderDetailsPageState extends State<OrderDetailsPage>
                           ),
 
                         // Gambar baru (file)
-                        for (int i = 0; i < editImages.length; i++)
-                          Stack(
-                            children: [
-                              ClipRRect(
-                                borderRadius: BorderRadius.circular(8),
-                                child: Image.file(
-                                  File(editImages[i].path),
-                                  width: 80,
-                                  height: 80,
-                                  fit: BoxFit.cover,
-                                ),
-                              ),
-                              Positioned(
-                                top: 0,
-                                right: 0,
-                                child: GestureDetector(
-                                  onTap: () {
-                                    setDialogState(() {
-                                      editImages.removeAt(i);
-                                    });
-                                  },
-                                  child: CircleAvatar(
-                                    radius: 10,
-                                    backgroundColor: Colors.black54,
-                                    child: Icon(Icons.close,
-                                        size: 14, color: Colors.white),
+                        if (!kIsWeb)
+                          for (int i = 0; i < editImages.length; i++)
+                            Stack(
+                              children: [
+                                ClipRRect(
+                                  borderRadius: BorderRadius.circular(8),
+                                  child: Image.file(
+                                    File(editImages[i].path),
+                                    width: 80,
+                                    height: 80,
+                                    fit: BoxFit.cover,
                                   ),
                                 ),
-                              )
-                            ],
-                          ),
+                                Positioned(
+                                  top: 0,
+                                  right: 0,
+                                  child: GestureDetector(
+                                    onTap: () {
+                                      setDialogState(() {
+                                        editImages.removeAt(i);
+                                      });
+                                    },
+                                    child: CircleAvatar(
+                                      radius: 10,
+                                      backgroundColor: Colors.black54,
+                                      child: Icon(Icons.close,
+                                          size: 14, color: Colors.white),
+                                    ),
+                                  ),
+                                )
+                              ],
+                            ),
 
                         // Tombol tambah (hanya jika total < 3)
-                        if (oldImages.length + editImages.length < 3)
+                        if (!kIsWeb && oldImages.length + editImages.length < 3)
                           GestureDetector(
                             onTap: () async {
                               final picked = await _picker.pickMultiImage();

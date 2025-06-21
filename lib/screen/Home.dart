@@ -820,13 +820,25 @@ class _HomePageWidgetState extends State<HomePageWidget>
                 // Enhanced Banner
                 SliverToBoxAdapter(
                   child: Padding(
-                    padding: const EdgeInsets.fromLTRB(20, 8, 20, 8),
+                    padding: EdgeInsets.fromLTRB(
+                        MediaQuery.of(context).size.width > 800 ? 40 : 20,
+                        12,
+                        MediaQuery.of(context).size.width > 800 ? 40 : 20,
+                        12),
                     child: FutureBuilder<List<String>>(
                       future: banners,
                       builder: (context, snapshot) {
                         if (snapshot.connectionState ==
                             ConnectionState.waiting) {
-                          return shimmerBanner();
+                          return Container(
+                            height: MediaQuery.of(context).size.width > 800
+                                ? 350
+                                : 220,
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(15),
+                              color: Colors.grey[300],
+                            ),
+                          );
                         } else if (snapshot.hasError ||
                             !snapshot.hasData ||
                             snapshot.data!.isEmpty) {
@@ -836,7 +848,10 @@ class _HomePageWidgetState extends State<HomePageWidget>
                           return Column(
                             children: [
                               Container(
-                                height: 180,
+                                height: MediaQuery.of(context).size.width > 800
+                                    ? 500
+                                    : 220,
+                                width: double.infinity,
                                 decoration: BoxDecoration(
                                   borderRadius: BorderRadius.circular(15),
                                   boxShadow: [
@@ -875,31 +890,27 @@ class _HomePageWidgetState extends State<HomePageWidget>
                               // Banner indicators
                               if (bannerImages.length > 1)
                                 Padding(
-                                  padding: const EdgeInsets.only(top: 10),
+                                  padding: const EdgeInsets.only(top: 12),
                                   child: Row(
                                     mainAxisAlignment: MainAxisAlignment.center,
                                     children: List.generate(
-                                        bannerImages.length,
-                                        (index) => AnimatedContainer(
-                                              duration: const Duration(
-                                                  milliseconds: 300),
-                                              width:
-                                                  _currentBannerIndex == index
-                                                      ? 20
-                                                      : 8,
-                                              height: 8,
-                                              margin:
-                                                  const EdgeInsets.symmetric(
-                                                      horizontal: 4),
-                                              decoration: BoxDecoration(
-                                                color: _currentBannerIndex ==
-                                                        index
-                                                    ? const Color(0xFFC58189)
-                                                    : Colors.grey[300],
-                                                borderRadius:
-                                                    BorderRadius.circular(5),
-                                              ),
-                                            )),
+                                      bannerImages.length,
+                                      (index) => Container(
+                                        width: _currentBannerIndex == index
+                                            ? 20
+                                            : 8,
+                                        height: 8,
+                                        margin: const EdgeInsets.symmetric(
+                                            horizontal: 4),
+                                        decoration: BoxDecoration(
+                                          color: _currentBannerIndex == index
+                                              ? const Color(0xFFC58189)
+                                              : Colors.grey[300],
+                                          borderRadius:
+                                              BorderRadius.circular(5),
+                                        ),
+                                      ),
+                                    ),
                                   ),
                                 ),
                             ],
@@ -943,20 +954,34 @@ class _HomePageWidgetState extends State<HomePageWidget>
                 // Store Cards
                 SliverToBoxAdapter(
                   child: SizedBox(
-                    height: 190, // Slightly taller for better visibility
+                    height: MediaQuery.of(context).size.width > 800 ? 220 : 190,
                     child: FutureBuilder<List<Map<String, dynamic>>>(
                       future: followedStores,
                       builder: (context, snapshot) {
                         if (snapshot.connectionState ==
                             ConnectionState.waiting) {
                           return Padding(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 20.0, vertical: 10),
+                            padding: EdgeInsets.symmetric(
+                                horizontal:
+                                    MediaQuery.of(context).size.width > 800
+                                        ? 40.0
+                                        : 20.0,
+                                vertical: 10),
                             child: ListView.builder(
                               scrollDirection: Axis.horizontal,
                               itemCount: 3,
                               itemBuilder: (context, index) {
-                                return shimmerStoreCard();
+                                return Container(
+                                  width: MediaQuery.of(context).size.width > 800
+                                      ? 300
+                                      : MediaQuery.of(context).size.width *
+                                          0.65,
+                                  margin: EdgeInsets.only(right: 12),
+                                  decoration: BoxDecoration(
+                                    borderRadius: BorderRadius.circular(15),
+                                    color: Colors.grey[300],
+                                  ),
+                                );
                               },
                             ),
                           );
@@ -982,7 +1007,6 @@ class _HomePageWidgetState extends State<HomePageWidget>
                                 ),
                                 TextButton(
                                   onPressed: () {
-                                    // Navigate to discover stores page
                                     context.push('/nearby');
                                   },
                                   child: Text(
@@ -999,8 +1023,12 @@ class _HomePageWidgetState extends State<HomePageWidget>
                         } else {
                           final stores = snapshot.data!;
                           return Padding(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 16.0, vertical: 10),
+                            padding: EdgeInsets.symmetric(
+                                horizontal:
+                                    MediaQuery.of(context).size.width > 800
+                                        ? 40.0
+                                        : 16.0,
+                                vertical: 10),
                             child: ListView.builder(
                               scrollDirection: Axis.horizontal,
                               itemCount: stores.length,
@@ -1019,8 +1047,11 @@ class _HomePageWidgetState extends State<HomePageWidget>
                                     context.push('/store/$storeId');
                                   },
                                   child: Container(
-                                    width: MediaQuery.of(context).size.width *
-                                        0.65,
+                                    width: MediaQuery.of(context).size.width >
+                                            800
+                                        ? 300
+                                        : MediaQuery.of(context).size.width *
+                                            0.65,
                                     margin: EdgeInsets.only(right: 12),
                                     decoration: BoxDecoration(
                                       borderRadius: BorderRadius.circular(15),
@@ -1041,7 +1072,12 @@ class _HomePageWidgetState extends State<HomePageWidget>
                                           child: Image.network(
                                             storeLogoUrl,
                                             width: double.infinity,
-                                            height: 180,
+                                            height: MediaQuery.of(context)
+                                                        .size
+                                                        .width >
+                                                    800
+                                                ? 200
+                                                : 180,
                                             fit: BoxFit.cover,
                                             errorBuilder:
                                                 (context, error, stackTrace) =>
@@ -1077,7 +1113,7 @@ class _HomePageWidgetState extends State<HomePageWidget>
                                           ),
                                         ),
 
-                                        // Gradient Overlay for text legibility
+                                        // Gradient Overlay
                                         Positioned(
                                           bottom: 0,
                                           left: 0,
@@ -1495,7 +1531,11 @@ class _HomePageWidgetState extends State<HomePageWidget>
 
                 // Product Grid
                 SliverPadding(
-                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 20),
+                  padding: EdgeInsets.fromLTRB(
+                      MediaQuery.of(context).size.width > 800 ? 40 : 16,
+                      16,
+                      MediaQuery.of(context).size.width > 800 ? 40 : 16,
+                      20),
                   sliver: FutureBuilder<List<Map<String, dynamic>>>(
                     future: futureProducts,
                     builder: (context, snapshot) {
@@ -1503,14 +1543,31 @@ class _HomePageWidgetState extends State<HomePageWidget>
                         return SliverGrid(
                           gridDelegate:
                               SliverGridDelegateWithFixedCrossAxisCount(
-                            crossAxisCount: 2,
-                            crossAxisSpacing: 10,
-                            mainAxisSpacing: 10,
-                            childAspectRatio: 0.68,
+                            crossAxisCount:
+                                MediaQuery.of(context).size.width > 1200
+                                    ? 4
+                                    : MediaQuery.of(context).size.width > 800
+                                        ? 3
+                                        : 2,
+                            crossAxisSpacing: 12,
+                            mainAxisSpacing: 12,
+                            childAspectRatio:
+                                MediaQuery.of(context).size.width > 800
+                                    ? 0.75
+                                    : 0.68,
                           ),
                           delegate: SliverChildBuilderDelegate(
-                            (context, index) => shimmerProductCard(),
-                            childCount: 6,
+                            (context, index) => Container(
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(12),
+                                color: Colors.grey[300],
+                              ),
+                            ),
+                            childCount: MediaQuery.of(context).size.width > 1200
+                                ? 8
+                                : MediaQuery.of(context).size.width > 800
+                                    ? 6
+                                    : 6,
                           ),
                         );
                       } else if (snapshot.hasError || !snapshot.hasData) {
@@ -1541,10 +1598,18 @@ class _HomePageWidgetState extends State<HomePageWidget>
                         return SliverGrid(
                           gridDelegate:
                               SliverGridDelegateWithFixedCrossAxisCount(
-                            crossAxisCount: 2,
-                            crossAxisSpacing: 10,
+                            crossAxisCount:
+                                MediaQuery.of(context).size.width > 1200
+                                    ? 8
+                                    : MediaQuery.of(context).size.width > 800
+                                        ? 5
+                                        : 2,
+                            crossAxisSpacing: 12,
                             mainAxisSpacing: 16,
-                            childAspectRatio: 0.68,
+                            childAspectRatio:
+                                MediaQuery.of(context).size.width > 800
+                                    ? 0.75
+                                    : 0.68,
                           ),
                           delegate: SliverChildBuilderDelegate(
                             (context, index) {
@@ -1563,7 +1628,6 @@ class _HomePageWidgetState extends State<HomePageWidget>
                                     );
                                   }
                                 },
-                                // Keep ProductCard as is per your request
                                 child: ProductCard(product),
                               );
                             },

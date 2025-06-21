@@ -27,6 +27,7 @@ class _ProductDetailPageState extends State<ProductDetailPage>
   TabController? _tabController;
   bool _isLoading = true;
   Map<String, dynamic>? _productData;
+  int _currentImageIndex = 0;
 
   @override
   void initState() {
@@ -1267,7 +1268,7 @@ class _ProductDetailPageState extends State<ProductDetailPage>
 
     if (images.isEmpty) {
       return Container(
-        height: 300,
+        height: MediaQuery.of(context).size.width > 800 ? 400 : 300,
         color: Colors.grey[200],
         child: const Center(
           child: Icon(Icons.image_not_supported, size: 64, color: Colors.grey),
@@ -1279,10 +1280,15 @@ class _ProductDetailPageState extends State<ProductDetailPage>
       children: [
         // Image carousel
         SizedBox(
-          height: 350,
+          height: MediaQuery.of(context).size.width > 800 ? 800 : 350,
           child: PageView.builder(
             controller: _pageController,
             itemCount: images.length,
+            onPageChanged: (index) {
+              setState(() {
+                _currentImageIndex = index;
+              });
+            },
             itemBuilder: (context, index) {
               return GestureDetector(
                 onTap: () {
@@ -1295,7 +1301,9 @@ class _ProductDetailPageState extends State<ProductDetailPage>
                   );
                 },
                 child: Container(
-                  margin: const EdgeInsets.symmetric(horizontal: 10),
+                  margin: EdgeInsets.symmetric(
+                      horizontal:
+                          MediaQuery.of(context).size.width > 800 ? 20 : 10),
                   child: Hero(
                     tag: images[index],
                     child: ClipRRect(
@@ -1303,7 +1311,8 @@ class _ProductDetailPageState extends State<ProductDetailPage>
                       child: _buildCachedImage(
                         images[index],
                         width: double.infinity,
-                        height: 300,
+                        height:
+                            MediaQuery.of(context).size.width > 800 ? 400 : 300,
                       ),
                     ),
                   ),
@@ -1314,23 +1323,31 @@ class _ProductDetailPageState extends State<ProductDetailPage>
         ),
 
         // Page indicator
-        Positioned(
-          bottom: 16,
-          left: 0,
-          right: 0,
-          child: Center(
-            child: SmoothPageIndicator(
-              controller: _pageController,
-              count: images.length,
-              effect: const ExpandingDotsEffect(
-                dotHeight: 8,
-                dotWidth: 8,
-                activeDotColor: Color(0xFFC58189),
-                dotColor: Colors.grey,
+        if (images.length > 1)
+          Positioned(
+            bottom: 16,
+            left: 0,
+            right: 0,
+            child: Center(
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: List.generate(
+                  images.length,
+                  (index) => Container(
+                    width: _currentImageIndex == index ? 20 : 8,
+                    height: 8,
+                    margin: const EdgeInsets.symmetric(horizontal: 4),
+                    decoration: BoxDecoration(
+                      color: _currentImageIndex == index
+                          ? const Color(0xFFC58189)
+                          : Colors.grey,
+                      borderRadius: BorderRadius.circular(5),
+                    ),
+                  ),
+                ),
               ),
             ),
           ),
-        ),
       ],
     );
   }

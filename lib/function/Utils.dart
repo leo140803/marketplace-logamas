@@ -10,6 +10,7 @@ const String apiBaseUrlImage = 'http://127.0.0.1:3000/';
 const String apiBaseUrlImage2 = 'http://127.0.0.1:3001';
 const String apiBaseUrlNota = 'http://127.0.0.1:3001';
 const String apiBaseUrlPlatform = 'http://127.0.0.1:3020';
+const double widthInWeb= 500;
 
 void navigate(BuildContext context, int index) {
   if (index == 0) {
