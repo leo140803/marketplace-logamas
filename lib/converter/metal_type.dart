@@ -1,10 +1,10 @@
 class MetalTypeConverter {
   static const Map<int, String> metalTypeMap = {
-    0: 'Gold',
-    1: 'Silver',
-    2: 'Red Gold',
-    3: 'White Gold',
-    4: 'Platinum',
+    1: 'Gold',
+    2: 'Silver',
+    3: 'Red Gold',
+    4: 'White Gold',
+    5: 'Platinum',
   };
 
   static String getMetalType(int type) {

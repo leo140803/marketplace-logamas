@@ -67,7 +67,7 @@ void main() async {
 
 final router = GoRouter(
   // '/store/72574284-33f6-4ca8-a725-f00df1a62291',
-  initialLocation: '/tnc',
+  initialLocation: '/landing',
   navigatorKey: navigatorKey,
   debugLogDiagnostics: true,
   routes: [
