@@ -55,6 +55,12 @@ class _MenuScreenState extends State<MenuScreen> {
   ];
 
   final List<MenuItemData> _settingsMenuItems = [
+     MenuItemData(
+      icon: Icons.description,
+      title: 'Terms and Conditions',
+      route: '/tnc',
+      isNamed: false,
+    ),
     MenuItemData(
       icon: Icons.question_mark_rounded,
       title: 'FAQ',
