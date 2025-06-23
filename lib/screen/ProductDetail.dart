@@ -1249,12 +1249,17 @@ class _ProductDetailPageState extends State<ProductDetailPage>
 
     final product = _productData!;
     final images = <String>[];
+    final barcodes = <String>[]; // Add list to store barcodes
+    final weights = <String>[]; // Add list to store weights
 
-    // Collect images from product codes first
+    // Collect images, barcodes, and weights from product codes first
     if (product['product_codes']?.isNotEmpty == true) {
       for (final code in product['product_codes']) {
         if (code['image'] != null) {
           images.add('$apiBaseUrlImage${code['image']}');
+          // Add corresponding barcode and weight
+          barcodes.add(code['barcode']?.toString() ?? '');
+          weights.add(code['weight']?.toString() ?? '');
         }
       }
     }
@@ -1263,6 +1268,8 @@ class _ProductDetailPageState extends State<ProductDetailPage>
     if (images.isEmpty && product['images'] != null) {
       for (final image in product['images']) {
         images.add('$apiBaseUrlImage$image');
+        barcodes.add(''); // No barcode for general product images
+        weights.add(''); // No weight for general product images
       }
     }
 
@@ -1280,7 +1287,7 @@ class _ProductDetailPageState extends State<ProductDetailPage>
       children: [
         // Image carousel
         SizedBox(
-          height: MediaQuery.of(context).size.width > 800 ? 800 : 350,
+          height: MediaQuery.of(context).size.width > 800 ? 500 : 400,
           child: PageView.builder(
             controller: _pageController,
             itemCount: images.length,
@@ -1295,26 +1302,115 @@ class _ProductDetailPageState extends State<ProductDetailPage>
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (_) =>
+                      builder: (context) =>
                           FullScreenImageView(imageUrl: images[index]),
                     ),
                   );
                 },
                 child: Container(
-                  margin: EdgeInsets.symmetric(
-                      horizontal:
-                          MediaQuery.of(context).size.width > 800 ? 20 : 10),
-                  child: Hero(
-                    tag: images[index],
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(16),
-                      child: _buildCachedImage(
-                        images[index],
-                        width: double.infinity,
-                        height:
-                            MediaQuery.of(context).size.width > 800 ? 400 : 300,
+                  child: Stack(
+                    children: [
+                      // Image - Full width without margin
+                      Hero(
+                        tag: images[index],
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(
+                              0), // Remove border radius for full coverage
+                          child: _buildCachedImage(
+                            images[index],
+                            width: double.infinity,
+                            height: double.infinity,
+                          ),
+                        ),
                       ),
-                    ),
+                      // Barcode and Weight overlay
+                      if (barcodes[index].isNotEmpty ||
+                          weights[index].isNotEmpty)
+                        Positioned(
+                          bottom: 12,
+                          left: 12,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              // Barcode
+                              if (barcodes[index].isNotEmpty)
+                                Container(
+                                  margin: const EdgeInsets.only(bottom: 8),
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 12, vertical: 8),
+                                  decoration: BoxDecoration(
+                                    color: Colors.black.withOpacity(0.8),
+                                    borderRadius: BorderRadius.circular(20),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: Colors.black.withOpacity(0.3),
+                                        blurRadius: 8,
+                                        offset: const Offset(0, 2),
+                                      ),
+                                    ],
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      const Icon(
+                                        Icons.qr_code,
+                                        color: Colors.white,
+                                        size: 16,
+                                      ),
+                                      const SizedBox(width: 6),
+                                      Text(
+                                        barcodes[index],
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w500,
+                                          fontFamily: 'monospace',
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              // Weight
+                              if (weights[index].isNotEmpty)
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 12, vertical: 8),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFC58189)
+                                        .withOpacity(0.9),
+                                    borderRadius: BorderRadius.circular(20),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: Colors.black.withOpacity(0.3),
+                                        blurRadius: 8,
+                                        offset: const Offset(0, 2),
+                                      ),
+                                    ],
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      const Icon(
+                                        Icons.scale,
+                                        color: Colors.white,
+                                        size: 16,
+                                      ),
+                                      const SizedBox(width: 6),
+                                      Text(
+                                        '${weights[index]} g',
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ),
+                    ],
                   ),
                 ),
               );
