@@ -337,280 +337,419 @@ class _HomePageWidgetState extends State<HomePageWidget>
       showDialog(
         context: context,
         builder: (context) => AlertDialog(
-          backgroundColor: const Color(0xFF2E2E48),
+          backgroundColor: const Color(0xFF1A1A2E),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(20),
           ),
           titlePadding: EdgeInsets.zero,
-          contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-          insetPadding: EdgeInsets.symmetric(horizontal: 16),
-          title: Stack(
-            children: [
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(16.0),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [Color(0xFF31394E), Color(0xFF2E2E48)],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                  borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+          contentPadding: EdgeInsets.zero,
+          insetPadding: EdgeInsets.all(16),
+          title: Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  Color(0xFF16213E),
+                  Color(0xFF0F3460),
+                ],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black26,
+                  blurRadius: 8,
+                  offset: Offset(0, 2),
                 ),
-                child: Row(
-                  children: [
-                    Icon(Icons.analytics, color: Color(0xFFC58189)),
-                    SizedBox(width: 8),
-                    Text(
-                      'Gold Price Chart',
-                      style: TextStyle(
+              ],
+            ),
+            child: Stack(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.all(20.0),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: Color(0xFFFFD700).withOpacity(0.2),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Icon(
+                          Icons.analytics_outlined,
+                          color: Color(0xFFFFD700),
+                          size: 24,
+                        ),
+                      ),
+                      SizedBox(width: 12),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Gold Price Chart',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w600,
+                              fontSize: 18,
+                            ),
+                          ),
+                          Text(
+                            'Analisis Harga Emas',
+                            style: TextStyle(
+                              color: Colors.white70,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w400,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                Positioned(
+                  top: 16,
+                  right: 16,
+                  child: GestureDetector(
+                    onTap: () => Navigator.of(context).pop(),
+                    child: Container(
+                      padding: EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: Colors.white24),
+                      ),
+                      child: Icon(
+                        Icons.close_rounded,
                         color: Colors.white,
-                        fontWeight: FontWeight.bold,
+                        size: 18,
                       ),
                     ),
-                  ],
-                ),
-              ),
-              Positioned(
-                top: 12,
-                right: 12,
-                child: GestureDetector(
-                  onTap: () => Navigator.of(context).pop(),
-                  child: Container(
-                    padding: EdgeInsets.all(4),
-                    decoration: BoxDecoration(
-                      color: Colors.black26,
-                      shape: BoxShape.circle,
-                    ),
-                    child: Icon(
-                      Icons.close,
-                      color: Colors.white,
-                      size: 20,
-                    ),
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
           content: Container(
-            height: 450,
+            height: 480,
             width: double.maxFinite,
+            padding: EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: Color(0xFF1A1A2E),
+              borderRadius: BorderRadius.vertical(bottom: Radius.circular(20)),
+            ),
             child: Column(
               children: [
-                // Legend with improved styling
+                // Enhanced Legend
                 Container(
-                  padding: EdgeInsets.all(8),
+                  padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                   decoration: BoxDecoration(
-                    color: Colors.black12,
-                    borderRadius: BorderRadius.circular(10),
+                    gradient: LinearGradient(
+                      colors: [
+                        Colors.white.withOpacity(0.05),
+                        Colors.white.withOpacity(0.02),
+                      ],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: Colors.white.withOpacity(0.1)),
                   ),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      LegendItem(color: Colors.blue, text: 'Harga Beli'),
-                      SizedBox(width: 16),
-                      LegendItem(color: Colors.red, text: 'Harga Jual'),
+                      // Harga Beli Legend
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Container(
+                            padding: EdgeInsets.all(4),
+                            decoration: BoxDecoration(
+                              color: Color(0xFF4FC3F7).withOpacity(0.2),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Icon(
+                              Icons.trending_up,
+                              color: Color(0xFF4FC3F7),
+                              size: 16,
+                            ),
+                          ),
+                          SizedBox(width: 8),
+                          Text(
+                            'Harga Beli',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                      ),
+                      SizedBox(width: 24),
+                      Container(
+                        width: 1,
+                        height: 24,
+                        color: Colors.white24,
+                      ),
+                      SizedBox(width: 24),
+                      // Harga Jual Legend
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Container(
+                            padding: EdgeInsets.all(4),
+                            decoration: BoxDecoration(
+                              color: Color(0xFFFF6B6B).withOpacity(0.2),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Icon(
+                              Icons.trending_down,
+                              color: Color(0xFFFF6B6B),
+                              size: 16,
+                            ),
+                          ),
+                          SizedBox(width: 8),
+                          Text(
+                            'Harga Jual',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                      ),
                     ],
                   ),
                 ),
-                SizedBox(height: 16),
+                SizedBox(height: 20),
                 Expanded(
-                  child: LineChart(
-                    LineChartData(
-                      backgroundColor: const Color(0xFF2E2E48),
-                      borderData: FlBorderData(
-                        show: true,
-                        border: Border.all(color: Colors.white24),
-                      ),
-                      gridData: FlGridData(
-                        show: true,
-                        drawVerticalLine: true,
-                        getDrawingHorizontalLine: (value) {
-                          return FlLine(
-                            color: Colors.white10,
-                            strokeWidth: 1,
-                          );
-                        },
-                        getDrawingVerticalLine: (value) {
-                          return FlLine(
-                            color: Colors.white10,
-                            strokeWidth: 1,
-                          );
-                        },
-                      ),
-                      titlesData: FlTitlesData(
-                        bottomTitles: AxisTitles(
-                          sideTitles: SideTitles(
-                            showTitles: true,
-                            reservedSize: 36,
-                            getTitlesWidget: (value, meta) {
-                              final date = DateTime.fromMillisecondsSinceEpoch(
-                                  value.toInt());
-                              final formattedDate =
-                                  "${date.day}-${date.month}-${date.year}";
-
-                              if (value == hargaBeliData.first['x'] ||
-                                  value == hargaBeliData.last['x'] ||
-                                  value ==
-                                      hargaBeliData[(hargaBeliData.length / 2)
-                                          .floor()]['x']) {
-                                return Padding(
-                                  padding: EdgeInsets.only(top: 8.0),
-                                  child: Text(
-                                    formattedDate,
-                                    style: TextStyle(
-                                      color: Colors.white70,
-                                      fontSize: 10,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                );
-                              }
-                              return Container();
-                            },
-                          ),
-                        ),
-                        leftTitles: AxisTitles(
-                          sideTitles: SideTitles(
-                            showTitles: true,
-                            reservedSize: 40,
-                            getTitlesWidget: (value, meta) {
-                              // Show more interval markers for better readability
-                              if (value == minY ||
-                                  value == maxY ||
-                                  value == minY + (maxY - minY) / 2) {
-                                return Padding(
-                                  padding: EdgeInsets.only(right: 8),
-                                  child: Text(
-                                    formatYAxisValue(value.toInt()),
-                                    style: TextStyle(
-                                      color: Colors.white70,
-                                      fontSize: 10,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                );
-                              }
-                              return Container();
-                            },
-                          ),
-                        ),
-                        topTitles: AxisTitles(
-                          sideTitles: SideTitles(showTitles: false),
-                        ),
-                        rightTitles: AxisTitles(
-                          sideTitles: SideTitles(showTitles: false),
-                        ),
-                      ),
-                      lineBarsData: [
-                        // Harga Beli with improved styling
-                        LineChartBarData(
-                          spots: hargaBeliData
-                              .map((e) => FlSpot(e['x'], e['y']))
-                              .toList(),
-                          isCurved: true,
-                          barWidth: 3,
-                          color: Colors.blue,
-                          belowBarData: BarAreaData(
-                            show: true,
-                            gradient: LinearGradient(
-                              colors: [
-                                Colors.blue.withOpacity(0.4),
-                                Colors.transparent
-                              ],
-                              begin: Alignment.topCenter,
-                              end: Alignment.bottomCenter,
-                            ),
-                          ),
-                          dotData: FlDotData(
-                            show: true,
-                            getDotPainter: (spot, percent, barData, index) {
-                              return FlDotCirclePainter(
-                                radius: 3,
-                                color: Colors.white,
-                                strokeWidth: 2,
-                                strokeColor: Colors.blue,
-                              );
-                            },
-                            checkToShowDot: (spot, barData) {
-                              // Get index by finding this spot in the data
-                              int idx = hargaBeliData.indexWhere((data) =>
-                                  data['x'] == spot.x && data['y'] == spot.y);
-                              // Only show dots for first, last and middle points
-                              return idx == 0 ||
-                                  idx == hargaBeliData.length - 1 ||
-                                  idx == hargaBeliData.length ~/ 2;
-                            },
-                          ),
-                        ),
-                        // Harga Jual with improved styling
-                        LineChartBarData(
-                          spots: hargaJualData
-                              .map((e) => FlSpot(e['x'], e['y']))
-                              .toList(),
-                          isCurved: true,
-                          barWidth: 3,
-                          color: Colors.red,
-                          belowBarData: BarAreaData(
-                            show: true,
-                            gradient: LinearGradient(
-                              colors: [
-                                Colors.red.withOpacity(0.4),
-                                Colors.transparent
-                              ],
-                              begin: Alignment.topCenter,
-                              end: Alignment.bottomCenter,
-                            ),
-                          ),
-                          dotData: FlDotData(
-                            show: true,
-                            getDotPainter: (spot, percent, barData, index) {
-                              return FlDotCirclePainter(
-                                radius: 3,
-                                color: Colors.white,
-                                strokeWidth: 2,
-                                strokeColor: Colors.red,
-                              );
-                            },
-                            checkToShowDot: (spot, barData) {
-                              // Get index by finding this spot in the data
-                              int idx = hargaJualData.indexWhere((data) =>
-                                  data['x'] == spot.x && data['y'] == spot.y);
-                              // Only show dots for first, last and middle points
-                              return idx == 0 ||
-                                  idx == hargaJualData.length - 1 ||
-                                  idx == hargaJualData.length ~/ 2;
-                            },
-                          ),
-                        ),
-                      ],
-                      lineTouchData: LineTouchData(
-                        touchTooltipData: LineTouchTooltipData(
-                          tooltipRoundedRadius: 10,
-                          tooltipPadding: EdgeInsets.all(8),
-                          getTooltipItems: (touchedSpots) {
-                            final xValue = touchedSpots.first.x.toInt();
-                            final date =
-                                DateTime.fromMillisecondsSinceEpoch(xValue);
-                            final formattedDate =
-                                "${date.day}-${date.month}-${date.year}";
-
-                            return touchedSpots.map((touchedSpot) {
-                              final yValue = touchedSpot.y.toInt();
-                              final isHargaBeli = touchedSpot.barIndex == 0;
-
-                              return LineTooltipItem(
-                                '${isHargaBeli ? "Harga Beli" : "Harga Jual"}\n'
-                                'Date: $formattedDate\n'
-                                'Price: Rp $yValue',
-                                TextStyle(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 12,
-                                ),
-                              );
-                            }).toList();
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: Color(0xFF16213E).withOpacity(0.3),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: Colors.white.withOpacity(0.1)),
+                    ),
+                    padding: EdgeInsets.all(16),
+                    child: LineChart(
+                      LineChartData(
+                        backgroundColor: Colors.transparent,
+                        borderData: FlBorderData(show: false),
+                        gridData: FlGridData(
+                          show: true,
+                          drawVerticalLine: true,
+                          getDrawingHorizontalLine: (value) {
+                            return FlLine(
+                              color: Colors.white.withOpacity(0.08),
+                              strokeWidth: 1,
+                              dashArray: [5, 3],
+                            );
                           },
+                          getDrawingVerticalLine: (value) {
+                            return FlLine(
+                              color: Colors.white.withOpacity(0.08),
+                              strokeWidth: 1,
+                              dashArray: [5, 3],
+                            );
+                          },
+                        ),
+                        titlesData: FlTitlesData(
+                          bottomTitles: AxisTitles(
+                            sideTitles: SideTitles(
+                              showTitles: true,
+                              reservedSize: 40,
+                              getTitlesWidget: (value, meta) {
+                                final date =
+                                    DateTime.fromMillisecondsSinceEpoch(
+                                        value.toInt());
+                                final formattedDate =
+                                    "${date.day}/${date.month}";
+
+                                if (value == hargaBeliData.first['x'] ||
+                                    value == hargaBeliData.last['x'] ||
+                                    value ==
+                                        hargaBeliData[(hargaBeliData.length / 2)
+                                            .floor()]['x']) {
+                                  return Padding(
+                                    padding: EdgeInsets.only(top: 8.0),
+                                    child: Container(
+                                      padding: EdgeInsets.symmetric(
+                                          horizontal: 8, vertical: 4),
+                                      decoration: BoxDecoration(
+                                        color: Colors.white.withOpacity(0.1),
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                      child: Text(
+                                        formattedDate,
+                                        style: TextStyle(
+                                          color: Colors.white70,
+                                          fontSize: 10,
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                      ),
+                                    ),
+                                  );
+                                }
+                                return Container();
+                              },
+                            ),
+                          ),
+                          leftTitles: AxisTitles(
+                            sideTitles: SideTitles(
+                              showTitles: true,
+                              reservedSize: 50,
+                              getTitlesWidget: (value, meta) {
+                                if (value == minY ||
+                                    value == maxY ||
+                                    value == minY + (maxY - minY) / 2) {
+                                  return Padding(
+                                    padding: EdgeInsets.only(right: 8),
+                                    child: Container(
+                                      padding: EdgeInsets.symmetric(
+                                          horizontal: 6, vertical: 3),
+                                      decoration: BoxDecoration(
+                                        color: Colors.white.withOpacity(0.1),
+                                        borderRadius: BorderRadius.circular(6),
+                                      ),
+                                      child: Text(
+                                        formatYAxisValue(value.toInt()),
+                                        style: TextStyle(
+                                          color: Colors.white70,
+                                          fontSize: 9,
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                      ),
+                                    ),
+                                  );
+                                }
+                                return Container();
+                              },
+                            ),
+                          ),
+                          topTitles: AxisTitles(
+                              sideTitles: SideTitles(showTitles: false)),
+                          rightTitles: AxisTitles(
+                              sideTitles: SideTitles(showTitles: false)),
+                        ),
+                        lineBarsData: [
+                          // Enhanced Harga Beli Line
+                          LineChartBarData(
+                            spots: hargaBeliData
+                                .map((e) => FlSpot(e['x'], e['y']))
+                                .toList(),
+                            isCurved: true,
+                            curveSmoothness: 0.3,
+                            barWidth: 3,
+                            color: Color(0xFF4FC3F7),
+                            belowBarData: BarAreaData(
+                              show: true,
+                              gradient: LinearGradient(
+                                colors: [
+                                  Color(0xFF4FC3F7).withOpacity(0.3),
+                                  Color(0xFF4FC3F7).withOpacity(0.1),
+                                  Colors.transparent,
+                                ],
+                                begin: Alignment.topCenter,
+                                end: Alignment.bottomCenter,
+                              ),
+                            ),
+                            dotData: FlDotData(
+                              show: true,
+                              getDotPainter: (spot, percent, barData, index) {
+                                return FlDotCirclePainter(
+                                  radius: 4,
+                                  color: Colors.white,
+                                  strokeWidth: 2,
+                                  strokeColor: Color(0xFF4FC3F7),
+                                );
+                              },
+                              checkToShowDot: (spot, barData) {
+                                int idx = hargaBeliData.indexWhere((data) =>
+                                    data['x'] == spot.x && data['y'] == spot.y);
+                                return idx == 0 ||
+                                    idx == hargaBeliData.length - 1 ||
+                                    idx == hargaBeliData.length ~/ 2;
+                              },
+                            ),
+                          ),
+                          // Enhanced Harga Jual Line
+                          LineChartBarData(
+                            spots: hargaJualData
+                                .map((e) => FlSpot(e['x'], e['y']))
+                                .toList(),
+                            isCurved: true,
+                            curveSmoothness: 0.3,
+                            barWidth: 3,
+                            color: Color(0xFFFF6B6B),
+                            belowBarData: BarAreaData(
+                              show: true,
+                              gradient: LinearGradient(
+                                colors: [
+                                  Color(0xFFFF6B6B).withOpacity(0.3),
+                                  Color(0xFFFF6B6B).withOpacity(0.1),
+                                  Colors.transparent,
+                                ],
+                                begin: Alignment.topCenter,
+                                end: Alignment.bottomCenter,
+                              ),
+                            ),
+                            dotData: FlDotData(
+                              show: true,
+                              getDotPainter: (spot, percent, barData, index) {
+                                return FlDotCirclePainter(
+                                  radius: 4,
+                                  color: Colors.white,
+                                  strokeWidth: 2,
+                                  strokeColor: Color(0xFFFF6B6B),
+                                );
+                              },
+                              checkToShowDot: (spot, barData) {
+                                int idx = hargaJualData.indexWhere((data) =>
+                                    data['x'] == spot.x && data['y'] == spot.y);
+                                return idx == 0 ||
+                                    idx == hargaJualData.length - 1 ||
+                                    idx == hargaJualData.length ~/ 2;
+                              },
+                            ),
+                          ),
+                        ],
+                        lineTouchData: LineTouchData(
+                          touchTooltipData: LineTouchTooltipData(
+                            tooltipRoundedRadius: 12,
+                            tooltipPadding: EdgeInsets.all(12),
+                            tooltipBorder: BorderSide(color: Colors.white24),
+                            getTooltipItems: (touchedSpots) {
+                              final xValue = touchedSpots.first.x.toInt();
+                              final date =
+                                  DateTime.fromMillisecondsSinceEpoch(xValue);
+                              final formattedDate =
+                                  "${date.day}/${date.month}/${date.year}";
+
+                              return touchedSpots.map((touchedSpot) {
+                                final yValue = touchedSpot.y.toInt();
+                                final isHargaBeli = touchedSpot.barIndex == 0;
+
+                                // Format price with comma separator
+                                String formatPrice(int price) {
+                                  return price.toString().replaceAllMapped(
+                                        RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
+                                        (Match m) => '${m[1]},',
+                                      );
+                                }
+
+                                return LineTooltipItem(
+                                  '${isHargaBeli ? "💰 Harga Beli" : "💸 Harga Jual"}\n'
+                                  '📅 $formattedDate\n'
+                                  '💵 Rp ${formatPrice(yValue)}',
+                                  TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 12,
+                                    height: 1.4,
+                                  ),
+                                );
+                              }).toList();
+                            },
+                          ),
                         ),
                       ),
                     ),
@@ -625,6 +764,47 @@ class _HomePageWidgetState extends State<HomePageWidget>
       dialog(context, 'Chart Error',
           'We couldn\'t load the historical gold price data. Please try again later.');
     }
+  }
+
+  Widget _buildLegendItem({
+    required Color color,
+    required String text,
+    required IconData icon,
+  }) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          padding: EdgeInsets.all(4),
+          decoration: BoxDecoration(
+            color: color.withOpacity(0.2),
+            borderRadius: BorderRadius.circular(6),
+          ),
+          child: Icon(
+            icon,
+            color: color,
+            size: 16,
+          ),
+        ),
+        SizedBox(width: 8),
+        Text(
+          text,
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: 12,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+      ],
+    );
+  }
+
+// Helper function to format price
+  String _formatPrice(int price) {
+    return price.toString().replaceAllMapped(
+          RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
+          (Match m) => '${m[1]},',
+        );
   }
 
   @override
