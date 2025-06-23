@@ -1,5 +1,6 @@
 import 'dart:math';
 
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:marketplace_logamas/widget/BottomNavigationBar.dart';
@@ -873,12 +874,22 @@ class _HomePageWidgetState extends State<HomePageWidget>
                                     },
                                     itemCount: bannerImages.length,
                                     itemBuilder: (context, index) {
-                                      return Container(
-                                        decoration: BoxDecoration(
-                                          image: DecorationImage(
-                                            image: NetworkImage(
-                                                bannerImages[index]),
-                                            fit: BoxFit.cover,
+                                      return CachedNetworkImage(
+                                        imageUrl: bannerImages[index],
+                                        fit: BoxFit.cover,
+                                        errorWidget: (context, url, error) =>
+                                            Container(
+                                          decoration: BoxDecoration(
+                                            color: Colors.grey[300],
+                                            borderRadius:
+                                                BorderRadius.circular(15),
+                                          ),
+                                          child: Center(
+                                            child: Icon(
+                                              Icons.image_not_supported,
+                                              size: 40,
+                                              color: Colors.grey[600],
+                                            ),
                                           ),
                                         ),
                                       );
@@ -1522,7 +1533,61 @@ class _HomePageWidgetState extends State<HomePageWidget>
                               color: Color(0xFFC58189),
                               size: 16,
                             ),
+                            SizedBox(width: 6),
+                            Tooltip(
+                              message:
+                                  'Products similar to items in your wishlist',
+                              textStyle: TextStyle(
+                                fontSize: 12,
+                                color: Colors.white,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Colors.black87,
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              padding: EdgeInsets.symmetric(
+                                  horizontal: 12, vertical: 8),
+                              child: Icon(
+                                Icons.info_outline,
+                                color: Colors.grey[500],
+                                size: 16,
+                              ),
+                            ),
                           ],
+                        ),
+                        GestureDetector(
+                          onTap: () => context.push('/wishlist'),
+                          child: Container(
+                            padding: EdgeInsets.symmetric(
+                                horizontal: 12, vertical: 6),
+                            decoration: BoxDecoration(
+                              color: Color(0xFFC58189).withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(
+                                color: Color(0xFFC58189).withOpacity(0.3),
+                                width: 1,
+                              ),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  'See Wishlist',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w500,
+                                    color: Color(0xFFC58189),
+                                  ),
+                                ),
+                                SizedBox(width: 4),
+                                Icon(
+                                  Icons.arrow_forward_ios,
+                                  color: Color(0xFFC58189),
+                                  size: 12,
+                                ),
+                              ],
+                            ),
+                          ),
                         ),
                       ],
                     ),

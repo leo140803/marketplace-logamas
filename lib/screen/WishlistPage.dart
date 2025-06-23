@@ -420,7 +420,7 @@ class _WishlistPageState extends State<WishlistPage> {
           ),
         ),
         leading: IconButton(
-          onPressed: () => context.go('/information'),
+          onPressed: () => context.pop(),
           icon: const Icon(
             Icons.arrow_back,
             color: Colors.white,
