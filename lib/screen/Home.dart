@@ -332,6 +332,63 @@ class _HomePageWidgetState extends State<HomePageWidget>
               })
           .toList();
 
+      hargaBeliData.sort((a, b) => a['x'].compareTo(b['x']));
+      hargaJualData.sort((a, b) => a['x'].compareTo(b['x']));
+
+      // =========================
+      // Hitung kenaikan harga beli
+      // =========================
+      final latestBuy = hargaBeliData.last;
+      final latestBuyDate =
+          (latestBuy['date'] as DateTime).toIso8601String().substring(0, 10);
+
+      Map<String, dynamic>? previousBuy;
+      for (var i = hargaBeliData.length - 2; i >= 0; i--) {
+        final d = hargaBeliData[i];
+        final dDate =
+            (d['date'] as DateTime).toIso8601String().substring(0, 10);
+        if (dDate != latestBuyDate) {
+          previousBuy = d;
+          break;
+        }
+      }
+
+      double increaseBuy = 0;
+      if (previousBuy != null) {
+        final latest = latestBuy['y'];
+        final previous = previousBuy['y'];
+        increaseBuy = ((latest - previous) / previous) * 100;
+      }
+
+      // =========================
+      // Hitung kenaikan harga jual
+      // =========================
+      final latestSell = hargaJualData.last;
+      final latestSellDate =
+          (latestSell['date'] as DateTime).toIso8601String().substring(0, 10);
+
+      Map<String, dynamic>? previousSell;
+      for (var i = hargaJualData.length - 2; i >= 0; i--) {
+        final d = hargaJualData[i];
+        final dDate =
+            (d['date'] as DateTime).toIso8601String().substring(0, 10);
+        if (dDate != latestSellDate) {
+          previousSell = d;
+          break;
+        }
+      }
+
+      double increaseSell = 0;
+      if (previousSell != null) {
+        final latest = latestSell['y'];
+        final previous = previousSell['y'];
+        increaseSell = ((latest - previous) / previous) * 100;
+      }
+
+      // Get current prices
+      final buyPrice = latestBuy['y'].toInt();
+      final sellPrice = latestSell['y'].toInt();
+
       final maxY =
           historicalData.map((e) => e['price']).reduce((a, b) => a > b ? a : b);
       final minY =
@@ -433,7 +490,7 @@ class _HomePageWidgetState extends State<HomePageWidget>
             ),
           ),
           content: Container(
-            height: 480,
+            height: 600, // Increased height to accommodate price display
             width: double.maxFinite,
             padding: EdgeInsets.all(20),
             decoration: BoxDecoration(
@@ -442,14 +499,14 @@ class _HomePageWidgetState extends State<HomePageWidget>
             ),
             child: Column(
               children: [
-                // Enhanced Legend
+                // Current Prices Display Section
                 Container(
-                  padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  padding: EdgeInsets.all(16),
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
                       colors: [
-                        Colors.white.withOpacity(0.05),
-                        Colors.white.withOpacity(0.02),
+                        Colors.white.withOpacity(0.08),
+                        Colors.white.withOpacity(0.04),
                       ],
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
@@ -460,29 +517,95 @@ class _HomePageWidgetState extends State<HomePageWidget>
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      // Harga Beli Legend
-                      Row(
-                        mainAxisSize: MainAxisSize.min,
+                      // Harga Beli Section
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Container(
-                            padding: EdgeInsets.all(4),
-                            decoration: BoxDecoration(
-                              color: Color(0xFF4FC3F7).withOpacity(0.2),
-                              borderRadius: BorderRadius.circular(6),
-                            ),
-                            child: Icon(
-                              Icons.trending_up,
-                              color: Color(0xFF4FC3F7),
-                              size: 16,
-                            ),
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Container(
+                                padding: EdgeInsets.all(4),
+                                decoration: BoxDecoration(
+                                  color: Color(0xFF4FC3F7).withOpacity(0.2),
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                child: Icon(
+                                  Icons.trending_up,
+                                  color: Color(0xFF4FC3F7),
+                                  size: 16,
+                                ),
+                              ),
+                              SizedBox(width: 8),
+                              Text(
+                                'Harga Beli',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ],
                           ),
-                          SizedBox(width: 8),
+                          SizedBox(height: 8),
+                          // Current Buy Price
                           Text(
-                            'Harga Beli',
+                            'Rp ${buyPrice.toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]}.')}',
                             style: TextStyle(
                               color: Colors.white,
-                              fontSize: 12,
-                              fontWeight: FontWeight.w500,
+                              fontSize: 16,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                          SizedBox(height: 6),
+                          Container(
+                            padding: EdgeInsets.symmetric(
+                                horizontal: 8, vertical: 6),
+                            decoration: BoxDecoration(
+                              color: increaseBuy >= 0
+                                  ? Color(0xFF4CAF50).withOpacity(0.15)
+                                  : Color(0xFFFF5252).withOpacity(0.15),
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(
+                                color: increaseBuy >= 0
+                                    ? Color(0xFF4CAF50).withOpacity(0.3)
+                                    : Color(0xFFFF5252).withOpacity(0.3),
+                                width: 1,
+                              ),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  increaseBuy >= 0
+                                      ? Icons.arrow_upward
+                                      : Icons.arrow_downward,
+                                  color: increaseBuy >= 0
+                                      ? Color(0xFF4CAF50)
+                                      : Color(0xFFFF5252),
+                                  size: 14,
+                                ),
+                                SizedBox(width: 4),
+                                Text(
+                                  '${increaseBuy.abs().toStringAsFixed(1)}%',
+                                  style: TextStyle(
+                                    color: increaseBuy >= 0
+                                        ? Color(0xFF4CAF50)
+                                        : Color(0xFFFF5252),
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          SizedBox(height: 4),
+                          Text(
+                            'Perubahan terakhir',
+                            style: TextStyle(
+                              color: Colors.white60,
+                              fontSize: 10,
+                              fontWeight: FontWeight.w400,
                             ),
                           ),
                         ],
@@ -490,33 +613,99 @@ class _HomePageWidgetState extends State<HomePageWidget>
                       SizedBox(width: 24),
                       Container(
                         width: 1,
-                        height: 24,
+                        height: 70,
                         color: Colors.white24,
                       ),
                       SizedBox(width: 24),
-                      // Harga Jual Legend
-                      Row(
-                        mainAxisSize: MainAxisSize.min,
+                      // Harga Jual Section
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Container(
-                            padding: EdgeInsets.all(4),
-                            decoration: BoxDecoration(
-                              color: Color(0xFFFF6B6B).withOpacity(0.2),
-                              borderRadius: BorderRadius.circular(6),
-                            ),
-                            child: Icon(
-                              Icons.trending_down,
-                              color: Color(0xFFFF6B6B),
-                              size: 16,
-                            ),
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Container(
+                                padding: EdgeInsets.all(4),
+                                decoration: BoxDecoration(
+                                  color: Color(0xFFFF6B6B).withOpacity(0.2),
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                child: Icon(
+                                  Icons.trending_down,
+                                  color: Color(0xFFFF6B6B),
+                                  size: 16,
+                                ),
+                              ),
+                              SizedBox(width: 8),
+                              Text(
+                                'Harga Jual',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ],
                           ),
-                          SizedBox(width: 8),
+                          SizedBox(height: 8),
+                          // Current Sell Price
                           Text(
-                            'Harga Jual',
+                            'Rp ${sellPrice.toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]}.')}',
                             style: TextStyle(
                               color: Colors.white,
-                              fontSize: 12,
-                              fontWeight: FontWeight.w500,
+                              fontSize: 16,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                          SizedBox(height: 6),
+                          Container(
+                            padding: EdgeInsets.symmetric(
+                                horizontal: 8, vertical: 6),
+                            decoration: BoxDecoration(
+                              color: increaseSell >= 0
+                                  ? Color(0xFF4CAF50).withOpacity(0.15)
+                                  : Color(0xFFFF5252).withOpacity(0.15),
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(
+                                color: increaseSell >= 0
+                                    ? Color(0xFF4CAF50).withOpacity(0.3)
+                                    : Color(0xFFFF5252).withOpacity(0.3),
+                                width: 1,
+                              ),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  increaseSell >= 0
+                                      ? Icons.arrow_upward
+                                      : Icons.arrow_downward,
+                                  color: increaseSell >= 0
+                                      ? Color(0xFF4CAF50)
+                                      : Color(0xFFFF5252),
+                                  size: 14,
+                                ),
+                                SizedBox(width: 4),
+                                Text(
+                                  '${increaseSell.abs().toStringAsFixed(1)}%',
+                                  style: TextStyle(
+                                    color: increaseSell >= 0
+                                        ? Color(0xFF4CAF50)
+                                        : Color(0xFFFF5252),
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          SizedBox(height: 4),
+                          Text(
+                            'Perubahan terakhir',
+                            style: TextStyle(
+                              color: Colors.white60,
+                              fontSize: 10,
+                              fontWeight: FontWeight.w400,
                             ),
                           ),
                         ],
@@ -525,6 +714,67 @@ class _HomePageWidgetState extends State<HomePageWidget>
                   ),
                 ),
                 SizedBox(height: 20),
+                // Chart Legend (Simplified since prices are shown above)
+                Container(
+                  padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.05),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.white.withOpacity(0.1)),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      // Chart Legend - Simplified
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Container(
+                            width: 16,
+                            height: 3,
+                            decoration: BoxDecoration(
+                              color: Color(0xFF4FC3F7),
+                              borderRadius: BorderRadius.circular(2),
+                            ),
+                          ),
+                          SizedBox(width: 6),
+                          Text(
+                            'Trend Beli',
+                            style: TextStyle(
+                              color: Colors.white70,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                      ),
+                      SizedBox(width: 20),
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Container(
+                            width: 16,
+                            height: 3,
+                            decoration: BoxDecoration(
+                              color: Color(0xFFFF6B6B),
+                              borderRadius: BorderRadius.circular(2),
+                            ),
+                          ),
+                          SizedBox(width: 6),
+                          Text(
+                            'Trend Jual',
+                            style: TextStyle(
+                              color: Colors.white70,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                SizedBox(height: 16),
                 Expanded(
                   child: Container(
                     decoration: BoxDecoration(
