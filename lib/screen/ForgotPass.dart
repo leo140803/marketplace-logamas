@@ -43,7 +43,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
     );
 
     // API call untuk reset password
-    const String apiUrl = '$apiBaseUrl/user/forgot-password';
+    String apiUrl = '$apiBaseUrl/user/forgot-password';
     try {
       final response = await http.post(
         Uri.parse(apiUrl),

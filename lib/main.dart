@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:go_router/go_router.dart';
 import 'package:marketplace_logamas/api/firebase_api.dart';
 import 'package:marketplace_logamas/screen/Barcode.dart';
@@ -47,6 +48,7 @@ final navigatorKey = GlobalKey<NavigatorState>();
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await dotenv.load(fileName: ".env");
   print(Platform);
   if (!kIsWeb) {
     // Hanya berjalan di Android/iOS

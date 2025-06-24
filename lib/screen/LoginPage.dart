@@ -141,7 +141,7 @@ class _LoginPageState extends State<LoginPage>
     );
 
     try {
-      const String apiUrl = '$apiBaseUrl/user/login';
+      String apiUrl = '$apiBaseUrl/user/login';
       print(apiUrl);
       final response = await http.post(
         Uri.parse(apiUrl),
@@ -235,7 +235,7 @@ class _LoginPageState extends State<LoginPage>
   }
 
   Future<void> addDeviceToken(String accessToken, BuildContext context) async {
-    const String addDeviceTokenApiUrl = '$apiBaseUrl/user/device-token';
+    String addDeviceTokenApiUrl = '$apiBaseUrl/user/device-token';
 
     try {
       final String deviceToken = await getDeviceToken();

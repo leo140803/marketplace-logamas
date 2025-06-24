@@ -65,7 +65,8 @@ class _TermsConditionsPageState extends State<TermsConditionsPage>
 
     try {
       final String accessToken = await _getAccessToken();
-      const String apiUrl = '$apiBaseUrlPlatform/api/config/key?key=terms_and_conditions';
+      String apiUrl =
+          '$apiBaseUrlPlatform/api/config/key?key=terms_and_conditions';
 
       final response = await http.get(
         Uri.parse(apiUrl),

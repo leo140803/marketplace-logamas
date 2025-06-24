@@ -1,6 +1,7 @@
 // services/chat_service.dart
 import 'dart:convert';
 import 'dart:async';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
 import 'package:socket_io_client/socket_io_client.dart' as IO;
 import 'package:marketplace_logamas/function/Utils.dart';
@@ -40,7 +41,7 @@ class ChatService {
   }
 
   void _connectSocket() {
-    _socket = IO.io('http://127.0.0.1:3001/chat', <String, dynamic>{
+    _socket = IO.io('${dotenv.env['API_URL_2']}/chat', <String, dynamic>{
       'transports': ['websocket'],
       'autoConnect': true,
       'query': {

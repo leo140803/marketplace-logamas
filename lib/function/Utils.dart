@@ -1,16 +1,17 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:marketplace_logamas/widget/Dialog.dart';
 import 'package:marketplace_logamas/widget/UnauthorizedDialog.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-const String apiBaseUrl = 'http://127.0.0.1:3001/api';
-const String apiBaseUrlImage = 'http://127.0.0.1:3000/';
-const String apiBaseUrlImage2 = 'http://127.0.0.1:3001';
-const String apiBaseUrlNota = 'http://127.0.0.1:3001';
-const String apiBaseUrlPlatform = 'http://127.0.0.1:3020';
-const double widthInWeb= 500;
+String apiBaseUrl = '${dotenv.env['API_URL_2']}/api';
+String apiBaseUrlImage = '${dotenv.env['API_URL_1']}/';
+String apiBaseUrlImage2 = '${dotenv.env['API_URL_2']}';
+String apiBaseUrlNota = '${dotenv.env['API_URL_2']}';
+String apiBaseUrlPlatform = '${dotenv.env['PLATFORM_URL']}';
+const double widthInWeb = 500;
 
 void navigate(BuildContext context, int index) {
   if (index == 0) {
