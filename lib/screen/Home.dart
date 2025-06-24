@@ -599,15 +599,6 @@ class _HomePageWidgetState extends State<HomePageWidget>
                               ],
                             ),
                           ),
-                          SizedBox(height: 4),
-                          Text(
-                            'Perubahan terakhir',
-                            style: TextStyle(
-                              color: Colors.white60,
-                              fontSize: 10,
-                              fontWeight: FontWeight.w400,
-                            ),
-                          ),
                         ],
                       ),
                       SizedBox(width: 24),
@@ -697,15 +688,6 @@ class _HomePageWidgetState extends State<HomePageWidget>
                                   ),
                                 ),
                               ],
-                            ),
-                          ),
-                          SizedBox(height: 4),
-                          Text(
-                            'Perubahan terakhir',
-                            style: TextStyle(
-                              color: Colors.white60,
-                              fontSize: 10,
-                              fontWeight: FontWeight.w400,
                             ),
                           ),
                         ],
