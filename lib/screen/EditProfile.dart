@@ -4,6 +4,7 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:marketplace_logamas/function/Utils.dart';
 import 'package:marketplace_logamas/widget/FieldEdit.dart';
+import 'package:marketplace_logamas/widget/PhoneNumberEdit.dart';
 import 'package:marketplace_logamas/widget/PhoneNumberField.dart';
 
 class EditProfileScreen extends StatefulWidget {
@@ -418,7 +419,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                                     ),
                                   ),
                                   const SizedBox(height: 8),
-                                  PhoneNumberField(
+                                  PhoneNumberFieldEdit(
                                     controller: _phoneController,
                                   ),
                                   if (_phoneError != null)

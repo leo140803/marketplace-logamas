@@ -1678,28 +1678,55 @@ class _StorePageState extends State<StorePage> {
                                 autocorrect: false,
                                 controller: _textController,
                                 focusNode: _textFieldFocusNode,
-                                onFieldSubmitted: (value) {
-                                  setState(() {
-                                    if (value.isEmpty) {
-                                      // Jika kosong, kembalikan semua produk
+                                onFieldSubmitted: (value) async {
+                                  final query = value.trim();
+                                  if (query.isEmpty) {
+                                    setState(() {
                                       filteredProducts =
                                           List<Map<String, dynamic>>.from(
-                                              storeData!['products']);
-                                    } else {
-                                      // Pastikan konversi dilakukan dengan benar
-                                      filteredProducts =
-                                          List<Map<String, dynamic>>.from(
-                                        storeData!['products'].where((product) {
-                                          final productName =
-                                              (product['name'] ?? '')
-                                                  .toString()
-                                                  .toLowerCase();
-                                          return productName
-                                              .contains(value.toLowerCase());
-                                        }),
+                                        storeData!['products'],
+                                      );
+                                    });
+                                  } else {
+                                    try {
+                                      final response = await http.get(
+                                        Uri.parse(
+                                            '$apiBaseUrl/products/search-by-store?q=$query&storeId=${widget.storeId}'),
+                                      );
+
+                                      if (response.statusCode == 200) {
+                                        final data = json.decode(response.body);
+                                        final result = data['data'];
+
+                                        setState(() {
+                                          filteredProducts =
+                                              List<Map<String, dynamic>>.from(
+                                                  result); // hasil backend
+                                        });
+                                        print(result);
+                                      } else {
+                                        print("Search error: ${response.body}");
+                                        ScaffoldMessenger.of(context)
+                                            .showSnackBar(
+                                          SnackBar(
+                                            content:
+                                                Text("Gagal mencari produk"),
+                                            backgroundColor: Colors.red,
+                                          ),
+                                        );
+                                      }
+                                    } catch (e) {
+                                      print("Search exception: $e");
+                                      ScaffoldMessenger.of(context)
+                                          .showSnackBar(
+                                        SnackBar(
+                                          content: Text(
+                                              "Terjadi kesalahan saat mencari produk"),
+                                          backgroundColor: Colors.red,
+                                        ),
                                       );
                                     }
-                                  });
+                                  }
                                 },
                                 decoration: InputDecoration(
                                   isDense: true,
