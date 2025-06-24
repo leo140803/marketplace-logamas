@@ -84,7 +84,6 @@ class _SalesDetailsPageState extends State<SalesDetailsPage> {
   Future<void> loadAccessToken() async {
     try {
       final token = await getAccessToken();
-      ;
       setState(() {
         _accessToken = token;
       });
@@ -156,8 +155,7 @@ class _SalesDetailsPageState extends State<SalesDetailsPage> {
   // Improved PDF download with progress indicator
   Future<void> _downloadNota() async {
     final String transactionId = widget.transactionId;
-    final String url =
-        '$apiBaseUrlNota/transaction/transaction-nota/$transactionId';
+    final String url = '$apiBaseUrlNota/nota/$transactionId';
 
     // Show download progress dialog
     showDialog(

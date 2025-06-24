@@ -197,8 +197,7 @@ class _OrderDetailsPageState extends State<OrderDetailsPage>
   // Improved PDF download with progress indicator
   Future<void> _downloadNota() async {
     final String transactionId = widget.transactionId;
-    final String url =
-        '$apiBaseUrlNota/transaction/transaction-nota/$transactionId';
+    final String url = '$apiBaseUrlNota/nota/$transactionId';
     print(url);
 
     // Show download progress dialog

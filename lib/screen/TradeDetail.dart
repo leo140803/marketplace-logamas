@@ -183,8 +183,7 @@ class _TradeDetailsPageState extends State<TradeDetailsPage> {
   // Improved PDF download with progress indicator
   Future<void> _downloadNota() async {
     final String transactionId = widget.transactionId;
-    final String url =
-        '$apiBaseUrlNota/transaction/transaction-nota/$transactionId';
+    final String url = '$apiBaseUrlNota/nota/$transactionId';
 
     // Show download progress dialog
     showDialog(
