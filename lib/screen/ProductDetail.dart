@@ -232,7 +232,13 @@ class _ProductDetailPageState extends State<ProductDetailPage>
         return true;
       } else {
         final responseBody = jsonDecode(response.body);
-        throw Exception(responseBody['message'] ?? 'Failed to add to cart');
+        print(responseBody);
+        _showToast(
+          'Failed to add to cart',
+          Colors.red,
+          Icons.error,
+        );
+        throw Exception(responseBody['message']);
       }
     } catch (e) {
       throw Exception('Error adding product to cart: $e');
@@ -646,13 +652,7 @@ class _ProductDetailPageState extends State<ProductDetailPage>
                                                 const Color(0xFF31394E),
                                                 Icons.check_circle,
                                               );
-                                            } catch (e) {
-                                              _showToast(
-                                                'Failed to add to cart',
-                                                Colors.red,
-                                                Icons.error,
-                                              );
-                                            }
+                                            } catch (e) {}
                                           },
                                           style: ElevatedButton.styleFrom(
                                             backgroundColor:
