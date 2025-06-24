@@ -41,7 +41,7 @@ class _HomePageWidgetState extends State<HomePageWidget>
   late Future<List<Map<String, dynamic>>> futureProducts;
 
   late Future<List<Map<String, dynamic>>> followedStores;
-  late Future<List<String>> banners;
+  late Future<List<Map<String, dynamic>>> banners;
   late Future<Map<String, String>> goldPrices;
 
   @override
@@ -172,15 +172,19 @@ class _HomePageWidgetState extends State<HomePageWidget>
     }
   }
 
-  Future<List<String>> fetchBannerImages() async {
+  Future<List<Map<String, dynamic>>> fetchBannerImages() async {
     try {
       final response =
           await http.get(Uri.parse('$apiBaseUrlPlatform/api/banner/active'));
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         final List banners = data['data'];
-        return banners.map<String>((banner) {
-          return '$apiBaseUrlPlatform${banner['image_url']}';
+        return banners.map<Map<String, dynamic>>((banner) {
+          return {
+            'image_url': '$apiBaseUrlPlatform${banner['image_url']}',
+            'title': banner['title'] ?? '',
+            'description': banner['description'] ?? '',
+          };
         }).toList();
       } else if (response.statusCode == 404) {
         return [];
@@ -188,7 +192,6 @@ class _HomePageWidgetState extends State<HomePageWidget>
         throw Exception('Failed to load banners');
       }
     } catch (e) {
-      // Handle error silently and return empty list
       return [];
     }
   }
@@ -1006,7 +1009,7 @@ class _HomePageWidgetState extends State<HomePageWidget>
                         12,
                         MediaQuery.of(context).size.width > 800 ? 40 : 20,
                         12),
-                    child: FutureBuilder<List<String>>(
+                    child: FutureBuilder<List<Map<String, dynamic>>>(
                       future: banners,
                       builder: (context, snapshot) {
                         if (snapshot.connectionState ==
@@ -1054,21 +1057,410 @@ class _HomePageWidgetState extends State<HomePageWidget>
                                     },
                                     itemCount: bannerImages.length,
                                     itemBuilder: (context, index) {
-                                      return CachedNetworkImage(
-                                        imageUrl: bannerImages[index],
-                                        fit: BoxFit.cover,
-                                        errorWidget: (context, url, error) =>
-                                            Container(
-                                          decoration: BoxDecoration(
-                                            color: Colors.grey[300],
-                                            borderRadius:
-                                                BorderRadius.circular(15),
-                                          ),
-                                          child: Center(
-                                            child: Icon(
-                                              Icons.image_not_supported,
-                                              size: 40,
-                                              color: Colors.grey[600],
+                                      final banner = bannerImages[index];
+                                      return GestureDetector(
+                                        onTap: () {
+                                          showDialog(
+                                            context: context,
+                                            barrierDismissible: true,
+                                            barrierColor:
+                                                Colors.black.withOpacity(0.7),
+                                            builder: (BuildContext context) {
+                                              return Dialog(
+                                                backgroundColor:
+                                                    Colors.transparent,
+                                                insetPadding:
+                                                    EdgeInsets.all(20),
+                                                child: Container(
+                                                  constraints: BoxConstraints(
+                                                    maxWidth:
+                                                        MediaQuery.of(context)
+                                                                    .size
+                                                                    .width >
+                                                                600
+                                                            ? 500
+                                                            : double.infinity,
+                                                    maxHeight:
+                                                        MediaQuery.of(context)
+                                                                .size
+                                                                .height *
+                                                            0.8,
+                                                  ),
+                                                  decoration: BoxDecoration(
+                                                    color: Colors.white,
+                                                    borderRadius:
+                                                        BorderRadius.circular(
+                                                            20),
+                                                    boxShadow: [
+                                                      BoxShadow(
+                                                        color: Colors.black
+                                                            .withOpacity(0.3),
+                                                        blurRadius: 20,
+                                                        offset: Offset(0, 10),
+                                                      ),
+                                                    ],
+                                                  ),
+                                                  child: Column(
+                                                    mainAxisSize:
+                                                        MainAxisSize.min,
+                                                    children: [
+                                                      // Header dengan gambar banner
+                                                      Container(
+                                                        height: 200,
+                                                        width: double.infinity,
+                                                        decoration:
+                                                            BoxDecoration(
+                                                          borderRadius:
+                                                              BorderRadius.only(
+                                                            topLeft:
+                                                                Radius.circular(
+                                                                    20),
+                                                            topRight:
+                                                                Radius.circular(
+                                                                    20),
+                                                          ),
+                                                        ),
+                                                        child: Stack(
+                                                          children: [
+                                                            // Banner Image
+                                                            ClipRRect(
+                                                              borderRadius:
+                                                                  BorderRadius
+                                                                      .only(
+                                                                topLeft: Radius
+                                                                    .circular(
+                                                                        20),
+                                                                topRight: Radius
+                                                                    .circular(
+                                                                        20),
+                                                              ),
+                                                              child:
+                                                                  CachedNetworkImage(
+                                                                imageUrl: banner[
+                                                                    'image_url'],
+                                                                fit: BoxFit
+                                                                    .cover,
+                                                                width: double
+                                                                    .infinity,
+                                                                height: double
+                                                                    .infinity,
+                                                                errorWidget: (context,
+                                                                        url,
+                                                                        error) =>
+                                                                    Container(
+                                                                  decoration:
+                                                                      BoxDecoration(
+                                                                    gradient:
+                                                                        LinearGradient(
+                                                                      begin: Alignment
+                                                                          .topLeft,
+                                                                      end: Alignment
+                                                                          .bottomRight,
+                                                                      colors: [
+                                                                        Color(
+                                                                            0xFFC58189),
+                                                                        Color(
+                                                                            0xFFE8A87C),
+                                                                      ],
+                                                                    ),
+                                                                  ),
+                                                                  child: Center(
+                                                                    child: Icon(
+                                                                      Icons
+                                                                          .image_not_supported_outlined,
+                                                                      size: 50,
+                                                                      color: Colors
+                                                                          .white
+                                                                          .withOpacity(
+                                                                              0.8),
+                                                                    ),
+                                                                  ),
+                                                                ),
+                                                              ),
+                                                            ),
+                                                            // Gradient overlay
+                                                            Container(
+                                                              decoration:
+                                                                  BoxDecoration(
+                                                                borderRadius:
+                                                                    BorderRadius
+                                                                        .only(
+                                                                  topLeft: Radius
+                                                                      .circular(
+                                                                          20),
+                                                                  topRight: Radius
+                                                                      .circular(
+                                                                          20),
+                                                                ),
+                                                                gradient:
+                                                                    LinearGradient(
+                                                                  begin: Alignment
+                                                                      .topCenter,
+                                                                  end: Alignment
+                                                                      .bottomCenter,
+                                                                  colors: [
+                                                                    Colors
+                                                                        .transparent,
+                                                                    Colors.black
+                                                                        .withOpacity(
+                                                                            0.3),
+                                                                  ],
+                                                                ),
+                                                              ),
+                                                            ),
+                                                            // Close button
+                                                            Positioned(
+                                                              top: 15,
+                                                              right: 15,
+                                                              child: Container(
+                                                                decoration:
+                                                                    BoxDecoration(
+                                                                  color: Colors
+                                                                      .black
+                                                                      .withOpacity(
+                                                                          0.5),
+                                                                  borderRadius:
+                                                                      BorderRadius
+                                                                          .circular(
+                                                                              20),
+                                                                ),
+                                                                child:
+                                                                    IconButton(
+                                                                  icon: Icon(
+                                                                    Icons.close,
+                                                                    color: Colors
+                                                                        .white,
+                                                                    size: 20,
+                                                                  ),
+                                                                  onPressed: () =>
+                                                                      Navigator.of(
+                                                                              context)
+                                                                          .pop(),
+                                                                  padding:
+                                                                      EdgeInsets
+                                                                          .all(
+                                                                              8),
+                                                                  constraints:
+                                                                      BoxConstraints(),
+                                                                ),
+                                                              ),
+                                                            ),
+                                                          ],
+                                                        ),
+                                                      ),
+                                                      // Content
+                                                      Flexible(
+                                                        child: Padding(
+                                                          padding:
+                                                              EdgeInsets.all(
+                                                                  24),
+                                                          child: Column(
+                                                            crossAxisAlignment:
+                                                                CrossAxisAlignment
+                                                                    .start,
+                                                            mainAxisSize:
+                                                                MainAxisSize
+                                                                    .min,
+                                                            children: [
+                                                              // Title dengan icon
+                                                              Row(
+                                                                children: [
+                                                                  Container(
+                                                                    padding:
+                                                                        EdgeInsets
+                                                                            .all(8),
+                                                                    decoration:
+                                                                        BoxDecoration(
+                                                                      color: Color(
+                                                                              0xFFC58189)
+                                                                          .withOpacity(
+                                                                              0.1),
+                                                                      borderRadius:
+                                                                          BorderRadius.circular(
+                                                                              8),
+                                                                    ),
+                                                                    child: Icon(
+                                                                      Icons
+                                                                          .campaign_outlined,
+                                                                      color: Color(
+                                                                          0xFFC58189),
+                                                                      size: 20,
+                                                                    ),
+                                                                  ),
+                                                                  SizedBox(
+                                                                      width:
+                                                                          12),
+                                                                  Expanded(
+                                                                    child: Text(
+                                                                      banner['title'] ??
+                                                                          'Detail Banner',
+                                                                      style:
+                                                                          TextStyle(
+                                                                        fontSize:
+                                                                            20,
+                                                                        fontWeight:
+                                                                            FontWeight.bold,
+                                                                        color: Colors
+                                                                            .grey[800],
+                                                                        height:
+                                                                            1.2,
+                                                                      ),
+                                                                    ),
+                                                                  ),
+                                                                ],
+                                                              ),
+                                                              SizedBox(
+                                                                  height: 16),
+                                                              // Description
+                                                              if (banner['description'] !=
+                                                                      null &&
+                                                                  banner['description']
+                                                                      .toString()
+                                                                      .trim()
+                                                                      .isNotEmpty)
+                                                                Flexible(
+                                                                  child:
+                                                                      SingleChildScrollView(
+                                                                    child: Text(
+                                                                      banner[
+                                                                          'description'],
+                                                                      style:
+                                                                          TextStyle(
+                                                                        fontSize:
+                                                                            14,
+                                                                        color: Colors
+                                                                            .grey[600],
+                                                                        height:
+                                                                            1.5,
+                                                                      ),
+                                                                    ),
+                                                                  ),
+                                                                )
+                                                              else
+                                                                Container(
+                                                                  padding:
+                                                                      EdgeInsets
+                                                                          .all(
+                                                                              16),
+                                                                  decoration:
+                                                                      BoxDecoration(
+                                                                    color: Colors
+                                                                        .grey[50],
+                                                                    borderRadius:
+                                                                        BorderRadius.circular(
+                                                                            12),
+                                                                    border:
+                                                                        Border
+                                                                            .all(
+                                                                      color: Colors
+                                                                              .grey[
+                                                                          200]!,
+                                                                      width: 1,
+                                                                    ),
+                                                                  ),
+                                                                  child: Row(
+                                                                    children: [
+                                                                      Icon(
+                                                                        Icons
+                                                                            .info_outline,
+                                                                        color: Colors
+                                                                            .grey[400],
+                                                                        size:
+                                                                            20,
+                                                                      ),
+                                                                      SizedBox(
+                                                                          width:
+                                                                              12),
+                                                                      Expanded(
+                                                                        child:
+                                                                            Text(
+                                                                          'Tidak ada deskripsi untuk banner ini',
+                                                                          style:
+                                                                              TextStyle(
+                                                                            color:
+                                                                                Colors.grey[500],
+                                                                            fontSize:
+                                                                                14,
+                                                                            fontStyle:
+                                                                                FontStyle.italic,
+                                                                          ),
+                                                                        ),
+                                                                      ),
+                                                                    ],
+                                                                  ),
+                                                                ),
+                                                              SizedBox(
+                                                                  height: 24),
+                                                              // Action buttons
+                                                              Row(
+                                                                children: [
+                                                                  Expanded(
+                                                                    child:
+                                                                        TextButton(
+                                                                      onPressed:
+                                                                          () =>
+                                                                              Navigator.of(context).pop(),
+                                                                      style: TextButton
+                                                                          .styleFrom(
+                                                                        padding:
+                                                                            EdgeInsets.symmetric(vertical: 12),
+                                                                        shape:
+                                                                            RoundedRectangleBorder(
+                                                                          borderRadius:
+                                                                              BorderRadius.circular(12),
+                                                                          side:
+                                                                              BorderSide(
+                                                                            color:
+                                                                                Colors.grey[300]!,
+                                                                            width:
+                                                                                1,
+                                                                          ),
+                                                                        ),
+                                                                      ),
+                                                                      child:
+                                                                          Text(
+                                                                        'Tutup',
+                                                                        style:
+                                                                            TextStyle(
+                                                                          color:
+                                                                              Colors.grey[600],
+                                                                          fontSize:
+                                                                              16,
+                                                                          fontWeight:
+                                                                              FontWeight.w500,
+                                                                        ),
+                                                                      ),
+                                                                    ),
+                                                                  ),
+                                                                ],
+                                                              ),
+                                                            ],
+                                                          ),
+                                                        ),
+                                                      ),
+                                                    ],
+                                                  ),
+                                                ),
+                                              );
+                                            },
+                                          );
+                                        },
+                                        child: CachedNetworkImage(
+                                          imageUrl: banner['image_url'],
+                                          fit: BoxFit.cover,
+                                          errorWidget: (context, url, error) =>
+                                              Container(
+                                            decoration: BoxDecoration(
+                                              color: Colors.grey[300],
+                                              borderRadius:
+                                                  BorderRadius.circular(15),
+                                            ),
+                                            child: Center(
+                                              child: Icon(
+                                                Icons.image_not_supported,
+                                                size: 40,
+                                                color: Colors.grey[600],
+                                              ),
                                             ),
                                           ),
                                         ),
@@ -1077,8 +1469,6 @@ class _HomePageWidgetState extends State<HomePageWidget>
                                   ),
                                 ),
                               ),
-
-                              // Banner indicators
                               if (bannerImages.length > 1)
                                 Padding(
                                   padding: const EdgeInsets.only(top: 12),
