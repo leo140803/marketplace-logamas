@@ -147,6 +147,331 @@ class _CheckoutPageState extends State<CheckoutPage> {
     }
   }
 
+  Future<void> verifyPasswordAndCheckout() async {
+    final TextEditingController passwordController = TextEditingController();
+    bool isLoading = false;
+    bool obscureText = true;
+    String? errorMessage;
+
+    await showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return Dialog(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
+              elevation: 8,
+              child: Container(
+                padding: EdgeInsets.all(24),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(20),
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [
+                      Colors.white,
+                      Color(0xFF31394E).withOpacity(0.05),
+                    ],
+                  ),
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Header Icon
+                    Container(
+                      padding: EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: Color(0xFFC58189).withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(50),
+                      ),
+                      child: Icon(
+                        Icons.lock_outline,
+                        size: 32,
+                        color: Color(0xFFC58189),
+                      ),
+                    ),
+                    SizedBox(height: 20),
+
+                    // Title
+                    Text(
+                      "Verify Password",
+                      style: TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF31394E),
+                      ),
+                    ),
+                    SizedBox(height: 8),
+
+                    // Subtitle
+                    Text(
+                      "Please enter your password to confirm\nthis transaction securely.",
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Color(0xFF31394E).withOpacity(0.7),
+                        height: 1.4,
+                      ),
+                    ),
+                    SizedBox(height: 24),
+
+                    // Password Input
+                    Container(
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(12),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Color(0xFF31394E).withOpacity(0.1),
+                            blurRadius: 8,
+                            offset: Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: TextField(
+                        controller: passwordController,
+                        obscureText: obscureText,
+                        style: TextStyle(
+                          fontSize: 16,
+                          color: Color(0xFF31394E),
+                        ),
+                        decoration: InputDecoration(
+                          hintText: "Enter your password",
+                          hintStyle: TextStyle(
+                            color: Color(0xFF31394E).withOpacity(0.5),
+                          ),
+                          prefixIcon: Icon(
+                            Icons.lock_outline,
+                            color: Color(0xFFC58189),
+                          ),
+                          suffixIcon: IconButton(
+                            icon: Icon(
+                              obscureText
+                                  ? Icons.visibility
+                                  : Icons.visibility_off,
+                              color: Color(0xFF31394E).withOpacity(0.6),
+                            ),
+                            onPressed: () {
+                              setState(() => obscureText = !obscureText);
+                            },
+                          ),
+                          filled: true,
+                          fillColor: Colors.white,
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide(
+                              color: Color(0xFF31394E).withOpacity(0.2),
+                            ),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide(
+                              color: Color(0xFF31394E).withOpacity(0.2),
+                            ),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide(
+                              color: Color(0xFFC58189),
+                              width: 2,
+                            ),
+                          ),
+                          contentPadding: EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 16,
+                          ),
+                        ),
+                      ),
+                    ),
+
+                    // Error Message
+                    if (errorMessage != null) ...[
+                      SizedBox(height: 12),
+                      Container(
+                        padding: EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.red.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(
+                            color: Colors.red.withOpacity(0.3),
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(
+                              Icons.error_outline,
+                              color: Colors.red,
+                              size: 20,
+                            ),
+                            SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                errorMessage!,
+                                style: TextStyle(
+                                  color: Colors.red,
+                                  fontSize: 14,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+
+                    // Loading Indicator
+                    if (isLoading) ...[
+                      SizedBox(height: 20),
+                      Container(
+                        padding: EdgeInsets.all(16),
+                        child: Column(
+                          children: [
+                            SizedBox(
+                              width: 24,
+                              height: 24,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 3,
+                                valueColor: AlwaysStoppedAnimation<Color>(
+                                  Color(0xFFC58189),
+                                ),
+                              ),
+                            ),
+                            SizedBox(height: 12),
+                            Text(
+                              "Verifying...",
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: Color(0xFF31394E).withOpacity(0.7),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+
+                    SizedBox(height: 24),
+
+                    // Action Buttons
+                    Row(
+                      children: [
+                        // Cancel Button
+                        Expanded(
+                          child: Container(
+                            height: 48,
+                            child: TextButton(
+                              onPressed: isLoading
+                                  ? null
+                                  : () => Navigator.of(context).pop(),
+                              style: TextButton.styleFrom(
+                                backgroundColor: Colors.grey.withOpacity(0.1),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                              ),
+                              child: Text(
+                                "Cancel",
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w600,
+                                  color: Color(0xFF31394E).withOpacity(0.7),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                        SizedBox(width: 12),
+
+                        // Verify Button
+                        Expanded(
+                          flex: 2,
+                          child: Container(
+                            height: 48,
+                            child: ElevatedButton(
+                              onPressed: isLoading
+                                  ? null
+                                  : () async {
+                                      // Clear previous error
+                                      setState(() => errorMessage = null);
+
+                                      if (passwordController.text.isEmpty) {
+                                        setState(() => errorMessage =
+                                            "Please enter your password");
+                                        return;
+                                      }
+
+                                      setState(() => isLoading = true);
+
+                                      try {
+                                        final response = await http.post(
+                                          Uri.parse(
+                                              '$apiBaseUrl/user/verify-password'),
+                                          headers: {
+                                            'Authorization':
+                                                'Bearer $_accessToken',
+                                            'Content-Type': 'application/json',
+                                          },
+                                          body: jsonEncode({
+                                            "password": passwordController.text,
+                                          }),
+                                        );
+
+                                        if (response.statusCode == 201) {
+                                          Navigator.of(context).pop();
+                                          await _checkout();
+                                        } else {
+                                          final message = jsonDecode(
+                                                  response.body)['message'] ??
+                                              "Invalid password";
+                                          setState(
+                                              () => errorMessage = message);
+                                        }
+                                      } catch (e) {
+                                        setState(() => errorMessage =
+                                            "Failed to verify password. Please try again.");
+                                      } finally {
+                                        setState(() => isLoading = false);
+                                      }
+                                    },
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Color(0xFFC58189),
+                                foregroundColor: Colors.white,
+                                elevation: 2,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                              ),
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  if (!isLoading) ...[
+                                    Icon(Icons.verified_user, size: 18),
+                                    SizedBox(width: 8),
+                                  ],
+                                  Text(
+                                    isLoading ? "Verifying..." : "Verify & Pay",
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
   Future<void> _fetchUserProfile() async {
     try {
       final response = await http.get(
@@ -2274,7 +2599,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
               ),
               SizedBox(height: 12),
               ElevatedButton(
-                onPressed: isLoading ? null : _checkout,
+                onPressed: isLoading ? null : verifyPasswordAndCheckout,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Color(0xFF31394E),
                   disabledBackgroundColor: Colors.grey[400],
